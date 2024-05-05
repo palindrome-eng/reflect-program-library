@@ -8,7 +8,7 @@ pub struct InitializeOrderBook<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 40 * 1 + 8, // Start with space for 1 bid and the nonce.
+        space = 8 + 8 + 4, // Start with empty vec.
         seeds = [b"orderBook"],
         bump
     )]

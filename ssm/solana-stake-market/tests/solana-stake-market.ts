@@ -46,7 +46,10 @@ describe("solana-stake-market", () => {
           await provider.connection.confirmTransaction(airdropSignature, "confirmed");
   
           const tx = new Transaction();
-          tx.add(program.instruction.initializeBidWrapper(new anchor.BN(rate), {  // Ensure rate is a BN if needed
+          tx.add(program.instruction.placeBid(
+            new anchor.BN(rate), 
+            new anchor.BN(1_000_000_000),
+            {  // Ensure rate is a BN if needed
               accounts: {
                   bid: bidPda,
                   orderBook: orderBookAccount,
@@ -55,17 +58,9 @@ describe("solana-stake-market", () => {
               }
           }));
   
-          tx.add(program.instruction.fundBidWrapper(new anchor.BN(1_000_000_000), {  // Already a BN
-              accounts: {
-                  bid: bidPda,
-                  user: provider.wallet.publicKey,
-                  systemProgram: SystemProgram.programId,
-              }
-          }));
-  
           try {
               // Execute the transaction
-              await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
+              await provider.sendAndConfirm(tx, [], { commitment: "confirmed", skipPreflight: true });
   
               // Fetch the updated order book
               const updatedOrderBook = await program.account.orderBook.fetch(orderBookAccount);
@@ -88,7 +83,10 @@ describe("solana-stake-market", () => {
         try {
             // Attempt to place a bid with an invalid rate
             const tx = new Transaction();
-            tx.add(program.instruction.initializeBidWrapper(new anchor.BN(15001), {
+            tx.add(program.instruction.placeBid(
+                new anchor.BN(15001), 
+                new anchor.BN(1_000_000_000),
+                {
                 accounts: {
                     bid: bidPda,
                     orderBook: orderBookAccount,
