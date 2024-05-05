@@ -1,20 +1,13 @@
-[package]
-name = "solana-stake-market"
-version = "0.1.0"
-description = "Created with Anchor"
-edition = "2021"
+[workspace]
+members = [
+    "programs/*"
+]
 
-[lib]
-crate-type = ["cdylib", "lib"]
-name = "solana_stake_market"
-
-[features]
-no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
-
-[dependencies]
-anchor-lang = "0.29.0"
-anchor-spl = "0.29.0"
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
