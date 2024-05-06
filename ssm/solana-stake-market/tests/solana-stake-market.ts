@@ -33,7 +33,7 @@ describe("solana-stake-market", () => {
     });
 
     it("Places bids at different rates and checks order book size", async () => {
-      const rates = [9700, 9800, 9900]; // Rates as per 0.97:1, 0.98:1, 0.99:1
+      const rates = [970_000_000, 980_000_000, 990_000_000]; // Rates as per 0.97:1, 0.98:1, 0.99:1
       for (const rate of rates) {
           const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
           const [bidPda, bidBump] = await anchor.web3.PublicKey.findProgramAddressSync(
@@ -73,34 +73,57 @@ describe("solana-stake-market", () => {
   });
   
 
-    it("Fails to place a bid with an invalid rate", async () => {
-        const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
-        const [bidPda, bidBump] = await anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
-            program.programId
-        );
+  it("Fails to place a bid with an invalid rate", async () => {
+    const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
+    const [bidPda] = await anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
+        program.programId
+    );
 
-        try {
-            // Attempt to place a bid with an invalid rate
-            const tx = new Transaction();
-            tx.add(program.instruction.placeBid(
-                new anchor.BN(15001), 
-                new anchor.BN(1_000_000_000),
-                {
+    try {
+        await program.rpc.placeBid(
+            new anchor.BN(500_000_000), // Invalid rate, below 600_000_000
+            new anchor.BN(1_000_000_000), {
                 accounts: {
                     bid: bidPda,
                     orderBook: orderBookAccount,
                     user: provider.wallet.publicKey,
                     systemProgram: SystemProgram.programId,
-                }
-            }));
-
-            // Execute the transaction
-            await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
-            assert.fail("Bid with invalid rate should have failed.");
-        } catch (error) {
-            assert.include(error.message, "InvalidRate", "Error should be related to invalid rate.");
-            console.log("Expected error for invalid rate: ", error.message);
-        }
-    });
+                },
+                signers: [],
+            }
+        );
+        assert.fail("Bid with an invalid rate should have failed.");
+    } catch (error) {
+        assert.include(error.message, "BelowMinimumRate", "Error should be related to the minimum rate.");
+    }
 });
+
+it("Fails to place a bid with insufficient funding", async () => {
+    const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
+    const [bidPda] = await anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
+        program.programId
+    );
+
+    try {
+        await program.rpc.placeBid(
+            new anchor.BN(900_000_000), // Valid rate
+            new anchor.BN(800_000_000), { // Insufficient amount
+                accounts: {
+                    bid: bidPda,
+                    orderBook: orderBookAccount,
+                    user: provider.wallet.publicKey,
+                    systemProgram: SystemProgram.programId,
+                },
+                signers: [],
+            }
+        );
+        assert.fail("Bid with insufficient funding should have failed.");
+    } catch (error) {
+        assert.include(error.message, "UnfundedBid", "Error should be related to insufficient funding.");
+    }
+});
+});
+
+

@@ -1,5 +1,7 @@
+//src/instructions/bid_manager.rs
 use anchor_lang::system_program::{transfer, Transfer};
 use anchor_lang::prelude::*;
+use crate::errors::SsmError;
 use crate::states::{Bid, OrderBook};
 
 #[derive(Accounts)]
@@ -35,6 +37,9 @@ pub fn place_bid(
     amount: u64
 ) -> Result<()> {
     msg!("Placing bid with rate {} and amount {}", rate, amount);
+     // Validation checks
+     require!(rate >= 600_000_000, SsmError::BelowMinimumRate);
+     require!(amount >= rate, SsmError::UnfundedBid);
 
     let bid = &mut ctx.accounts.bid;
     let system_program = &mut ctx.accounts.system_program;

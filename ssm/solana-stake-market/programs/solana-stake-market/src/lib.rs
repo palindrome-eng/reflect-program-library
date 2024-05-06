@@ -8,7 +8,7 @@ pub mod states;
 pub mod errors;
 pub mod utils;
 
-declare_id!("2saZdaCQioYutAv8aFXyLgnJWs2QSnMEFtvKGeUc4PUj");
+declare_id!("sSmYaKe6tj5VKjPzHhpakpamw1PYoJFLQNyMJD3PU37");
 
 #[program]
 pub mod solana_stake_market {

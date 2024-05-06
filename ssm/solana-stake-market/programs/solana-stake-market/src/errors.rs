@@ -3,8 +3,10 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum SsmError {
-    #[msg("The provided rate is not acceptable.")]
-    InvalidRate,
     #[msg("Could not transfer liquidity to the bid.")]
     TransferFailed,
+    #[msg("The deposit amount is insufficient to cover the rate.")]
+    UnfundedBid,
+    #[msg("Rate defined is below the orderbook secure minimum of 0.6:1")]
+    BelowMinimumRate,
 }
