@@ -23,6 +23,12 @@ pub mod solana_stake_market {
         instructions::place_bid(ctx, rate, amount)
     }
 
+    pub fn close_bid(
+        ctx: Context<CloseBid>,
+    ) -> Result<()> {
+        instructions::close_bid(ctx)
+    }
+
     pub fn initialize_order_book_wrapper(
         ctx: Context<InitializeOrderBook>
     ) -> Result<()> {

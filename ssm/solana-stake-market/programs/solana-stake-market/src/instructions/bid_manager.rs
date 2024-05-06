@@ -76,3 +76,21 @@ pub fn place_bid(
 
     Ok(())
 }
+
+#[derive(Accounts)]
+pub struct CloseBid<'info> {
+    #[account(
+        mut,
+        constraint = bid.bidder == user.key() @ SsmError::Unauthorized,
+        constraint = bid.purchased_stake_accounts.is_empty() @ SsmError::Uncloseable,
+        close = user
+    )]
+    pub bid: Account<'info, Bid>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+}
+
+pub fn close_bid(_ctx: Context<CloseBid>) -> Result<()> {
+    msg!("Closing bid");
+    Ok(())
+}

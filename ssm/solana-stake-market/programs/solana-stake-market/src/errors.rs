@@ -9,4 +9,8 @@ pub enum SsmError {
     UnfundedBid,
     #[msg("Rate defined is below the orderbook secure minimum of 0.6:1")]
     BelowMinimumRate,
+    #[msg("Signer is not authorised to modify this account.")]
+    Unauthorized,
+    #[msg("Bid account has stake_accounts, claim the stake accounts - or withdraw the staked sol to close bid.")]
+    Uncloseable,
 }

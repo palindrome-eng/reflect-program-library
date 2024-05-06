@@ -32,6 +32,49 @@ describe("solana-stake-market", () => {
         console.log(`OrderBook initialized at ${orderBookAccount}`);
     });
 
+    it("Places and closes bids correctly", async () => {
+        const rate = new anchor.BN(970_000_000); // A valid rate greater than the minimum
+        const amount = new anchor.BN(1_000_000_000); // Amount greater than the rate
+
+        // Generate a bid account PDA
+        const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
+        const [bidPda, bidBump] = await anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
+            program.programId
+        );
+
+        // Place the bid
+        await program.rpc.placeBid(rate, amount, {
+            accounts: {
+                bid: bidPda,
+                orderBook: orderBookAccount,
+                user: provider.wallet.publicKey,
+                systemProgram: SystemProgram.programId,
+            },
+            signers: [],
+        });
+
+        // Check balances before closing the bid
+        const balanceBefore = await provider.connection.getBalance(provider.wallet.publicKey);
+        console.log(`Balance before closing the bid: ${balanceBefore}`);
+
+        // Close the bid
+        await program.rpc.closeBid({
+            accounts: {
+                bid: bidPda,
+                user: provider.wallet.publicKey,
+            },
+            signers: [],
+        });
+
+        // Check balances after closing the bid
+        const balanceAfter = await provider.connection.getBalance(provider.wallet.publicKey);
+        console.log(`Balance after closing the bid: ${balanceAfter}`);
+
+        assert(balanceAfter > balanceBefore, "User balance should increase after closing the bid");
+        console.log(`Bid closed and funds returned. Balance increased by ${balanceAfter - balanceBefore}`);
+    });
+
     it("Places bids at different rates and checks order book size", async () => {
       const rates = [970_000_000, 980_000_000, 990_000_000]; // Rates as per 0.97:1, 0.98:1, 0.99:1
       for (const rate of rates) {
