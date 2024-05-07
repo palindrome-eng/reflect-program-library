@@ -8,7 +8,7 @@ pub struct InitializeOrderBook<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 8 + 4, // Start with empty vec.
+        space = 8 + 24, // discriminator + order_book_stats.
         seeds = [b"orderBook"],
         bump
     )]
@@ -20,7 +20,8 @@ pub struct InitializeOrderBook<'info> {
 
 pub fn handler(ctx: Context<InitializeOrderBook>) -> Result<()> {
     let order_book = &mut ctx.accounts.order_book;
-    order_book.bids = Vec::new();  // Initialize with an empty vector of bids
-    order_book.global_nonce = 0; // Init global nonce
+    order_book.tvl = 0; // Initialize with zero SOL tvl.
+    order_book.bids = 0;  // Initialize with no bids.
+    order_book.global_nonce = 0; // initialize global_nonce with no bids.
     Ok(())
 }

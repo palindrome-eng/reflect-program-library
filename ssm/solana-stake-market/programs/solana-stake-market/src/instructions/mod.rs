@@ -1,7 +1,7 @@
 pub mod bid_manager;
-pub mod sell_stake;
+pub mod stake_manager;
 pub mod initialize_ob;
 
 pub use bid_manager::*;
-pub use sell_stake::*;
+pub use stake_manager::*;
 pub use initialize_ob::*;

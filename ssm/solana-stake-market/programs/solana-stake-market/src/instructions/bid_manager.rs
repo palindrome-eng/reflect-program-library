@@ -19,15 +19,8 @@ pub struct PlaceBid<'info> {
         bump,
     )]
     pub bid: Account<'info, Bid>,
-
-    #[account(
-        mut,
-        realloc = 8 + 8 + 4 + 32 * (order_book.bids.len() + 1),
-        realloc::payer = user,
-        realloc::zero = false
-    )]
+    #[account(mut)]
     pub order_book: Account<'info, OrderBook>,
-
     pub system_program: Program<'info, System>,
 }
 
@@ -54,11 +47,6 @@ pub fn place_bid(
     bid.fulfilled = false;
     bid.purchased_stake_accounts = vec![];
 
-    ctx.accounts.order_book.bids.push(bid.key()); // Add to order book
-    ctx.accounts.order_book.global_nonce += 1; // Increment nonce
-
-    msg!("Funding bid with amount {}", amount);
-
     transfer(
         CpiContext::new(
             system_program.to_account_info(),
@@ -70,10 +58,11 @@ pub fn place_bid(
         amount
     )?;
 
-    msg!("Transfer successful. Bid amount now: {}", ctx.accounts.bid.amount);
+    ctx.accounts.order_book.bids += 1;
+    ctx.accounts.order_book.tvl += ctx.accounts.bid.amount;
+    ctx.accounts.order_book.global_nonce += 1;
 
-    msg!("Bid initialized and added to order book. Current global nonce: {}", ctx.accounts.order_book.global_nonce);
-
+    msg!("bid created with amount: {} and rate {} | new tvl: {}", ctx.accounts.bid.amount, ctx.accounts.bid.bid_rate, ctx.accounts.order_book.tvl);
     Ok(())
 }
 
@@ -88,9 +77,16 @@ pub struct CloseBid<'info> {
     pub bid: Account<'info, Bid>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(mut)]
+    pub order_book: Account<'info, OrderBook>,
 }
 
-pub fn close_bid(_ctx: Context<CloseBid>) -> Result<()> {
-    msg!("Closing bid");
+pub fn close_bid(ctx: Context<CloseBid>) -> Result<()> {
+    msg!("Closing bid with amount: {}, rate: {}", ctx.accounts.bid.amount, ctx.accounts.bid.bid_rate);
+    msg!("Order book stats before closing: total_bids: {}, tvl: {}", ctx.accounts.order_book.bids, ctx.accounts.order_book.tvl);
+
+    ctx.accounts.order_book.tvl -= ctx.accounts.bid.amount;
+    ctx.accounts.order_book.bids -= 1; // remove active bid count from order_book.
+    msg!("bid closed | stats: total_bids: {}, tvl: {}", ctx.accounts.order_book.bids, ctx.accounts.order_book.tvl);
     Ok(())
 }

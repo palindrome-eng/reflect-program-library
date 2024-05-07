@@ -28,8 +28,13 @@ describe("solana-stake-market", () => {
         });
 
         const orderBook = await program.account.orderBook.fetch(orderBookAccount);
-        assert.isTrue(orderBook.globalNonce.eq(new anchor.BN(0)), "Global nonce should be initialized to 0.");
         console.log(`OrderBook initialized at ${orderBookAccount}`);
+        assert.isTrue(orderBook.tvl.eq(new anchor.BN(0)), "TVL should initialize as 0");
+        console.log(`current TVL =  ${orderBook.tvl}`);
+        assert.isTrue(orderBook.bids.eq(new anchor.BN(0)), "there should be 0 bids.");
+        console.log(`current bids =  ${orderBook.bids}`);
+        assert.isTrue(orderBook.globalNonce.eq(new anchor.BN(0)), "Global nonce should be initialized to 0.");
+        console.log(`global nonce = ${orderBook.globalNonce}`);
     });
 
     it("Places and closes bids correctly", async () => {
@@ -46,9 +51,9 @@ describe("solana-stake-market", () => {
         // Place the bid
         await program.rpc.placeBid(rate, amount, {
             accounts: {
+                user: provider.wallet.publicKey,
                 bid: bidPda,
                 orderBook: orderBookAccount,
-                user: provider.wallet.publicKey,
                 systemProgram: SystemProgram.programId,
             },
             signers: [],
@@ -63,6 +68,7 @@ describe("solana-stake-market", () => {
             accounts: {
                 bid: bidPda,
                 user: provider.wallet.publicKey,
+                orderBook: orderBookAccount,
             },
             signers: [],
         });
@@ -76,45 +82,50 @@ describe("solana-stake-market", () => {
     });
 
     it("Places bids at different rates and checks order book size", async () => {
-      const rates = [970_000_000, 980_000_000, 990_000_000]; // Rates as per 0.97:1, 0.98:1, 0.99:1
-      for (const rate of rates) {
-          const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
-          const [bidPda, bidBump] = await anchor.web3.PublicKey.findProgramAddressSync(
-              [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
-              program.programId
-          );
-  
-          // Airdrop SOL to cover the bid and transaction fees
-          const airdropSignature = await provider.connection.requestAirdrop(provider.wallet.publicKey, 5_000_000_000);
-          await provider.connection.confirmTransaction(airdropSignature, "confirmed");
-  
-          const tx = new Transaction();
-          tx.add(program.instruction.placeBid(
-            new anchor.BN(rate), 
-            new anchor.BN(1_000_000_000),
-            {  // Ensure rate is a BN if needed
-              accounts: {
-                  bid: bidPda,
-                  orderBook: orderBookAccount,
-                  user: provider.wallet.publicKey,
-                  systemProgram: SystemProgram.programId,
-              }
-          }));
-  
-          try {
-              // Execute the transaction
-              await provider.sendAndConfirm(tx, [], { commitment: "confirmed", skipPreflight: true });
-  
-              // Fetch the updated order book
-              const updatedOrderBook = await program.account.orderBook.fetch(orderBookAccount);
-              expect(updatedOrderBook.bids.length).to.be.greaterThan(currentNonce.toNumber());
-              console.log(`Order book size after bid at rate ${rate}: ${updatedOrderBook.bids.length}`);
-          } catch (error) {
-              console.error(`Error placing bid at rate ${rate}: ${error}`);
-          }
-      }
-  });
-  
+        const rates = [970_000_000, 980_000_000, 990_000_000]; // Rates as per 0.97:1, 0.98:1, 0.99:1
+        let previousBidsCount = (await program.account.orderBook.fetch(orderBookAccount)).bids.toNumber();
+    
+        for (const rate of rates) {
+            const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
+            const [bidPda, bidBump] = await anchor.web3.PublicKey.findProgramAddressSync(
+                [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
+                program.programId
+            );
+    
+            // Airdrop SOL to cover the bid and transaction fees
+            const airdropSignature = await provider.connection.requestAirdrop(provider.wallet.publicKey, 5_000_000_000);
+            await provider.connection.confirmTransaction(airdropSignature, "confirmed");
+    
+            const tx = new Transaction();
+            tx.add(program.instruction.placeBid(
+                new anchor.BN(rate),
+                new anchor.BN(1_000_000_000),
+                {
+                    accounts: {
+                        user: provider.wallet.publicKey,
+                        bid: bidPda,
+                        orderBook: orderBookAccount,
+                        systemProgram: SystemProgram.programId,
+                    }
+                }
+            ));
+    
+            try {
+                // Execute the transaction
+                await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
+    
+                // Fetch the updated order book
+                const updatedOrderBook = await program.account.orderBook.fetch(orderBookAccount);
+                expect(updatedOrderBook.bids.toNumber()).to.equal(previousBidsCount + 1);
+                console.log(`Order book size after bid at rate ${rate}: ${updatedOrderBook.bids}`);
+    
+                // Update previousBidsCount for the next iteration
+                previousBidsCount = updatedOrderBook.bids.toNumber();
+            } catch (error) {
+                console.error(`Error placing bid at rate ${rate}: ${error}`);
+            }
+        }
+    });    
 
   it("Fails to place a bid with an invalid rate", async () => {
     const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
