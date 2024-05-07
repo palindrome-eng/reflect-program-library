@@ -13,4 +13,8 @@ pub enum SsmError {
     Unauthorized,
     #[msg("Bid account has stake_accounts, claim the stake accounts - or withdraw the staked sol to close bid.")]
     Uncloseable,
+    #[msg("not enough bids to cover the sale of stake accounts.")]
+    InsufficientBids,
+    #[msg("Failed to create a public key with the provided seed.")]
+    PublicKeyCreationFailed
 }
