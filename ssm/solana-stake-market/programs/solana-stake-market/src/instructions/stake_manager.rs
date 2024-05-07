@@ -122,7 +122,7 @@ impl<'info> SellStake<'info> {
         Ok(())
     }
 
-    pub fn sell_stake(&self, ctx: Context<SellStake>, total_stake_amount: u64) -> Result<()> {
+    pub fn sell_stake(&self, ctx: Context<'_, '_, 'info, 'info, SellStake<'info>>, total_stake_amount: u64) -> Result<()> {
         let mut remaining_stake = total_stake_amount;
 
         // Assume bids are fetched and passed in sorted order as part of `remaining_accounts`
