@@ -1,7 +1,7 @@
+//src/instructions/stake_manager.rs
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::system_program;
 use anchor_lang::solana_program::{
-    clock::Clock,
     stake::{self, instruction as stake_instruction, state::{StakeAuthorize, StakeStateV2}},
     system_instruction,
     program::{invoke, invoke_signed},
@@ -25,6 +25,7 @@ pub struct SellStake<'info> {
     pub seller: Signer<'info>,
 
     #[account(address = anchor_lang::solana_program::stake::program::ID)]
+    /// CHECK: safe because pulling directly from solana_program the stake program ID. (caller can also validate)
     pub stake_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
