@@ -18,7 +18,7 @@ describe("solana-stake-market", () => {
         orderBookAccount = orderBookPda;
 
         // Initialize the order book with minimal space
-        await program.rpc.initializeOrderBookWrapper({
+        await program.rpc.initializeOrderBook({
             accounts: {
                 orderBook: orderBookAccount,
                 user: provider.wallet.publicKey,
