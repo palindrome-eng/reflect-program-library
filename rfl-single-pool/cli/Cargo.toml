@@ -17,16 +17,16 @@ serde = "1.0.199"
 serde_derive = "1.0.103"
 serde_json = "1.0.116"
 serde_with = "3.8.1"
-solana-account-decoder = "1.17.31"
-solana-clap-v3-utils = "1.17.31"
-solana-cli-config = "1.17.31"
-solana-cli-output = "1.17.31"
-solana-client = "1.17.31"
-solana-logger = "1.17.31"
-solana-remote-wallet = "1.17.31"
-solana-sdk = "1.17.31"
-solana-transaction-status = "1.17.31"
-solana-vote-program = "1.17.31"
+solana-account-decoder = "1.18.12"
+solana-clap-v3-utils = "1.18.12"
+solana-cli-config = "1.18.12"
+solana-cli-output = "1.18.12"
+solana-client = "1.18.12"
+solana-logger = "1.18.12"
+solana-remote-wallet = "1.18.12"
+solana-sdk = "1.18.12"
+solana-transaction-status = "1.18.12"
+solana-vote-program = "1.18.12"
 spl-token = { version = "4.0", features = [
   "no-entrypoint",
 ] }
@@ -39,7 +39,7 @@ reflect-single-pool = { version = "1.0.0", path = "../program", features = [
 ] }
 
 [dev-dependencies]
-solana-test-validator = "1.17.31"
+solana-test-validator = "1.18.12"
 serial_test = "3.1.1"
 test-case = "3.3"
 tempfile = "3.10.1"

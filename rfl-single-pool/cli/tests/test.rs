@@ -31,7 +31,7 @@ use {
 };
 
 type PClient = Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>;
-const SVSP_CLI: &str = "../../target/debug/spl-single-pool";
+const SVSP_CLI: &str = "../../target/debug/reflect-single-pool";
 
 #[allow(dead_code)]
 pub struct Env {
@@ -121,9 +121,9 @@ async fn start_validator() -> (TestValidator, Keypair) {
             upgrade_authority: Pubkey::default(),
         },
         UpgradeableProgramInfo {
-            program_id: spl_single_pool::id(),
+            program_id: reflect_single_pool::id(),
             loader: bpf_loader_upgradeable::id(),
-            program_path: PathBuf::from("../../target/deploy/spl_single_pool.so"),
+            program_path: PathBuf::from("../../target/deploy/reflect_single_pool.so"),
             upgrade_authority: Pubkey::default(),
         },
     ]);
