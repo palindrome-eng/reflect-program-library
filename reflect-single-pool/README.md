@@ -1,4 +1,6 @@
-## Solana Program Library Single-Validator Stake Pool
+## ⚠️ Warning - This is a FORK maintained by the Reflect Protocol.
+
+### Solana Program Library Single-Validator Stake Pool
 
 The single-validator stake pool program is an upcoming SPL program that enables liquid staking with zero fees, no counterparty, and 100% capital efficiency.
 
@@ -8,4 +10,4 @@ The program is a stripped-down adaptation of the existing multi-validator stake 
 
 On launch, users will only be able to deposit and withdraw active stake, but pending future stake program development, we hope to support instant sol deposits and withdrawals as well.
 
-# Warning - This is a FORK maintained by the Reflect Protocol team for use explicitly with the Reflect Validator. Do not fork or re-deploy this version for your own singlePool. 
+
