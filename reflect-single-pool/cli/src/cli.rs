@@ -12,7 +12,7 @@ use {
     solana_cli_output::OutputFormat,
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{pubkey::Pubkey, signer::Signer},
-    spl_single_pool::{self, find_pool_address},
+    reflect_single_pool::{self, find_pool_address},
     std::{rc::Rc, str::FromStr, sync::Arc},
 };
 
@@ -368,7 +368,7 @@ pub fn pool_address_from_args(maybe_pool: Option<Pubkey>, maybe_vote: Option<Pub
     if let Some(pool_address) = maybe_pool {
         pool_address
     } else if let Some(vote_account_address) = maybe_vote {
-        find_pool_address(&spl_single_pool::id(), &vote_account_address)
+        find_pool_address(&reflect_single_pool::id(), &vote_account_address)
     } else {
         unreachable!()
     }
