@@ -15,12 +15,17 @@ pub struct PlaceBid<'info> {
         init,
         payer = user,
         space = 8 + 8 * 2 + 32 * 2 + 1 + 4 + 10 * 32, // Enough space for the Bid struct
-        seeds = [b"bid", user.key().as_ref(), &order_book.global_nonce.to_le_bytes()],
+        seeds = [
+            "bid".as_bytes(), 
+            &order_book.global_nonce.to_le_bytes()
+        ],
         bump,
     )]
     pub bid: Account<'info, Bid>,
+
     #[account(mut)]
     pub order_book: Account<'info, OrderBook>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -67,21 +72,31 @@ pub fn place_bid(
 }
 
 #[derive(Accounts)]
+#[instruction(
+    bid_index: u64
+)]
 pub struct CloseBid<'info> {
     #[account(
         mut,
+        seeds = [
+            "bid".as_bytes(), 
+            &bid_index.to_le_bytes()
+        ],
+        bump,
         constraint = bid.bidder == user.key() @ SsmError::Unauthorized,
         constraint = bid.purchased_stake_accounts.is_empty() @ SsmError::Uncloseable,
         close = user
     )]
     pub bid: Account<'info, Bid>,
+
     #[account(mut)]
     pub user: Signer<'info>,
+
     #[account(mut)]
     pub order_book: Account<'info, OrderBook>,
 }
 
-pub fn close_bid(ctx: Context<CloseBid>) -> Result<()> {
+pub fn close_bid(ctx: Context<CloseBid>, bid_index: u64) -> Result<()> {
     msg!("Closing bid with amount: {}, rate: {}", ctx.accounts.bid.amount, ctx.accounts.bid.bid_rate);
     msg!("Order book stats before closing: total_bids: {}, tvl: {}", ctx.accounts.order_book.bids, ctx.accounts.order_book.tvl);
 

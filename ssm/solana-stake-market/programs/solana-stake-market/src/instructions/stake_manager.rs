@@ -33,6 +33,40 @@ pub struct SellStake<'info> {
     pub rent_sysvar: Sysvar<'info, Rent>,
 }
 
+pub fn sell_stake<'info>(
+    ctx: Context<'_, '_, 'info, 'info, SellStake<'info>>, 
+    total_stake_amount: u64
+) -> Result<()> {
+    let mut remaining_stake = total_stake_amount;
+
+    // Assume bids are fetched and passed in sorted order as part of `remaining_accounts`
+    let mut bids: Vec<Account<'info, Bid>> = ctx.remaining_accounts
+        .iter()
+        .map(|account_info| Account::<Bid>::try_from(account_info))
+        .collect::<Result<Vec<_>>>()?;
+
+    for bid in bids.iter_mut() {
+        if remaining_stake == 0 || bid.amount == 0 {
+            continue;
+        }
+
+        let stake_to_sell = remaining_stake.min(bid.amount);
+        ctx.accounts.split_and_transfer_stake(bid, stake_to_sell)?;
+        remaining_stake -= stake_to_sell;
+
+        bid.amount -= stake_to_sell;
+        bid.fulfilled = bid.amount == 0;
+        ctx.accounts.order_book.tvl -= stake_to_sell;
+
+        if remaining_stake == 0 {
+            break;
+        }
+    }
+
+    require!(remaining_stake == 0, SsmError::InsufficientBids);
+    Ok(())
+}
+
 impl<'info> SellStake<'info> {
     fn split_and_transfer_stake(
         &self,
@@ -77,7 +111,7 @@ impl<'info> SellStake<'info> {
                     self.stake_program.to_account_info(),
                     self.system_program.to_account_info(),
                 ],
-                &[&[&self.seller.key().to_bytes(), seed.as_bytes()]],
+                &[&[self.seller.key().as_ref(), seed.as_bytes()]],
             )?;
 
             invoke(
@@ -120,34 +154,6 @@ impl<'info> SellStake<'info> {
             ],
         )?;
 
-        Ok(())
-    }
-
-    pub fn sell_stake(&self, ctx: Context<'_, '_, 'info, 'info, SellStake<'info>>, total_stake_amount: u64) -> Result<()> {
-        let mut remaining_stake = total_stake_amount;
-
-        // Assume bids are fetched and passed in sorted order as part of `remaining_accounts`
-        let mut bids: Vec<Account<Bid>> = ctx.remaining_accounts.iter().map(Account::try_from).collect::<Result<Vec<_>>>()?;
-
-        for bid in bids.iter_mut() {
-            if remaining_stake == 0 || bid.amount == 0 {
-                continue;
-            }
-
-            let stake_to_sell = remaining_stake.min(bid.amount);
-            self.split_and_transfer_stake(bid, stake_to_sell)?;
-            remaining_stake -= stake_to_sell;
-
-            bid.amount -= stake_to_sell;
-            bid.fulfilled = bid.amount == 0;
-            ctx.accounts.order_book.tvl -= stake_to_sell;
-
-            if remaining_stake == 0 {
-                break;
-            }
-        }
-
-        require!(remaining_stake == 0, SsmError::InsufficientBids);
         Ok(())
     }
 }

@@ -4,7 +4,9 @@
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
     },
     "dependencies": {
-        "@coral-xyz/anchor": "^0.29.0"
+        "@coral-xyz/anchor": "^0.29.0",
+        "@metaplex-foundation/solita": "^0.20.1",
+        "@solana/web3.js": "^1.91.8"
     },
     "devDependencies": {
         "@types/bn.js": "^5.1.0",
