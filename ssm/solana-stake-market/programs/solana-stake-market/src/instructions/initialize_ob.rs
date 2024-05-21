@@ -18,7 +18,7 @@ pub struct InitializeOrderBook<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<InitializeOrderBook>) -> Result<()> {
+pub fn initialize_order_book(ctx: Context<InitializeOrderBook>) -> Result<()> {
     let order_book = &mut ctx.accounts.order_book;
     order_book.tvl = 0; // Initialize with zero SOL tvl.
     order_book.bids = 0;  // Initialize with no bids.

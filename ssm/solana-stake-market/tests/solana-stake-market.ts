@@ -1,40 +1,89 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import {Program} from "@coral-xyz/anchor";
+import {SolanaStakeMarket} from "../target/types/solana_stake_market";
+import {assert, expect} from "chai";
+import {
+    Authorized, Keypair, LAMPORTS_PER_SOL, Lockup,
+    Message,
+    PublicKey,
+    StakeProgram,
+    SYSVAR_RENT_PUBKEY,
+    TransactionMessage,
+    VersionedMessage
+} from "@solana/web3.js";
+import {Bid, OrderBook} from "../sdk";
+import BN from "bn.js";
+
 const { SystemProgram, Transaction } = anchor.web3;
-import { SolanaStakeMarket } from "../target/types/solana_stake_market";
-import { assert, expect } from "chai";
+
+const sleep = (seconds: number) => new Promise((resolve) => {
+    setTimeout(() => {
+        resolve(null);
+    }, seconds * 1000);
+});
+
+function getBids(count: number, programId: PublicKey) {
+    const bids: PublicKey[] = [];
+
+    for (let i = 0; i < count; i++) {
+        const [bidPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("bid"),
+                new BN(i).toArrayLike(Buffer, 'le', 8)
+            ],
+            programId
+        );
+
+        bids.push(bidPda);
+    }
+
+    return bids;
+}
 
 describe("solana-stake-market", () => {
-    const provider = anchor.AnchorProvider.env();
+    const provider = anchor.AnchorProvider.local();
     anchor.setProvider(provider);
     const program = anchor.workspace.SolanaStakeMarket as Program<SolanaStakeMarket>;
-    let orderBookAccount;
+    let orderBookAccount: PublicKey;
+    let orderBookAccountData: OrderBook;
+    let alice: Keypair;
+    let aliceStakeAccount: Keypair;
 
     before(async () => {
-        const [orderBookPda, orderBookBump] = await anchor.web3.PublicKey.findProgramAddress(
+        [orderBookAccount] = PublicKey.findProgramAddressSync(
             [Buffer.from("orderBook")],
             program.programId
         );
-        orderBookAccount = orderBookPda;
+
+        alice = Keypair.generate();
+        aliceStakeAccount = Keypair.generate();
 
         // Initialize the order book with minimal space
-        await program.rpc.initializeOrderBookWrapper({
-            accounts: {
+        await program
+            .methods
+            .initializeOrderBookWrapper()
+            .accounts({
                 orderBook: orderBookAccount,
                 user: provider.wallet.publicKey,
                 systemProgram: SystemProgram.programId,
-            },
-            signers: [],
-        });
+            })
+            .rpc().catch(err => console.error(err));
 
-        const orderBook = await program.account.orderBook.fetch(orderBookAccount);
+        const orderBook = await OrderBook.fromAccountAddress(
+            provider.connection,
+            orderBookAccount
+        );
+
+        orderBookAccountData = orderBook;
+
         console.log(`OrderBook initialized at ${orderBookAccount}`);
-        assert.isTrue(orderBook.tvl.eq(new anchor.BN(0)), "TVL should initialize as 0");
+        expect(orderBook.tvl.toString()).eq("0");
+
         console.log(`current TVL =  ${orderBook.tvl}`);
-        assert.isTrue(orderBook.bids.eq(new anchor.BN(0)), "there should be 0 bids.");
+        expect(orderBook.bids.toString()).eq("0");
+
         console.log(`current bids =  ${orderBook.bids}`);
-        assert.isTrue(orderBook.globalNonce.eq(new anchor.BN(0)), "Global nonce should be initialized to 0.");
-        console.log(`global nonce = ${orderBook.globalNonce}`);
+        expect(orderBook.globalNonce.toString()).eq("0");
     });
 
     it("Places and closes bids correctly", async () => {
@@ -42,142 +91,361 @@ describe("solana-stake-market", () => {
         const amount = new anchor.BN(1_000_000_000); // Amount greater than the rate
 
         // Generate a bid account PDA
-        const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
-        const [bidPda, bidBump] = await anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
+        const [bidPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("bid"),
+                new BN(orderBookAccountData.globalNonce).toArrayLike(Buffer, 'le', 8)
+            ],
             program.programId
         );
 
-        // Place the bid
-        await program.rpc.placeBid(rate, amount, {
-            accounts: {
+        const placeBid = program
+            .methods
+            .placeBid(
+                rate,
+                amount
+            )
+            .accounts({
                 user: provider.wallet.publicKey,
                 bid: bidPda,
                 orderBook: orderBookAccount,
-                systemProgram: SystemProgram.programId,
-            },
-            signers: [],
-        });
+                systemProgram: SystemProgram.programId
+            });
 
-        // Check balances before closing the bid
-        const balanceBefore = await provider.connection.getBalance(provider.wallet.publicKey);
-        console.log(`Balance before closing the bid: ${balanceBefore}`);
+        const balanceBeforePlacingBid = await provider.connection.getBalance(provider.wallet.publicKey);
+        const { blockhash } = await provider.connection.getLatestBlockhash();
+        const {
+            value: expectedNetworkFeeInLamports
+        } = await provider.connection.getFeeForMessage(
+            (new TransactionMessage({
+                payerKey: provider.wallet.publicKey,
+                instructions: [await placeBid.instruction()],
+                recentBlockhash: blockhash
+            })).compileToV0Message()
+        );
+
+        await placeBid.rpc().catch(err => console.error(err));
+
+        const balanceAfterPlacingBid = await provider.connection.getBalance(provider.wallet.publicKey);
+
+        expect(balanceAfterPlacingBid).to.approximately(
+            balanceBeforePlacingBid - amount.toNumber() - expectedNetworkFeeInLamports,
+            5_000_000
+        );
 
         // Close the bid
-        await program.rpc.closeBid({
-            accounts: {
+        const closeBid = program
+            .methods
+            .closeBid(
+                new BN(orderBookAccountData.globalNonce)
+            )
+            .accounts({
                 bid: bidPda,
                 user: provider.wallet.publicKey,
-                orderBook: orderBookAccount,
-            },
-            signers: [],
-        });
+                orderBook: orderBookAccount
+            });
 
-        // Check balances after closing the bid
-        const balanceAfter = await provider.connection.getBalance(provider.wallet.publicKey);
-        console.log(`Balance after closing the bid: ${balanceAfter}`);
+        const { blockhash: blockhash2 } = await provider.connection.getLatestBlockhash();
+        const {
+            value: expectedNetworkFeeInLamports2
+        } = await provider.connection.getFeeForMessage(
+            (new TransactionMessage({
+                payerKey: provider.wallet.publicKey,
+                instructions: [await placeBid.instruction()],
+                recentBlockhash: blockhash2
+            })).compileToV0Message()
+        );
 
-        assert(balanceAfter > balanceBefore, "User balance should increase after closing the bid");
-        console.log(`Bid closed and funds returned. Balance increased by ${balanceAfter - balanceBefore}`);
+        await closeBid.rpc().catch(err => console.error(err));
+
+        const balanceAfterClosingBid = await provider.connection.getBalance(provider.wallet.publicKey);
+        expect(balanceAfterClosingBid).to.approximately(
+            balanceAfterPlacingBid + amount.toNumber() - expectedNetworkFeeInLamports2,
+            5_000_000
+        );
     });
 
     it("Places bids at different rates and checks order book size", async () => {
         const rates = [970_000_000, 980_000_000, 990_000_000]; // Rates as per 0.97:1, 0.98:1, 0.99:1
-        let previousBidsCount = (await program.account.orderBook.fetch(orderBookAccount)).bids.toNumber();
-    
+
+        let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+        let previousBidsCount = typeof orderBook.bids === "number" ? orderBook.bids : orderBook.bids.toNumber();
+
+        const refreshOrderBook = async () => orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+
         for (const rate of rates) {
-            const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
-            const [bidPda, bidBump] = await anchor.web3.PublicKey.findProgramAddressSync(
-                [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
+            const currentNonce = orderBook.globalNonce;
+            const [bidPda] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("bid"),
+                    new BN(currentNonce).toArrayLike(Buffer, 'le', 8)
+                ],
                 program.programId
             );
-    
-            // Airdrop SOL to cover the bid and transaction fees
-            const airdropSignature = await provider.connection.requestAirdrop(provider.wallet.publicKey, 5_000_000_000);
-            await provider.connection.confirmTransaction(airdropSignature, "confirmed");
-    
-            const tx = new Transaction();
-            tx.add(program.instruction.placeBid(
-                new anchor.BN(rate),
-                new anchor.BN(1_000_000_000),
-                {
-                    accounts: {
-                        user: provider.wallet.publicKey,
-                        bid: bidPda,
-                        orderBook: orderBookAccount,
-                        systemProgram: SystemProgram.programId,
-                    }
-                }
-            ));
-    
-            try {
-                // Execute the transaction
-                await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
-    
-                // Fetch the updated order book
-                const updatedOrderBook = await program.account.orderBook.fetch(orderBookAccount);
-                expect(updatedOrderBook.bids.toNumber()).to.equal(previousBidsCount + 1);
-                console.log(`Order book size after bid at rate ${rate}: ${updatedOrderBook.bids}`);
-    
-                // Update previousBidsCount for the next iteration
-                previousBidsCount = updatedOrderBook.bids.toNumber();
-            } catch (error) {
-                console.error(`Error placing bid at rate ${rate}: ${error}`);
-            }
+
+            await program
+                .methods
+                .placeBid(
+                    new anchor.BN(rate),
+                    new anchor.BN(1_000_000_000),
+                )
+                .accounts({
+                    user: provider.wallet.publicKey,
+                    bid: bidPda,
+                    orderBook: orderBookAccount,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc().catch(err => console.error(err));
+
+            await refreshOrderBook();
+            expect(parseInt(orderBook.bids.toString())).eq(previousBidsCount + 1);
+            previousBidsCount = typeof orderBook.bids === "number" ? orderBook.bids : orderBook.bids.toNumber();
         }
-    });    
+    });
 
-  it("Fails to place a bid with an invalid rate", async () => {
-    const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
-    const [bidPda] = await anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
-        program.programId
-    );
+    it("Fails to place a bid with an invalid rate", async () => {
+        let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+        const currentNonce = orderBook.globalNonce;
 
-    try {
-        await program.rpc.placeBid(
-            new anchor.BN(500_000_000), // Invalid rate, below 600_000_000
-            new anchor.BN(1_000_000_000), {
-                accounts: {
-                    bid: bidPda,
-                    orderBook: orderBookAccount,
-                    user: provider.wallet.publicKey,
-                    systemProgram: SystemProgram.programId,
-                },
-                signers: [],
-            }
+        const [bidPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("bid"),
+                new BN(currentNonce).toArrayLike(Buffer, 'le', 8)
+            ],
+            program.programId
         );
-        assert.fail("Bid with an invalid rate should have failed.");
-    } catch (error) {
-        assert.include(error.message, "BelowMinimumRate", "Error should be related to the minimum rate.");
-    }
-});
 
-it("Fails to place a bid with insufficient funding", async () => {
-    const currentNonce = (await program.account.orderBook.fetch(orderBookAccount)).globalNonce;
-    const [bidPda] = await anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("bid"), provider.wallet.publicKey.toBuffer(), currentNonce.toBuffer('le', 8)],
-        program.programId
-    );
+        let error: string = "";
+        await program
+            .methods
+            .placeBid(
+                new anchor.BN(500_000_000), // Invalid rate, below 600_000_000
+                new anchor.BN(1_000_000_000)
+            )
+            .accounts({
+                bid: bidPda,
+                orderBook: orderBookAccount,
+                user: provider.wallet.publicKey,
+                systemProgram: SystemProgram.programId,
+            })
+            .rpc()
+            .catch(err => error = err.message);
 
-    try {
-        await program.rpc.placeBid(
-            new anchor.BN(900_000_000), // Valid rate
-            new anchor.BN(800_000_000), { // Insufficient amount
-                accounts: {
-                    bid: bidPda,
-                    orderBook: orderBookAccount,
-                    user: provider.wallet.publicKey,
-                    systemProgram: SystemProgram.programId,
-                },
-                signers: [],
-            }
+        expect(error).to.include(
+            "BelowMinimumRate",
+            "Error should be related to the minimum rate."
         );
-        assert.fail("Bid with insufficient funding should have failed.");
-    } catch (error) {
-        assert.include(error.message, "UnfundedBid", "Error should be related to insufficient funding.");
-    }
-});
-});
+    });
 
+    it("Fails to place a bid with insufficient funding", async () => {
+        let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+        const currentNonce = orderBook.globalNonce;
 
+        const [bidPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("bid"),
+                new BN(currentNonce).toArrayLike(Buffer, 'le', 8)
+            ],
+            program.programId
+        );
+
+        let error = "";
+        await program
+            .methods
+            .placeBid(
+                new anchor.BN(900_000_000), // Valid rate
+                new anchor.BN(800_000_000)
+            )
+            .accounts({
+                bid: bidPda,
+                orderBook: orderBookAccount,
+                user: provider.wallet.publicKey,
+                systemProgram: SystemProgram.programId,
+            })
+            .rpc()
+            .catch(err => error = err.message);
+
+        expect(error).to.include("UnfundedBid", "Error should be related to insufficient funding.");
+    });
+
+    it("successfully creates stake account and activates stake", async () => {
+        const minimumRent = await provider.connection.getMinimumBalanceForRentExemption(
+            StakeProgram.space
+        );
+
+        {
+            let {
+                blockhash,
+                lastValidBlockHeight
+            } = await provider.connection.getLatestBlockhash();
+
+            const airdropTx = await provider.connection.requestAirdrop(alice.publicKey, 100 * LAMPORTS_PER_SOL);
+            await provider.connection.confirmTransaction({
+                blockhash,
+                lastValidBlockHeight,
+                signature: airdropTx
+            });
+        }
+
+        const accountTx = StakeProgram.createAccount({
+            authorized: new Authorized(
+                alice.publicKey,
+                alice.publicKey
+            ),
+            fromPubkey: alice.publicKey,
+            lamports: 2.5 * LAMPORTS_PER_SOL + minimumRent,
+            stakePubkey: aliceStakeAccount.publicKey,
+            lockup: new Lockup(0,0, alice.publicKey)
+        });
+
+        let {
+            blockhash,
+            lastValidBlockHeight
+        } = await provider.connection.getLatestBlockhash();
+
+        accountTx.feePayer = alice.publicKey;
+        accountTx.recentBlockhash = blockhash;
+
+        accountTx.sign(alice, aliceStakeAccount);
+        let txId = await provider.connection.sendRawTransaction(accountTx.serialize());
+        await provider.connection.confirmTransaction({
+            blockhash,
+            lastValidBlockHeight,
+            signature: txId
+        });
+
+        const stakeAccountBalance = await provider.connection.getBalance(aliceStakeAccount.publicKey);
+        const {
+            state,
+            inactive,
+            active
+        } = await provider.connection.getStakeActivation(aliceStakeAccount.publicKey);
+
+        expect(stakeAccountBalance).approximately(2.5 * LAMPORTS_PER_SOL, LAMPORTS_PER_SOL / 10);
+        expect(state).eq("inactive");
+        expect(inactive).eq(2.5 * LAMPORTS_PER_SOL);
+        expect(active).eq(0);
+
+        const validators = await provider.connection.getVoteAccounts();
+        const selectedValidator = validators.current[0];
+        const selectedValidatorPubkey = new PublicKey(selectedValidator.votePubkey);
+
+        const delegateTx = StakeProgram.delegate({
+            stakePubkey: aliceStakeAccount.publicKey,
+            authorizedPubkey: alice.publicKey,
+            votePubkey: selectedValidatorPubkey,
+        });
+
+        {
+            let {
+                blockhash,
+                lastValidBlockHeight
+            } = await provider.connection.getLatestBlockhash();
+
+            delegateTx.feePayer = alice.publicKey;
+            delegateTx.recentBlockhash = blockhash;
+        }
+
+        delegateTx.sign(alice);
+        txId = await provider.connection.sendRawTransaction(delegateTx.serialize());
+
+        {
+            let {
+                blockhash,
+                lastValidBlockHeight
+            } = await provider.connection.getLatestBlockhash();
+
+            await provider.connection.confirmTransaction({
+                blockhash,
+                lastValidBlockHeight,
+                signature: txId
+            });
+        }
+
+        while (true) {
+            await sleep(1);
+
+            const {
+                state,
+                inactive,
+                active
+            } = await provider.connection.getStakeActivation(aliceStakeAccount.publicKey);
+
+            if (state === "active") break;
+            console.log(`Stake is ${state}.`);
+        }
+
+        console.log("Refreshing stake account.");
+        {
+            const {
+                state,
+                inactive,
+                active
+            } = await provider.connection.getStakeActivation(aliceStakeAccount.publicKey);
+
+            expect(state).eq("active");
+            expect(inactive).eq(0);
+            expect(active).eq(2.5 * LAMPORTS_PER_SOL);
+        }
+    });
+
+    it("successfully places bids and sells stake into a bid (with splitting)", async () => {
+        const rate = new anchor.BN(970_000_000); // A valid rate greater than the minimum
+        const amount = new anchor.BN(1_000_000_000); // Amount greater than the rate
+
+        let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+        const currentNonce = typeof orderBook.globalNonce === "number" ? orderBook.globalNonce : orderBook.globalNonce.toNumber();
+
+        const bids: PublicKey[] = [];
+        for (let i = 0; i < 3; i++) {
+            const [bidPda] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("bid"),
+                    new BN(currentNonce + i).toArrayLike(Buffer, 'le', 8)
+                ],
+                program.programId
+            );
+
+            await program
+                .methods
+                .placeBid(
+                    rate,
+                    amount
+                )
+                .accounts({
+                    orderBook: orderBookAccount,
+                    systemProgram: SystemProgram.programId,
+                    user: provider.wallet.publicKey,
+                    bid: bidPda
+                })
+                .rpc();
+
+            bids.push(bidPda);
+            console.log(`Initialized bid no ${i}`);
+        }
+
+        await program
+            .methods
+            .sellStake(
+                new BN(2.5 * LAMPORTS_PER_SOL)
+            )
+            .accounts({
+                orderBook: orderBookAccount,
+                systemProgram: SystemProgram.programId,
+                stakeAccount: aliceStakeAccount.publicKey,
+                rentSysvar: SYSVAR_RENT_PUBKEY,
+                seller: alice.publicKey,
+                stakeProgram: StakeProgram.programId
+            })
+            .remainingAccounts(bids.map(bid => ({
+                pubkey: bid,
+                isSigner: false,
+                isWritable: true
+            })))
+            .signers([
+                alice
+            ])
+            .rpc()
+            .catch(err => console.log(err));
+    });
+});

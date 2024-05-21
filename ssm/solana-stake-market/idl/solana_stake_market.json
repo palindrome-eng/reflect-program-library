@@ -1,0 +1,223 @@
+{
+  "version": "0.1.0",
+  "name": "solana_stake_market",
+  "instructions": [
+    {
+      "name": "placeBid",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "bid",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "orderBook",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "rate",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "closeBid",
+      "accounts": [
+        {
+          "name": "bid",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "orderBook",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeOrderBookWrapper",
+      "accounts": [
+        {
+          "name": "orderBook",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "sellStake",
+      "accounts": [
+        {
+          "name": "stakeAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "orderBook",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "stakeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentSysvar",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "totalStakeAmount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Bid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "bidRate",
+            "type": "u64"
+          },
+          {
+            "name": "bidder",
+            "type": "publicKey"
+          },
+          {
+            "name": "fulfilled",
+            "type": "bool"
+          },
+          {
+            "name": "purchasedStakeAccounts",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderBook",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tvl",
+            "type": "u64"
+          },
+          {
+            "name": "bids",
+            "type": "u64"
+          },
+          {
+            "name": "globalNonce",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "TransferFailed",
+      "msg": "Could not transfer liquidity to the bid."
+    },
+    {
+      "code": 6001,
+      "name": "UnfundedBid",
+      "msg": "The deposit amount is insufficient to cover the rate."
+    },
+    {
+      "code": 6002,
+      "name": "BelowMinimumRate",
+      "msg": "Rate defined is below the orderbook secure minimum of 0.6:1"
+    },
+    {
+      "code": 6003,
+      "name": "Unauthorized",
+      "msg": "Signer is not authorised to modify this account."
+    },
+    {
+      "code": 6004,
+      "name": "Uncloseable",
+      "msg": "Bid account has stake_accounts, claim the stake accounts - or withdraw the staked sol to close bid."
+    },
+    {
+      "code": 6005,
+      "name": "InsufficientBids",
+      "msg": "not enough bids to cover the sale of stake accounts."
+    },
+    {
+      "code": 6006,
+      "name": "PublicKeyCreationFailed",
+      "msg": "Failed to create a public key with the provided seed."
+    }
+  ],
+  "metadata": {
+    "address": "sSmYaKe6tj5VKjPzHhpakpamw1PYoJFLQNyMJD3PU37",
+    "origin": "anchor",
+    "binaryVersion": "0.29.0",
+    "libVersion": "0.29.0"
+  }
+}
