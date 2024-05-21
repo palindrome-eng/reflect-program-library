@@ -48,7 +48,7 @@ pub struct SellStake<'info> {
         constraint = stake_account.to_account_info().lamports() > total_stake_amount,
 
         // Make sure lockup is not in force.
-        constraint = stake_account
+        constraint = !stake_account
             .lockup()
             .ok_or(SsmError::StakeAccountLockupNotFound)?
             .is_in_force(&clock, None),
