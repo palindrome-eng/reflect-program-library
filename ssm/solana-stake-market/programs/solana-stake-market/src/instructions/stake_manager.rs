@@ -1,27 +1,71 @@
 //src/instructions/stake_manager.rs
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::clock::Epoch;
 use anchor_lang::solana_program::system_program;
+use anchor_lang::solana_program::stake::state::Stake;
 use anchor_lang::solana_program::{
-    stake::{self, instruction as stake_instruction, state::{StakeAuthorize, StakeStateV2}},
+    stake::{self, instruction as stake_instruction, state::{
+        StakeAuthorize,
+        StakeStateV2
+    }},
     system_instruction,
     program::{invoke, invoke_signed},
     pubkey::Pubkey,
     sysvar::{self, rent::Rent}
 };
+use anchor_spl::stake::StakeAccount;
 
 use crate::errors::SsmError;
 use crate::states::{Bid, OrderBook};
 
 #[derive(Accounts)]
+#[instruction(
+    total_stake_amount: u64
+)]
 pub struct SellStake<'info> {
-    #[account(mut)]
-    /// CHECK: The caller must ensure this is a valid stake account.
-    pub stake_account: UncheckedAccount<'info>,
+    #[account(
+        mut,
 
-    #[account(mut)]
+        // Make sure the user is authorised to withdraw from stake account.
+        constraint = stake_account
+            .authorized()
+            .ok_or(SsmError::StakeAccountAuthorizationNotFound)?
+            .withdrawer == seller.key(),
+
+        // Not sure if this is necessary.
+        constraint = stake_account
+        .authorized()
+        .ok_or(SsmError::StakeAccountAuthorizationNotFound)?
+        .staker == seller.key(),
+
+        // Meaning stake is not deactivated.
+        constraint = stake_account
+            .delegation()
+            .ok_or(SsmError::StakeAccountDelegationNotFound)?
+            .deactivation_epoch == Epoch::MAX,
+
+        // Check if there's enough lamports in the stake account.
+        constraint = stake_account.to_account_info().lamports() > total_stake_amount,
+
+        // Make sure lockup is not in force.
+        constraint = stake_account
+            .lockup()
+            .ok_or(SsmError::StakeAccountLockupNotFound)?
+            .is_in_force(&clock, None),
+
+    )]
+    pub stake_account: Account<'info, StakeAccount>,
+
+    #[account(
+        mut,
+        seeds = [b"orderBook"],
+        bump
+    )]
     pub order_book: Account<'info, OrderBook>,
 
-    #[account(mut)]
+    #[account(
+        mut
+    )]
     pub seller: Signer<'info>,
 
     #[account(address = anchor_lang::solana_program::stake::program::ID)]
@@ -29,8 +73,11 @@ pub struct SellStake<'info> {
     pub stake_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
+
     #[account(address = sysvar::rent::ID)]
     pub rent_sysvar: Sysvar<'info, Rent>,
+
+    pub clock: Sysvar<'info, Clock>,
 }
 
 pub fn sell_stake<'info>(
@@ -38,6 +85,19 @@ pub fn sell_stake<'info>(
     total_stake_amount: u64
 ) -> Result<()> {
     let mut remaining_stake = total_stake_amount;
+    let stake_account = &mut ctx.accounts.stake_account;
+
+    let stake_account_activation = stake_account
+        .delegation()
+        .ok_or(SsmError::StakeAccountDelegationNotFound)?
+        .activation_epoch;
+
+    let clock = Clock::get();
+
+    require!(
+        clock.unwrap().epoch > stake_account_activation,
+        SsmError::StakeNotActivated
+    );
 
     // Assume bids are fetched and passed in sorted order as part of `remaining_accounts`
     let mut bids: Vec<Account<'info, Bid>> = ctx.remaining_accounts
@@ -77,7 +137,7 @@ impl<'info> SellStake<'info> {
         let sol_amount = (amount as f64 / bid.bid_rate as f64).ceil() as u64;
 
         // Initialize new stake account only if splitting is necessary
-        if sol_amount < self.stake_account.lamports() {
+        if sol_amount < self.stake_account.to_account_info().lamports() {
             let seed = format!("split{}", bid.bidder);
             let new_stake_account_key = Pubkey::create_with_seed(
                 &self.seller.key(),

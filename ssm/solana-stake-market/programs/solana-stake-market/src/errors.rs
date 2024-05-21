@@ -16,5 +16,13 @@ pub enum SsmError {
     #[msg("not enough bids to cover the sale of stake accounts.")]
     InsufficientBids,
     #[msg("Failed to create a public key with the provided seed.")]
-    PublicKeyCreationFailed
+    PublicKeyCreationFailed,
+    #[msg("Cannot find Stake Account's lockup.")]
+    StakeAccountLockupNotFound,
+    #[msg("Cannot find Stake Account's authorization settings.")]
+    StakeAccountAuthorizationNotFound,
+    #[msg("Cannot find Stake Account's delegation.")]
+    StakeAccountDelegationNotFound,
+    #[msg("Stake is not yet activated.")]
+    StakeNotActivated
 }

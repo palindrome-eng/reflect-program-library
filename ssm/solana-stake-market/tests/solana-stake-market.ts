@@ -11,7 +11,7 @@ import {
     TransactionMessage,
     VersionedMessage
 } from "@solana/web3.js";
-import {OrderBook} from "../sdk";
+import {Bid, OrderBook} from "../sdk";
 import BN from "bn.js";
 
 const { SystemProgram, Transaction } = anchor.web3;
@@ -293,7 +293,7 @@ describe("solana-stake-market", () => {
                 alice.publicKey
             ),
             fromPubkey: alice.publicKey,
-            lamports: 2 * LAMPORTS_PER_SOL + minimumRent,
+            lamports: 2.5 * LAMPORTS_PER_SOL + minimumRent,
             stakePubkey: aliceStakeAccount.publicKey,
             lockup: new Lockup(0,0, alice.publicKey)
         });
@@ -321,9 +321,9 @@ describe("solana-stake-market", () => {
             active
         } = await provider.connection.getStakeActivation(aliceStakeAccount.publicKey);
 
-        expect(stakeAccountBalance).approximately(2 * LAMPORTS_PER_SOL, LAMPORTS_PER_SOL / 10);
+        expect(stakeAccountBalance).approximately(2.5 * LAMPORTS_PER_SOL, LAMPORTS_PER_SOL / 10);
         expect(state).eq("inactive");
-        expect(inactive).eq(2 * LAMPORTS_PER_SOL);
+        expect(inactive).eq(2.5 * LAMPORTS_PER_SOL);
         expect(active).eq(0);
 
         const validators = await provider.connection.getVoteAccounts();
@@ -385,18 +385,49 @@ describe("solana-stake-market", () => {
 
             expect(state).eq("active");
             expect(inactive).eq(0);
-            expect(active).eq(2 * LAMPORTS_PER_SOL);
+            expect(active).eq(2.5 * LAMPORTS_PER_SOL);
         }
     });
 
-    it("successfully sells stake into a bid", async () => {
+    it("successfully places bids and sells stake into a bid (with splitting)", async () => {
+        const rate = new anchor.BN(970_000_000); // A valid rate greater than the minimum
+        const amount = new anchor.BN(1_000_000_000); // Amount greater than the rate
 
-        const bids = getBids(5, program.programId).slice(2, 5);
+        let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+        const currentNonce = typeof orderBook.globalNonce === "number" ? orderBook.globalNonce : orderBook.globalNonce.toNumber();
+
+        const bids: PublicKey[] = [];
+        for (let i = 0; i < 3; i++) {
+            const [bidPda] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("bid"),
+                    new BN(currentNonce + i).toArrayLike(Buffer, 'le', 8)
+                ],
+                program.programId
+            );
+
+            await program
+                .methods
+                .placeBid(
+                    rate,
+                    amount
+                )
+                .accounts({
+                    orderBook: orderBookAccount,
+                    systemProgram: SystemProgram.programId,
+                    user: provider.wallet.publicKey,
+                    bid: bidPda
+                })
+                .rpc();
+
+            bids.push(bidPda);
+            console.log(`Initialized bid no ${i}`);
+        }
 
         await program
             .methods
             .sellStake(
-                new BN(2 * LAMPORTS_PER_SOL)
+                new BN(2.5 * LAMPORTS_PER_SOL)
             )
             .accounts({
                 orderBook: orderBookAccount,
@@ -414,7 +445,7 @@ describe("solana-stake-market", () => {
             .signers([
                 alice
             ])
-            .rpc().catch(err => console.error(err))
+            .rpc()
             .catch(err => console.log(err));
     });
 });
