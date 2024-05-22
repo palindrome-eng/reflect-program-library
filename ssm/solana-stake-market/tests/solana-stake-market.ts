@@ -426,6 +426,16 @@ describe("solana-stake-market", () => {
             console.log(`Initialized bid no ${i}`);
         }
 
+        // // In case you want to make new staking accounts rent-exempt before running the sell_stake.
+        // // Added this jsut for testing.
+        // const rentIx = cosigns.map(keypair => {
+        //     return SystemProgram.transfer({
+        //         fromPubkey: alice.publicKey,
+        //         lamports: 2282880,
+        //         toPubkey: keypair.publicKey,
+        //     });
+        // })
+
         const sellStakeIx = createSellStakeInstruction(
             {
                 orderBook: orderBookAccount,
@@ -459,6 +469,7 @@ describe("solana-stake-market", () => {
             lastValidBlockHeight
         } = await provider.connection.getLatestBlockhash();
 
+        // tx.add(...rentIx);
         tx.add(sellStakeIx);
         tx.feePayer = alice.publicKey;
         tx.recentBlockhash = blockhash;

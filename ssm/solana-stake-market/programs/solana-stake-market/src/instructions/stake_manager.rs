@@ -122,6 +122,7 @@ pub fn sell_stake<'info>(
         let mut bid = Account::<Bid>::try_from(&bid_account_info)?;
         
         let new_stake_account_info = &bids_and_new_stake_accounts[(pair * 2) + 1];
+        msg!("new_stake_account: {}", new_stake_account_info.key());
 
         if remaining_stake == 0 || bid.amount == 0 {
             continue;
@@ -163,6 +164,7 @@ impl<'info> SellStake<'info> {
 
         msg!("bid.amount: {}", bid.amount);
         msg!("amount left to sell: {}", amount);
+        msg!("amount left in the account: {}", self.stake_account.to_account_info().lamports());
 
         // Initialize new stake account only if splitting is necessary
         if sol_amount < self.stake_account.to_account_info().lamports() {
@@ -180,6 +182,7 @@ impl<'info> SellStake<'info> {
                 lamports_needed
             )?;
 
+            msg!("new account: {}", new_stake_account.key().to_string());
             msg!("transferred rent to the new account.");
 
             let split_ix = split(
@@ -201,6 +204,10 @@ impl<'info> SellStake<'info> {
                     ]
                 )?;
 
+                msg!("stake_account balance: {}", self.stake_account.to_account_info().lamports());
+                msg!("seller balance: {}", self.seller.to_account_info().lamports());
+                msg!("new_stake_account balance: {}", new_stake_account.to_account_info().lamports());
+            
                 msg!("invoked ix no. {}", index);
             }
         }
