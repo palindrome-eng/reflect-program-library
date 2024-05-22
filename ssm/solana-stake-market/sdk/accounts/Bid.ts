@@ -15,6 +15,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type BidArgs = {
+  index: beet.bignum
   amount: beet.bignum
   bidRate: beet.bignum
   bidder: web3.PublicKey
@@ -33,6 +34,7 @@ export const bidDiscriminator = [143, 246, 48, 245, 42, 145, 180, 88]
  */
 export class Bid implements BidArgs {
   private constructor(
+    readonly index: beet.bignum,
     readonly amount: beet.bignum,
     readonly bidRate: beet.bignum,
     readonly bidder: web3.PublicKey,
@@ -46,6 +48,7 @@ export class Bid implements BidArgs {
    */
   static fromArgs(args: BidArgs) {
     return new Bid(
+      args.index,
       args.amount,
       args.bidRate,
       args.bidder,
@@ -160,6 +163,17 @@ export class Bid implements BidArgs {
    */
   pretty() {
     return {
+      index: (() => {
+        const x = <{ toNumber: () => number }>this.index
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       amount: (() => {
         const x = <{ toNumber: () => number }>this.amount
         if (typeof x.toNumber === 'function') {
@@ -202,6 +216,7 @@ export const bidBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['index', beet.u64],
     ['amount', beet.u64],
     ['bidRate', beet.u64],
     ['bidder', beetSolana.publicKey],

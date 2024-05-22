@@ -6,12 +6,12 @@ import {
     Authorized, Keypair, LAMPORTS_PER_SOL, Lockup,
     Message,
     PublicKey,
-    StakeProgram,
+    StakeProgram, SYSVAR_CLOCK_PUBKEY,
     SYSVAR_RENT_PUBKEY,
     TransactionMessage,
     VersionedMessage
 } from "@solana/web3.js";
-import {Bid, OrderBook} from "../sdk";
+import {Bid, createSellStakeInstruction, OrderBook} from "../sdk";
 import BN from "bn.js";
 
 const { SystemProgram, Transaction } = anchor.web3;
@@ -397,6 +397,7 @@ describe("solana-stake-market", () => {
         const currentNonce = typeof orderBook.globalNonce === "number" ? orderBook.globalNonce : orderBook.globalNonce.toNumber();
 
         const bids: PublicKey[] = [];
+        const cosigns: Keypair[] = [];
         for (let i = 0; i < 3; i++) {
             const [bidPda] = PublicKey.findProgramAddressSync(
                 [
@@ -421,31 +422,63 @@ describe("solana-stake-market", () => {
                 .rpc();
 
             bids.push(bidPda);
+            cosigns.push(Keypair.generate());
             console.log(`Initialized bid no ${i}`);
         }
 
-        await program
-            .methods
-            .sellStake(
-                new BN(2.5 * LAMPORTS_PER_SOL)
-            )
-            .accounts({
+        const sellStakeIx = createSellStakeInstruction(
+            {
                 orderBook: orderBookAccount,
                 systemProgram: SystemProgram.programId,
                 stakeAccount: aliceStakeAccount.publicKey,
                 rentSysvar: SYSVAR_RENT_PUBKEY,
                 seller: alice.publicKey,
-                stakeProgram: StakeProgram.programId
-            })
-            .remainingAccounts(bids.map(bid => ({
-                pubkey: bid,
-                isSigner: false,
-                isWritable: true
-            })))
-            .signers([
-                alice
-            ])
-            .rpc()
-            .catch(err => console.log(err));
+                clock: SYSVAR_CLOCK_PUBKEY,
+                stakeProgram: StakeProgram.programId,
+                anchorRemainingAccounts: bids.map((bid, index) => ([
+                    {
+                        pubkey: bid,
+                        isSigner: false,
+                        isWritable: true
+                    },
+                    {
+                        pubkey: cosigns[index].publicKey,
+                        isSigner: false,
+                        isWritable: true
+                    }
+                ])).flat()
+            },
+            {
+                totalStakeAmount: new BN(2.5 * LAMPORTS_PER_SOL)
+            }
+        );
+
+        const tx = new Transaction();
+        const {
+            blockhash,
+            lastValidBlockHeight
+        } = await provider.connection.getLatestBlockhash();
+
+        tx.add(sellStakeIx);
+        tx.feePayer = alice.publicKey;
+        tx.recentBlockhash = blockhash;
+        tx.sign(
+            alice,
+            ...cosigns
+        );
+
+        try {
+            const sent = await provider
+                .connection
+                .sendRawTransaction(tx.serialize());
+
+            await provider.connection.confirmTransaction({
+                blockhash,
+                lastValidBlockHeight,
+                signature: sent
+            });
+        } catch (err) {
+            console.log({ err });
+        }
     });
 });

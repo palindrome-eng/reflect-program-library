@@ -13,10 +13,23 @@ import * as web3 from '@solana/web3.js'
  * @category CloseBid
  * @category generated
  */
-export const closeBidStruct = new beet.BeetArgsStruct<{
-  instructionDiscriminator: number[] /* size: 8 */
-}>(
-  [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
+export type CloseBidInstructionArgs = {
+  bidIndex: beet.bignum
+}
+/**
+ * @category Instructions
+ * @category CloseBid
+ * @category generated
+ */
+export const closeBidStruct = new beet.BeetArgsStruct<
+  CloseBidInstructionArgs & {
+    instructionDiscriminator: number[] /* size: 8 */
+  }
+>(
+  [
+    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['bidIndex', beet.u64],
+  ],
   'CloseBidInstructionArgs'
 )
 /**
@@ -44,16 +57,20 @@ export const closeBidInstructionDiscriminator = [
  * Creates a _CloseBid_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
+ * @param args to provide as instruction data to the program
+ *
  * @category Instructions
  * @category CloseBid
  * @category generated
  */
 export function createCloseBidInstruction(
   accounts: CloseBidInstructionAccounts,
+  args: CloseBidInstructionArgs,
   programId = new web3.PublicKey('sSmYaKe6tj5VKjPzHhpakpamw1PYoJFLQNyMJD3PU37')
 ) {
   const [data] = closeBidStruct.serialize({
     instructionDiscriminator: closeBidInstructionDiscriminator,
+    ...args,
   })
   const keys: web3.AccountMeta[] = [
     {

@@ -14,7 +14,7 @@ pub struct PlaceBid<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 8 * 2 + 32 * 2 + 1 + 4 + 10 * 32, // Enough space for the Bid struct
+        space = 8 + 8 * 3 + 32 * 2 + 1 + 4 + 10 * 32, // Enough space for the Bid struct
         seeds = [
             "bid".as_bytes(), 
             &order_book.global_nonce.to_le_bytes()
@@ -39,10 +39,12 @@ pub fn place_bid(
      require!(rate >= 600_000_000, SsmError::BelowMinimumRate);
      require!(amount >= rate, SsmError::UnfundedBid);
 
+    let order_book = &mut ctx.accounts.order_book;
     let bid = &mut ctx.accounts.bid;
     let system_program = &mut ctx.accounts.system_program;
     let user = &mut ctx.accounts.user;
 
+    bid.index = order_book.global_nonce;
     bid.amount = amount;
     bid.bid_rate = rate;
     
@@ -63,9 +65,9 @@ pub fn place_bid(
         amount
     )?;
 
-    ctx.accounts.order_book.bids += 1;
-    ctx.accounts.order_book.tvl += ctx.accounts.bid.amount;
-    ctx.accounts.order_book.global_nonce += 1;
+    order_book.bids += 1;
+    order_book.tvl += ctx.accounts.bid.amount;
+    order_book.global_nonce += 1;
 
     msg!("bid created with amount: {} and rate {} | new tvl: {}", ctx.accounts.bid.amount, ctx.accounts.bid.bid_rate, ctx.accounts.order_book.tvl);
     Ok(())

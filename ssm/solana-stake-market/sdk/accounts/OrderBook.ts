@@ -18,6 +18,7 @@ export type OrderBookArgs = {
   tvl: beet.bignum
   bids: beet.bignum
   globalNonce: beet.bignum
+  totalTrades: beet.bignum
 }
 
 export const orderBookDiscriminator = [55, 230, 125, 218, 149, 39, 65, 248]
@@ -32,14 +33,20 @@ export class OrderBook implements OrderBookArgs {
   private constructor(
     readonly tvl: beet.bignum,
     readonly bids: beet.bignum,
-    readonly globalNonce: beet.bignum
+    readonly globalNonce: beet.bignum,
+    readonly totalTrades: beet.bignum
   ) {}
 
   /**
    * Creates a {@link OrderBook} instance from the provided args.
    */
   static fromArgs(args: OrderBookArgs) {
-    return new OrderBook(args.tvl, args.bids, args.globalNonce)
+    return new OrderBook(
+      args.tvl,
+      args.bids,
+      args.globalNonce,
+      args.totalTrades
+    )
   }
 
   /**
@@ -178,6 +185,17 @@ export class OrderBook implements OrderBookArgs {
         }
         return x
       })(),
+      totalTrades: (() => {
+        const x = <{ toNumber: () => number }>this.totalTrades
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -197,6 +215,7 @@ export const orderBookBeet = new beet.BeetStruct<
     ['tvl', beet.u64],
     ['bids', beet.u64],
     ['globalNonce', beet.u64],
+    ['totalTrades', beet.u64],
   ],
   OrderBook.fromArgs,
   'OrderBook'
