@@ -16,6 +16,11 @@
           "isSigner": false
         },
         {
+          "name": "bidVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "orderBook",
           "isMut": true,
           "isSigner": false
@@ -46,6 +51,11 @@
           "isSigner": false
         },
         {
+          "name": "bidVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "user",
           "isMut": true,
           "isSigner": true
@@ -54,9 +64,19 @@
           "name": "orderBook",
           "isMut": true,
           "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "bidIndex",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "initializeOrderBookWrapper",
@@ -111,6 +131,11 @@
           "name": "rentSysvar",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -127,6 +152,10 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "index",
+            "type": "u64"
+          },
           {
             "name": "amount",
             "type": "u64"
@@ -172,6 +201,10 @@
           {
             "name": "globalNonce",
             "type": "u64"
+          },
+          {
+            "name": "totalTrades",
+            "type": "u64"
           }
         ]
       }
@@ -212,6 +245,31 @@
       "code": 6006,
       "name": "PublicKeyCreationFailed",
       "msg": "Failed to create a public key with the provided seed."
+    },
+    {
+      "code": 6007,
+      "name": "StakeAccountLockupNotFound",
+      "msg": "Cannot find Stake Account's lockup."
+    },
+    {
+      "code": 6008,
+      "name": "StakeAccountAuthorizationNotFound",
+      "msg": "Cannot find Stake Account's authorization settings."
+    },
+    {
+      "code": 6009,
+      "name": "StakeAccountDelegationNotFound",
+      "msg": "Cannot find Stake Account's delegation."
+    },
+    {
+      "code": 6010,
+      "name": "StakeNotActivated",
+      "msg": "Stake is not yet activated."
+    },
+    {
+      "code": 6011,
+      "name": "InvalidRemainingAccountsSchema",
+      "msg": "Provided schema of RemainingAccounts is invalid."
     }
   ],
   "metadata": {

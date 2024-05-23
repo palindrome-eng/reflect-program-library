@@ -24,5 +24,7 @@ pub enum SsmError {
     #[msg("Cannot find Stake Account's delegation.")]
     StakeAccountDelegationNotFound,
     #[msg("Stake is not yet activated.")]
-    StakeNotActivated
+    StakeNotActivated,
+    #[msg("Provided schema of RemainingAccounts is invalid.")]
+    InvalidRemainingAccountsSchema
 }

@@ -6,12 +6,12 @@ import {
     Authorized, Keypair, LAMPORTS_PER_SOL, Lockup,
     Message,
     PublicKey,
-    StakeProgram,
+    StakeProgram, SYSVAR_CLOCK_PUBKEY,
     SYSVAR_RENT_PUBKEY,
     TransactionMessage,
     VersionedMessage
 } from "@solana/web3.js";
-import {Bid, OrderBook} from "../sdk";
+import {Bid, createSellStakeInstruction, OrderBook} from "../sdk";
 import BN from "bn.js";
 
 const { SystemProgram, Transaction } = anchor.web3;
@@ -99,6 +99,14 @@ describe("solana-stake-market", () => {
             program.programId
         );
 
+        const [bidVault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                bidPda.toBuffer()
+            ],
+            program.programId
+        );
+
         const placeBid = program
             .methods
             .placeBid(
@@ -109,7 +117,8 @@ describe("solana-stake-market", () => {
                 user: provider.wallet.publicKey,
                 bid: bidPda,
                 orderBook: orderBookAccount,
-                systemProgram: SystemProgram.programId
+                systemProgram: SystemProgram.programId,
+                bidVault
             });
 
         const balanceBeforePlacingBid = await provider.connection.getBalance(provider.wallet.publicKey);
@@ -142,7 +151,9 @@ describe("solana-stake-market", () => {
             .accounts({
                 bid: bidPda,
                 user: provider.wallet.publicKey,
-                orderBook: orderBookAccount
+                orderBook: orderBookAccount,
+                bidVault,
+                systemProgram: SystemProgram.programId,
             });
 
         const { blockhash: blockhash2 } = await provider.connection.getLatestBlockhash();
@@ -183,6 +194,14 @@ describe("solana-stake-market", () => {
                 program.programId
             );
 
+            const [bidVault] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("vault"),
+                    bidPda.toBuffer()
+                ],
+                program.programId
+            );
+
             await program
                 .methods
                 .placeBid(
@@ -194,6 +213,7 @@ describe("solana-stake-market", () => {
                     bid: bidPda,
                     orderBook: orderBookAccount,
                     systemProgram: SystemProgram.programId,
+                    bidVault
                 })
                 .rpc().catch(err => console.error(err));
 
@@ -215,6 +235,14 @@ describe("solana-stake-market", () => {
             program.programId
         );
 
+        const [bidVault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                bidPda.toBuffer()
+            ],
+            program.programId
+        );
+
         let error: string = "";
         await program
             .methods
@@ -227,6 +255,7 @@ describe("solana-stake-market", () => {
                 orderBook: orderBookAccount,
                 user: provider.wallet.publicKey,
                 systemProgram: SystemProgram.programId,
+                bidVault
             })
             .rpc()
             .catch(err => error = err.message);
@@ -249,6 +278,14 @@ describe("solana-stake-market", () => {
             program.programId
         );
 
+        const [bidVault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                bidPda.toBuffer()
+            ],
+            program.programId
+        );
+
         let error = "";
         await program
             .methods
@@ -261,6 +298,7 @@ describe("solana-stake-market", () => {
                 orderBook: orderBookAccount,
                 user: provider.wallet.publicKey,
                 systemProgram: SystemProgram.programId,
+                bidVault
             })
             .rpc()
             .catch(err => error = err.message);
@@ -279,7 +317,7 @@ describe("solana-stake-market", () => {
                 lastValidBlockHeight
             } = await provider.connection.getLatestBlockhash();
 
-            const airdropTx = await provider.connection.requestAirdrop(alice.publicKey, 100 * LAMPORTS_PER_SOL);
+            const airdropTx = await provider.connection.requestAirdrop(alice.publicKey, 150 * LAMPORTS_PER_SOL);
             await provider.connection.confirmTransaction({
                 blockhash,
                 lastValidBlockHeight,
@@ -293,7 +331,7 @@ describe("solana-stake-market", () => {
                 alice.publicKey
             ),
             fromPubkey: alice.publicKey,
-            lamports: 2.5 * LAMPORTS_PER_SOL + minimumRent,
+            lamports: 3 * LAMPORTS_PER_SOL + minimumRent,
             stakePubkey: aliceStakeAccount.publicKey,
             lockup: new Lockup(0,0, alice.publicKey)
         });
@@ -321,9 +359,9 @@ describe("solana-stake-market", () => {
             active
         } = await provider.connection.getStakeActivation(aliceStakeAccount.publicKey);
 
-        expect(stakeAccountBalance).approximately(2.5 * LAMPORTS_PER_SOL, LAMPORTS_PER_SOL / 10);
+        expect(stakeAccountBalance).approximately(3 * LAMPORTS_PER_SOL, LAMPORTS_PER_SOL / 10);
         expect(state).eq("inactive");
-        expect(inactive).eq(2.5 * LAMPORTS_PER_SOL);
+        expect(inactive).eq(3 * LAMPORTS_PER_SOL);
         expect(active).eq(0);
 
         const validators = await provider.connection.getVoteAccounts();
@@ -385,7 +423,7 @@ describe("solana-stake-market", () => {
 
             expect(state).eq("active");
             expect(inactive).eq(0);
-            expect(active).eq(2.5 * LAMPORTS_PER_SOL);
+            expect(active).eq(3 * LAMPORTS_PER_SOL);
         }
     });
 
@@ -397,11 +435,20 @@ describe("solana-stake-market", () => {
         const currentNonce = typeof orderBook.globalNonce === "number" ? orderBook.globalNonce : orderBook.globalNonce.toNumber();
 
         const bids: PublicKey[] = [];
+        const cosigns: Keypair[] = [];
         for (let i = 0; i < 3; i++) {
             const [bidPda] = PublicKey.findProgramAddressSync(
                 [
                     Buffer.from("bid"),
                     new BN(currentNonce + i).toArrayLike(Buffer, 'le', 8)
+                ],
+                program.programId
+            );
+
+            const [bidVault] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("vault"),
+                    bidPda.toBuffer()
                 ],
                 program.programId
             );
@@ -416,36 +463,120 @@ describe("solana-stake-market", () => {
                     orderBook: orderBookAccount,
                     systemProgram: SystemProgram.programId,
                     user: provider.wallet.publicKey,
-                    bid: bidPda
+                    bid: bidPda,
+                    bidVault
                 })
                 .rpc();
 
             bids.push(bidPda);
+            cosigns.push(Keypair.generate());
             console.log(`Initialized bid no ${i}`);
         }
 
-        await program
-            .methods
-            .sellStake(
-                new BN(2.5 * LAMPORTS_PER_SOL)
-            )
-            .accounts({
+        // // In case you want to make new staking accounts rent-exempt before running the sell_stake.
+        // // Added this jsut for testing.
+        // const rentIx = cosigns.map(keypair => {
+        //     return SystemProgram.transfer({
+        //         fromPubkey: alice.publicKey,
+        //         lamports: 2282880,
+        //         toPubkey: keypair.publicKey,
+        //     });
+        // })
+
+        const sellStakeIx = createSellStakeInstruction(
+            {
                 orderBook: orderBookAccount,
                 systemProgram: SystemProgram.programId,
                 stakeAccount: aliceStakeAccount.publicKey,
                 rentSysvar: SYSVAR_RENT_PUBKEY,
                 seller: alice.publicKey,
-                stakeProgram: StakeProgram.programId
-            })
-            .remainingAccounts(bids.map(bid => ({
-                pubkey: bid,
-                isSigner: false,
-                isWritable: true
-            })))
-            .signers([
-                alice
-            ])
-            .rpc()
-            .catch(err => console.log(err));
+                clock: SYSVAR_CLOCK_PUBKEY,
+                stakeProgram: StakeProgram.programId,
+                anchorRemainingAccounts: bids.map((bid, index) => ([
+                    {
+                        pubkey: bid,
+                        isSigner: false,
+                        isWritable: true
+                    },
+                    {
+                        pubkey: PublicKey.findProgramAddressSync([Buffer.from("vault"), bid.toBuffer()], program.programId)[0],
+                        isSigner: false,
+                        isWritable: true
+                    },
+                    {
+                        pubkey: cosigns[index].publicKey,
+                        isSigner: false,
+                        isWritable: true
+                    }
+                ])).flat()
+            },
+            {
+                totalStakeAmount: new BN(2.5 * LAMPORTS_PER_SOL)
+            }
+        );
+
+        const tx = new Transaction();
+        const {
+            blockhash,
+            lastValidBlockHeight
+        } = await provider.connection.getLatestBlockhash();
+
+        // tx.add(...rentIx);
+        tx.add(sellStakeIx);
+        tx.feePayer = alice.publicKey;
+        tx.recentBlockhash = blockhash;
+        tx.sign(
+            alice,
+            ...cosigns
+        );
+
+        // const sent = await provider
+        //         .connection
+        //         .sendRawTransaction(tx.serialize(), { skipPreflight: true });
+
+        try {
+            const sent = await provider
+                .connection
+                .sendRawTransaction(tx.serialize(), { skipPreflight: true });
+
+            const signatureResult = await provider.connection.confirmTransaction({
+                blockhash,
+                lastValidBlockHeight,
+                signature: sent
+            });
+
+            const {
+                value: {
+                    err
+                }
+            } = signatureResult;
+
+            await sleep(10);
+            const parsedTx = await provider.connection.getParsedTransaction(
+                sent,
+                "confirmed"
+            );
+
+            const preBalances = parsedTx.meta.preBalances.reduce((pre, next) => pre + next);
+            const postBalances = parsedTx.meta.postBalances.reduce((pre, next) => pre + next);
+
+            console.log({
+                preBalances,
+                postBalances,
+                difference: postBalances - preBalances
+            });
+
+            console.log(parsedTx.meta.logMessages);
+            console.log(
+                parsedTx.transaction.message.accountKeys.map(({ pubkey }, index) => {
+                    return {
+                        balance: parsedTx.meta.postBalances[index],
+                        pubkey: pubkey.toString()
+                    }
+                })
+            );
+        } catch (err) {
+            console.log({ err });
+        }
     });
 });

@@ -163,6 +163,133 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * StakeAccountLockupNotFound: 'Cannot find Stake Account's lockup.'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class StakeAccountLockupNotFoundError extends Error {
+  readonly code: number = 0x1777
+  readonly name: string = 'StakeAccountLockupNotFound'
+  constructor() {
+    super("Cannot find Stake Account's lockup.")
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, StakeAccountLockupNotFoundError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1777,
+  () => new StakeAccountLockupNotFoundError()
+)
+createErrorFromNameLookup.set(
+  'StakeAccountLockupNotFound',
+  () => new StakeAccountLockupNotFoundError()
+)
+
+/**
+ * StakeAccountAuthorizationNotFound: 'Cannot find Stake Account's authorization settings.'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class StakeAccountAuthorizationNotFoundError extends Error {
+  readonly code: number = 0x1778
+  readonly name: string = 'StakeAccountAuthorizationNotFound'
+  constructor() {
+    super("Cannot find Stake Account's authorization settings.")
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, StakeAccountAuthorizationNotFoundError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1778,
+  () => new StakeAccountAuthorizationNotFoundError()
+)
+createErrorFromNameLookup.set(
+  'StakeAccountAuthorizationNotFound',
+  () => new StakeAccountAuthorizationNotFoundError()
+)
+
+/**
+ * StakeAccountDelegationNotFound: 'Cannot find Stake Account's delegation.'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class StakeAccountDelegationNotFoundError extends Error {
+  readonly code: number = 0x1779
+  readonly name: string = 'StakeAccountDelegationNotFound'
+  constructor() {
+    super("Cannot find Stake Account's delegation.")
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, StakeAccountDelegationNotFoundError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1779,
+  () => new StakeAccountDelegationNotFoundError()
+)
+createErrorFromNameLookup.set(
+  'StakeAccountDelegationNotFound',
+  () => new StakeAccountDelegationNotFoundError()
+)
+
+/**
+ * StakeNotActivated: 'Stake is not yet activated.'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class StakeNotActivatedError extends Error {
+  readonly code: number = 0x177a
+  readonly name: string = 'StakeNotActivated'
+  constructor() {
+    super('Stake is not yet activated.')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, StakeNotActivatedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x177a, () => new StakeNotActivatedError())
+createErrorFromNameLookup.set(
+  'StakeNotActivated',
+  () => new StakeNotActivatedError()
+)
+
+/**
+ * InvalidRemainingAccountsSchema: 'Provided schema of RemainingAccounts is invalid.'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidRemainingAccountsSchemaError extends Error {
+  readonly code: number = 0x177b
+  readonly name: string = 'InvalidRemainingAccountsSchema'
+  constructor() {
+    super('Provided schema of RemainingAccounts is invalid.')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidRemainingAccountsSchemaError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x177b,
+  () => new InvalidRemainingAccountsSchemaError()
+)
+createErrorFromNameLookup.set(
+  'InvalidRemainingAccountsSchema',
+  () => new InvalidRemainingAccountsSchemaError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

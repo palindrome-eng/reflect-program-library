@@ -40,6 +40,7 @@ export const sellStakeStruct = new beet.BeetArgsStruct<
  * @property [_writable_, **signer**] seller
  * @property [] stakeProgram
  * @property [] rentSysvar
+ * @property [] clock
  * @category Instructions
  * @category SellStake
  * @category generated
@@ -51,6 +52,7 @@ export type SellStakeInstructionAccounts = {
   stakeProgram: web3.PublicKey
   systemProgram?: web3.PublicKey
   rentSysvar: web3.PublicKey
+  clock: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -105,6 +107,11 @@ export function createSellStakeInstruction(
     },
     {
       pubkey: accounts.rentSysvar,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.clock,
       isWritable: false,
       isSigner: false,
     },
