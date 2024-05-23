@@ -90,7 +90,11 @@ pub fn sell_stake<'info>(
     total_stake_amount: u64
 ) -> Result<()> {
     let mut remaining_stake = total_stake_amount;
+
     let stake_account = &ctx.accounts.stake_account;
+    let system_program = &ctx.accounts.system_program;
+    let rent = &mut ctx.accounts.rent_sysvar;
+    let seller = &mut ctx.accounts.seller;
 
     let stake_account_activation = stake_account
         .delegation()
@@ -105,23 +109,24 @@ pub fn sell_stake<'info>(
     );
 
     // Since for each bid there has to be corresponding new stake account,
-    // they have to be provided in pairs: [(bid, stake account), (bid, stake account), ...]
+    // they have to be provided in groups: [(bid, bid_vault, stake_account), (bid, bid_vault, stake_account), ...]
     let bids_and_new_stake_accounts = ctx.remaining_accounts;
 
     require!(
-        bids_and_new_stake_accounts.len() % 2 == 0,
+        bids_and_new_stake_accounts.len() % 3 == 0,
         SsmError::InvalidRemainingAccountsSchema
     );
 
-    let pairs = (bids_and_new_stake_accounts.len() / 2) as usize;
+    let groups = (bids_and_new_stake_accounts.len() / 3) as usize;
 
-    msg!("num of utilized bids: {}", pairs);
-
-    for pair in 0..pairs {
-        let bid_account_info = & bids_and_new_stake_accounts[(pair * 2)];
+    for pair in 0..groups {
+        let bid_account_info = & bids_and_new_stake_accounts[(pair * 3)];
         let mut bid = Account::<Bid>::try_from(&bid_account_info)?;
+
+        let bid_vault_account_info = & bids_and_new_stake_accounts[(pair * 3) + 1];
+        let mut bid_vault = SystemAccount::try_from(bid_vault_account_info)?;
         
-        let new_stake_account_info = &bids_and_new_stake_accounts[(pair * 2) + 1];
+        let new_stake_account_info = &bids_and_new_stake_accounts[(pair * 3) + 2];
         msg!("new_stake_account: {}", new_stake_account_info.key());
 
         if remaining_stake == 0 || bid.amount == 0 {
@@ -131,8 +136,10 @@ pub fn sell_stake<'info>(
         let stake_to_sell = remaining_stake.min(bid.amount);
         ctx.accounts.split_and_transfer_stake(
             &bid, 
+            &bid_vault,
             stake_to_sell, 
-            new_stake_account_info.clone()
+            new_stake_account_info.clone(),
+            ctx.program_id
         )?;
 
         remaining_stake -= stake_to_sell;
@@ -153,37 +160,39 @@ impl<'info> SellStake<'info> {
     fn split_and_transfer_stake(
         &self,
         bid: &Account<'info, Bid>,
-        amount: u64,
-        new_stake_account: AccountInfo<'info>
+        bid_vault: &SystemAccount<'info>,
+        stake: u64,
+        new_stake_account: AccountInfo<'info>,
+        program_id: &Pubkey
     ) -> Result<()> {
-        let sol_amount = (amount as f64 / bid.bid_rate as f64).ceil() as u64;
+        let rent: &Sysvar<'info, Rent> = &self.rent_sysvar;
+        let sol_to_transfer = ((stake as f64) / 10_f64.powf(9_f64) * (bid.bid_rate as f64)) as u64;
 
-        // Transfer SOL from the bid account to the seller
-        // bid.sub_lamports(sol_amount)?;
-        // self.seller.add_lamports(sol_amount)?;
+        let mut stake_account_to_authorize = &self.stake_account.to_account_info();
 
-        msg!("bid.amount: {}", bid.amount);
-        msg!("amount left to sell: {}", amount);
-        msg!("amount left in the account: {}", self.stake_account.to_account_info().lamports());
+        // Split account if not selling entire stake account.
+        if stake < self.stake_account.to_account_info().lamports() {
 
-        // Initialize new stake account only if splitting is necessary
-        if sol_amount < self.stake_account.to_account_info().lamports() {
-            let rent = &self.rent_sysvar;
-            let lamports_needed = rent.minimum_balance(StakeStateV2::size_of() as usize);
-            
+            // If we're splitting the account, we will be then authorizing the new account,
+            // not entire account still owned by user.
+            stake_account_to_authorize = &new_stake_account;
+
+            msg!("Splitting the account. Stake to sell: {}. Stake in the account: {}", stake,self.stake_account.to_account_info().lamports());
+
+            let stake_account_rent = rent.minimum_balance(StakeStateV2::size_of() as usize);
+
             transfer(
                 CpiContext::new(
                     self.system_program.to_account_info(), 
                     Transfer {
                         from: self.seller.to_account_info(),
-                        to: new_stake_account.to_account_info()
+                        to: new_stake_account.clone()
                     }
                 ), 
-                lamports_needed
+                stake_account_rent
             )?;
 
-            msg!("new account: {}", new_stake_account.key().to_string());
-            msg!("transferred rent to the new account.");
+            msg!("Made the new stake account rent exempt.");
 
             let split_ix = split(
                 &self.stake_account.key(), 
@@ -204,54 +213,79 @@ impl<'info> SellStake<'info> {
                     ]
                 )?;
 
-                msg!("stake_account balance: {}", self.stake_account.to_account_info().lamports());
-                msg!("seller balance: {}", self.seller.to_account_info().lamports());
-                msg!("new_stake_account balance: {}", new_stake_account.to_account_info().lamports());
-            
-                msg!("invoked ix no. {}", index);
+                msg!("Invoked {}/3 instructions (split).", index + 1);
             }
+
+            // Authorize bidder to stake and withdraw from the new stake account.
+            let stake_auth_ix = stake_instruction::authorize(
+                &stake_account_to_authorize.key(),
+                &self.seller.key(),
+                &bid.bidder.key(),
+                StakeAuthorize::Staker,
+                None,
+            );
+
+            let withdraw_auth_ix = stake_instruction::authorize(
+                &stake_account_to_authorize.key(),
+                &self.seller.key(),
+                &bid.bidder.key(),
+                StakeAuthorize::Withdrawer,
+                None,
+            );
+
+            invoke(
+                &stake_auth_ix,
+                &[
+                    self.seller.to_account_info(),
+                    self.stake_program.to_account_info(),
+                    stake_account_to_authorize.to_account_info(),
+                    self.clock.to_account_info()
+                ],
+            )?;
+
+            msg!("Authorized stake.");
+
+            invoke(
+                &withdraw_auth_ix,
+                &[
+                    self.seller.to_account_info(),
+                    self.stake_program.to_account_info(),
+                    stake_account_to_authorize.to_account_info(),
+                    self.clock.to_account_info()
+                ],
+            )?;
+
+            msg!("Authorized withdrawal.");
         }
 
-        // Authorize the bidder and transfer stake
-        let stake_auth_ix = stake_instruction::authorize(
-            &new_stake_account.key(),
-            &self.seller.key(),
-            &bid.bidder.key(),
-            StakeAuthorize::Staker,
-            None,
+        // Transfer SOL from the bid account to the seller
+        let seeds = &[
+            "vault".as_bytes(),
+            &bid.key().to_bytes(),
+        ];
+
+        let (_, bump) = Pubkey::find_program_address(
+            seeds, 
+            program_id
         );
 
-        let withdraw_auth_ix = stake_instruction::authorize(
-            &new_stake_account.key(),
-            &self.seller.key(),
-            &bid.bidder.key(),
-            StakeAuthorize::Withdrawer,
-            None,
-        );
+        let signer_seeds = &[
+            "vault".as_bytes(),
+            &bid.key().to_bytes(),
+            &[bump]
+        ];
 
-        invoke(
-            &stake_auth_ix,
-            &[
-                self.seller.to_account_info(),
-                self.stake_program.to_account_info(),
-                new_stake_account.to_account_info(),
-                self.clock.to_account_info()
-            ],
+        transfer(
+            CpiContext::new_with_signer(
+                self.system_program.to_account_info(), 
+                Transfer {
+                    from: bid_vault.to_account_info(),
+                    to: self.seller.to_account_info()
+                },
+                &[signer_seeds]
+            ), 
+            sol_to_transfer,
         )?;
-
-        msg!("authorized stake");
-
-        invoke(
-            &withdraw_auth_ix,
-            &[
-                self.seller.to_account_info(),
-                self.stake_program.to_account_info(),
-                new_stake_account.to_account_info(),
-                self.clock.to_account_info()
-            ],
-        )?;
-
-        msg!("authorized withdrawal");
 
         Ok(())
     }

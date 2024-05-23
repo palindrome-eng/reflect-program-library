@@ -16,6 +16,11 @@
           "isSigner": false
         },
         {
+          "name": "bidVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "orderBook",
           "isMut": true,
           "isSigner": false
@@ -46,6 +51,11 @@
           "isSigner": false
         },
         {
+          "name": "bidVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "user",
           "isMut": true,
           "isSigner": true
@@ -53,6 +63,11 @@
         {
           "name": "orderBook",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
           "isSigner": false
         }
       ],
@@ -119,7 +134,7 @@
         },
         {
           "name": "clock",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         }
       ],

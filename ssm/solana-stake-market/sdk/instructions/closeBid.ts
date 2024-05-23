@@ -36,6 +36,7 @@ export const closeBidStruct = new beet.BeetArgsStruct<
  * Accounts required by the _closeBid_ instruction
  *
  * @property [_writable_] bid
+ * @property [_writable_] bidVault
  * @property [_writable_, **signer**] user
  * @property [_writable_] orderBook
  * @category Instructions
@@ -44,8 +45,10 @@ export const closeBidStruct = new beet.BeetArgsStruct<
  */
 export type CloseBidInstructionAccounts = {
   bid: web3.PublicKey
+  bidVault: web3.PublicKey
   user: web3.PublicKey
   orderBook: web3.PublicKey
+  systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -79,6 +82,11 @@ export function createCloseBidInstruction(
       isSigner: false,
     },
     {
+      pubkey: accounts.bidVault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.user,
       isWritable: true,
       isSigner: true,
@@ -86,6 +94,11 @@ export function createCloseBidInstruction(
     {
       pubkey: accounts.orderBook,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
       isSigner: false,
     },
   ]

@@ -39,6 +39,7 @@ export const placeBidStruct = new beet.BeetArgsStruct<
  *
  * @property [_writable_, **signer**] user
  * @property [_writable_] bid
+ * @property [_writable_] bidVault
  * @property [_writable_] orderBook
  * @category Instructions
  * @category PlaceBid
@@ -47,6 +48,7 @@ export const placeBidStruct = new beet.BeetArgsStruct<
 export type PlaceBidInstructionAccounts = {
   user: web3.PublicKey
   bid: web3.PublicKey
+  bidVault: web3.PublicKey
   orderBook: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -83,6 +85,11 @@ export function createPlaceBidInstruction(
     },
     {
       pubkey: accounts.bid,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.bidVault,
       isWritable: true,
       isSigner: false,
     },

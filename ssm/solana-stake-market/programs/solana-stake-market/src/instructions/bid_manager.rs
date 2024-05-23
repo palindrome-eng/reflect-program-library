@@ -23,6 +23,16 @@ pub struct PlaceBid<'info> {
     )]
     pub bid: Account<'info, Bid>,
 
+    #[account(
+        mut,
+        seeds = [
+            "vault".as_bytes(),
+            &bid.key().to_bytes(),
+        ],
+        bump
+    )]
+    pub bid_vault: SystemAccount<'info>,
+
     #[account(mut)]
     pub order_book: Account<'info, OrderBook>,
 
@@ -40,7 +50,10 @@ pub fn place_bid(
      require!(amount >= rate, SsmError::UnfundedBid);
 
     let order_book = &mut ctx.accounts.order_book;
+
     let bid = &mut ctx.accounts.bid;
+    let bid_vault = &mut ctx.accounts.bid_vault;
+
     let system_program = &mut ctx.accounts.system_program;
     let user = &mut ctx.accounts.user;
 
@@ -59,7 +72,7 @@ pub fn place_bid(
             system_program.to_account_info(),
             Transfer {
                 from: user.to_account_info(),
-                to: bid.to_account_info()
+                to: bid_vault.to_account_info()
             } 
         ), 
         amount
@@ -91,19 +104,83 @@ pub struct CloseBid<'info> {
     )]
     pub bid: Account<'info, Bid>,
 
+    #[account(
+        mut,
+        seeds = [
+            "vault".as_bytes(),
+            &bid.key().to_bytes(),
+        ],
+        bump
+    )]
+    pub bid_vault: SystemAccount<'info>,
+
     #[account(mut)]
     pub user: Signer<'info>,
 
     #[account(mut)]
     pub order_book: Account<'info, OrderBook>,
+
+    pub system_program: Program<'info, System>,
 }
 
+// TODO: Check if there is any SOL left in bid vault & withdraw.
 pub fn close_bid(ctx: Context<CloseBid>, bid_index: u64) -> Result<()> {
-    msg!("Closing bid with amount: {}, rate: {}", ctx.accounts.bid.amount, ctx.accounts.bid.bid_rate);
-    msg!("Order book stats before closing: total_bids: {}, tvl: {}", ctx.accounts.order_book.bids, ctx.accounts.order_book.tvl);
+    let order_book = &mut ctx.accounts.order_book;
+    let user = &mut ctx.accounts.user;
+    let bid = &mut ctx.accounts.bid;
+    let bid_vault = &mut ctx.accounts.bid_vault;
+    let system_program = &mut ctx.accounts.system_program;
 
-    ctx.accounts.order_book.tvl -= ctx.accounts.bid.amount;
-    ctx.accounts.order_book.bids -= 1; // remove active bid count from order_book.
-    msg!("bid closed | stats: total_bids: {}, tvl: {}", ctx.accounts.order_book.bids, ctx.accounts.order_book.tvl);
+    let program_id = ctx.program_id;
+
+    let seeds = &[
+            "vault".as_bytes(),
+            &bid.key().to_bytes(),
+        ];
+
+    let (_, bump) = Pubkey::find_program_address(
+        seeds, 
+        program_id
+    );
+
+    let signer_seeds = &[
+        "vault".as_bytes(),
+        &bid.key().to_bytes(),
+        &[bump]
+    ];
+
+    transfer(
+        CpiContext::new_with_signer(
+            system_program.to_account_info(), 
+            Transfer {
+                from: bid_vault.to_account_info(),
+                to: user.to_account_info()
+            }, 
+            &[signer_seeds]
+        ), 
+        // Transfer entire account.
+        bid_vault.lamports()
+    )?;
+
+    msg!(
+        "Closing bid with amount: {}, rate: {}", 
+        bid.amount, 
+        bid.bid_rate
+    );
+
+    msg!("Order book stats before closing: total_bids: {}, tvl: {}", 
+        order_book.bids, 
+        order_book.tvl
+    );
+
+    order_book.tvl -= ctx.accounts.bid.amount;
+    order_book.bids -= 1; // remove active bid count from order_book.
+
+    msg!(
+        "bid closed | stats: total_bids: {}, tvl: {}", 
+        order_book.bids, 
+        order_book.tvl
+    );
+
     Ok(())
 }
