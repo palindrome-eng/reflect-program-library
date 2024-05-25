@@ -26,7 +26,5 @@ pub enum SsmError {
     #[msg("Stake is not yet activated.")]
     StakeNotActivated,
     #[msg("Provided schema of RemainingAccounts is invalid.")]
-    InvalidRemainingAccountsSchema,
-    #[msg("Stake problem will throw error.")]
-    StakeProgramWillThrowError,
+    InvalidRemainingAccountsSchema
 }
