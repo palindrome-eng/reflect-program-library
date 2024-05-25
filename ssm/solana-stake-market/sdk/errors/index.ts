@@ -290,6 +290,32 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * StakeProgramWillThrowError: 'Stake problem will throw error.'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class StakeProgramWillThrowErrorError extends Error {
+  readonly code: number = 0x177c
+  readonly name: string = 'StakeProgramWillThrowError'
+  constructor() {
+    super('Stake problem will throw error.')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, StakeProgramWillThrowErrorError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x177c,
+  () => new StakeProgramWillThrowErrorError()
+)
+createErrorFromNameLookup.set(
+  'StakeProgramWillThrowError',
+  () => new StakeProgramWillThrowErrorError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

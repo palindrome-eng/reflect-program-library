@@ -90,6 +90,8 @@ describe("solana-stake-market", () => {
         const rate = new anchor.BN(970_000_000); // A valid rate greater than the minimum
         const amount = new anchor.BN(1_000_000_000); // Amount greater than the rate
 
+        const toDeposit = amount.toNumber() / Math.pow(10, 9) * rate.toNumber();
+
         // Generate a bid account PDA
         const [bidPda] = PublicKey.findProgramAddressSync(
             [
@@ -121,6 +123,9 @@ describe("solana-stake-market", () => {
                 bidVault
             });
 
+        const vaultBalanceBeforePlacingBid = await provider.connection.getBalance(bidVault);
+        expect(vaultBalanceBeforePlacingBid).eq(0);
+
         const balanceBeforePlacingBid = await provider.connection.getBalance(provider.wallet.publicKey);
         const { blockhash } = await provider.connection.getLatestBlockhash();
         const {
@@ -135,12 +140,41 @@ describe("solana-stake-market", () => {
 
         await placeBid.rpc().catch(err => console.error(err));
 
+        const vaultBalanceAfterPlacingBid = await provider.connection.getBalance(bidVault);
         const balanceAfterPlacingBid = await provider.connection.getBalance(provider.wallet.publicKey);
 
         expect(balanceAfterPlacingBid).to.approximately(
-            balanceBeforePlacingBid - amount.toNumber() - expectedNetworkFeeInLamports,
+            balanceBeforePlacingBid - toDeposit - expectedNetworkFeeInLamports,
             5_000_000
         );
+
+        const {
+            amount: bidAmount,
+            fulfilled: bidFulfilled,
+            rate: bidRate,
+            bidder,
+            purchasedStakeAccounts
+        } = await Bid.fromAccountAddress(
+            provider.connection,
+            bidPda
+        );
+
+        expect(bidAmount.toString()).eq(amount.toString());
+        expect(bidFulfilled).eq(false);
+        expect(bidRate.toString()).eq(rate.toString());
+        expect(bidder.toString()).eq(provider.wallet.publicKey.toString());
+        expect(purchasedStakeAccounts.length).eq(0);
+
+        let orderBookData = await OrderBook.fromAccountAddress(
+            provider.connection,
+            orderBookAccount
+        );
+
+        expect(orderBookData.bids.toString()).eq("1");
+        expect(orderBookData.globalNonce.toString()).eq("1");
+        expect(orderBookData.tvl.toString()).eq(amount.toString());
+
+        expect(vaultBalanceAfterPlacingBid).eq(toDeposit);
 
         // Close the bid
         const closeBid = program
@@ -169,18 +203,23 @@ describe("solana-stake-market", () => {
 
         await closeBid.rpc().catch(err => console.error(err));
 
+        const vaultBalanceAfterClosingBid = await provider.connection.getBalance(bidVault);
         const balanceAfterClosingBid = await provider.connection.getBalance(provider.wallet.publicKey);
         expect(balanceAfterClosingBid).to.approximately(
-            balanceAfterPlacingBid + amount.toNumber() - expectedNetworkFeeInLamports2,
+            balanceAfterPlacingBid + toDeposit - expectedNetworkFeeInLamports2,
             5_000_000
         );
+        expect(vaultBalanceAfterClosingBid).eq(0);
     });
 
     it("Places bids at different rates and checks order book size", async () => {
         const rates = [970_000_000, 980_000_000, 990_000_000]; // Rates as per 0.97:1, 0.98:1, 0.99:1
 
         let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+
         let previousBidsCount = typeof orderBook.bids === "number" ? orderBook.bids : orderBook.bids.toNumber();
+        let previousTvl = parseInt(orderBook.tvl.toString());
+        let previousNonce = parseInt(orderBook.globalNonce.toString());
 
         const refreshOrderBook = async () => orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
 
@@ -218,8 +257,14 @@ describe("solana-stake-market", () => {
                 .rpc().catch(err => console.error(err));
 
             await refreshOrderBook();
+
             expect(parseInt(orderBook.bids.toString())).eq(previousBidsCount + 1);
+            expect(parseInt(orderBook.tvl.toString())).eq(previousTvl + 1_000_000_000);
+            expect(parseInt(orderBook.globalNonce.toString())).eq(previousNonce + 1);
+
             previousBidsCount = typeof orderBook.bids === "number" ? orderBook.bids : orderBook.bids.toNumber();
+            previousTvl = parseInt(orderBook.tvl.toString());
+            previousNonce = parseInt(orderBook.globalNonce.toString());
         }
     });
 
@@ -266,47 +311,48 @@ describe("solana-stake-market", () => {
         );
     });
 
-    it("Fails to place a bid with insufficient funding", async () => {
-        let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
-        const currentNonce = orderBook.globalNonce;
+    // This test is not needed anymore, since there is no more checks for insufficient funding.
+    // it("Fails to place a bid with insufficient funding", async () => {
+    //     let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+    //     const currentNonce = orderBook.globalNonce;
+    //
+    //     const [bidPda] = PublicKey.findProgramAddressSync(
+    //         [
+    //             Buffer.from("bid"),
+    //             new BN(currentNonce).toArrayLike(Buffer, 'le', 8)
+    //         ],
+    //         program.programId
+    //     );
+    //
+    //     const [bidVault] = PublicKey.findProgramAddressSync(
+    //         [
+    //             Buffer.from("vault"),
+    //             bidPda.toBuffer()
+    //         ],
+    //         program.programId
+    //     );
+    //
+    //     let error = "";
+    //     await program
+    //         .methods
+    //         .placeBid(
+    //             new anchor.BN(900_000_000), // Valid rate
+    //             new anchor.BN(800_000_000)
+    //         )
+    //         .accounts({
+    //             bid: bidPda,
+    //             orderBook: orderBookAccount,
+    //             user: provider.wallet.publicKey,
+    //             systemProgram: SystemProgram.programId,
+    //             bidVault
+    //         })
+    //         .rpc()
+    //         .catch(err => error = err.message);
+    //
+    //     expect(error).to.include("UnfundedBid", "Error should be related to insufficient funding.");
+    // });
 
-        const [bidPda] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("bid"),
-                new BN(currentNonce).toArrayLike(Buffer, 'le', 8)
-            ],
-            program.programId
-        );
-
-        const [bidVault] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("vault"),
-                bidPda.toBuffer()
-            ],
-            program.programId
-        );
-
-        let error = "";
-        await program
-            .methods
-            .placeBid(
-                new anchor.BN(900_000_000), // Valid rate
-                new anchor.BN(800_000_000)
-            )
-            .accounts({
-                bid: bidPda,
-                orderBook: orderBookAccount,
-                user: provider.wallet.publicKey,
-                systemProgram: SystemProgram.programId,
-                bidVault
-            })
-            .rpc()
-            .catch(err => error = err.message);
-
-        expect(error).to.include("UnfundedBid", "Error should be related to insufficient funding.");
-    });
-
-    it("successfully creates stake account and activates stake", async () => {
+    it("Successfully creates stake account and activates stake", async () => {
         const minimumRent = await provider.connection.getMinimumBalanceForRentExemption(
             StakeProgram.space
         );
@@ -317,7 +363,7 @@ describe("solana-stake-market", () => {
                 lastValidBlockHeight
             } = await provider.connection.getLatestBlockhash();
 
-            const airdropTx = await provider.connection.requestAirdrop(alice.publicKey, 150 * LAMPORTS_PER_SOL);
+            const airdropTx = await provider.connection.requestAirdrop(alice.publicKey, 250 * LAMPORTS_PER_SOL);
             await provider.connection.confirmTransaction({
                 blockhash,
                 lastValidBlockHeight,
@@ -331,7 +377,7 @@ describe("solana-stake-market", () => {
                 alice.publicKey
             ),
             fromPubkey: alice.publicKey,
-            lamports: 3 * LAMPORTS_PER_SOL + minimumRent,
+            lamports: 4 * LAMPORTS_PER_SOL + minimumRent,
             stakePubkey: aliceStakeAccount.publicKey,
             lockup: new Lockup(0,0, alice.publicKey)
         });
@@ -359,9 +405,9 @@ describe("solana-stake-market", () => {
             active
         } = await provider.connection.getStakeActivation(aliceStakeAccount.publicKey);
 
-        expect(stakeAccountBalance).approximately(3 * LAMPORTS_PER_SOL, LAMPORTS_PER_SOL / 10);
+        expect(stakeAccountBalance).approximately(4 * LAMPORTS_PER_SOL, LAMPORTS_PER_SOL / 10);
         expect(state).eq("inactive");
-        expect(inactive).eq(3 * LAMPORTS_PER_SOL);
+        expect(inactive).eq(4 * LAMPORTS_PER_SOL);
         expect(active).eq(0);
 
         const validators = await provider.connection.getVoteAccounts();
@@ -401,7 +447,7 @@ describe("solana-stake-market", () => {
         }
 
         while (true) {
-            await sleep(1);
+            await sleep(3);
 
             const {
                 state,
@@ -423,11 +469,11 @@ describe("solana-stake-market", () => {
 
             expect(state).eq("active");
             expect(inactive).eq(0);
-            expect(active).eq(3 * LAMPORTS_PER_SOL);
+            expect(active).eq(4 * LAMPORTS_PER_SOL);
         }
     });
 
-    it("successfully places bids and sells stake into a bid (with splitting)", async () => {
+    it("Successfully places bids and sells stake into a bid (with splitting).", async () => {
         const rate = new anchor.BN(970_000_000); // A valid rate greater than the minimum
         const amount = new anchor.BN(1_000_000_000); // Amount greater than the rate
 
@@ -473,15 +519,13 @@ describe("solana-stake-market", () => {
             console.log(`Initialized bid no ${i}`);
         }
 
-        // // In case you want to make new staking accounts rent-exempt before running the sell_stake.
-        // // Added this jsut for testing.
-        // const rentIx = cosigns.map(keypair => {
-        //     return SystemProgram.transfer({
-        //         fromPubkey: alice.publicKey,
-        //         lamports: 2282880,
-        //         toPubkey: keypair.publicKey,
-        //     });
-        // })
+        const rentIx = cosigns.map(keypair => {
+            return SystemProgram.transfer({
+                fromPubkey: alice.publicKey,
+                lamports: 2282880,
+                toPubkey: keypair.publicKey,
+            });
+        });
 
         const sellStakeIx = createSellStakeInstruction(
             {
@@ -511,7 +555,7 @@ describe("solana-stake-market", () => {
                 ])).flat()
             },
             {
-                totalStakeAmount: new BN(2.5 * LAMPORTS_PER_SOL)
+                totalStakeAmount: new BN(3 * LAMPORTS_PER_SOL)
             }
         );
 
@@ -521,7 +565,10 @@ describe("solana-stake-market", () => {
             lastValidBlockHeight
         } = await provider.connection.getLatestBlockhash();
 
+        // // In case you want to make new staking accounts rent-exempt before running the sell_stake.
+        // // Added this just for testing.
         // tx.add(...rentIx);
+
         tx.add(sellStakeIx);
         tx.feePayer = alice.publicKey;
         tx.recentBlockhash = blockhash;
@@ -530,53 +577,52 @@ describe("solana-stake-market", () => {
             ...cosigns
         );
 
-        // const sent = await provider
-        //         .connection
-        //         .sendRawTransaction(tx.serialize(), { skipPreflight: true });
-
-        try {
-            const sent = await provider
+        const sent = await provider
                 .connection
-                .sendRawTransaction(tx.serialize(), { skipPreflight: true });
+                .sendRawTransaction(tx.serialize(), { skipPreflight: false });
 
-            const signatureResult = await provider.connection.confirmTransaction({
-                blockhash,
-                lastValidBlockHeight,
-                signature: sent
-            });
+        await provider.connection.confirmTransaction({
+            signature: sent,
+            lastValidBlockHeight,
+            blockhash
+        });
 
-            const {
-                value: {
-                    err
-                }
-            } = signatureResult;
+        await sleep(1);
+        //
+        // const {
+        //     meta: {
+        //         logMessages
+        //     }
+        // } = await provider.connection.getParsedTransaction(sent, "confirmed");
+        //
+        // console.log(logMessages);
 
-            await sleep(10);
-            const parsedTx = await provider.connection.getParsedTransaction(
-                sent,
-                "confirmed"
+        await Promise.all(bids.map(async (bid) => {
+            const accountInfo = await provider
+                .connection
+                .getAccountInfo(bid, "confirmed");
+
+            const [{
+                amount,
+                fulfilled
+            }] = Bid.fromAccountInfo(
+                accountInfo,
             );
 
-            const preBalances = parsedTx.meta.preBalances.reduce((pre, next) => pre + next);
-            const postBalances = parsedTx.meta.postBalances.reduce((pre, next) => pre + next);
+            const [vault]  = PublicKey.findProgramAddressSync([Buffer.from("vault"), bid.toBuffer()], program.programId);
+
+            const vaultBalance = await provider.connection.getBalance(vault);
+            const bidAmount = typeof amount === "number" ? amount : amount.toNumber();
 
             console.log({
-                preBalances,
-                postBalances,
-                difference: postBalances - preBalances
+                vaultBalance,
+                bidAmount
             });
 
-            console.log(parsedTx.meta.logMessages);
-            console.log(
-                parsedTx.transaction.message.accountKeys.map(({ pubkey }, index) => {
-                    return {
-                        balance: parsedTx.meta.postBalances[index],
-                        pubkey: pubkey.toString()
-                    }
-                })
-            );
-        } catch (err) {
-            console.log({ err });
-        }
+            // Expect all bids to be fulfilled (since we're selling 3SOL into 3x 1SOL bids).
+            expect(bidAmount).eq(0);
+            expect(vaultBalance).eq(0);
+            expect(fulfilled).eq(true);
+        }));
     });
 });

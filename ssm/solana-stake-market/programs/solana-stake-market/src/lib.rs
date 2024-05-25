@@ -1,3 +1,5 @@
+#![feature(result_option_inspect)]
+
 // src/lib.rs
 use anchor_lang::prelude::*;
 pub mod instructions;
