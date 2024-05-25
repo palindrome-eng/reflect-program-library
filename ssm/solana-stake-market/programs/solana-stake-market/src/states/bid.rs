@@ -11,3 +11,13 @@ pub struct Bid {
     pub purchased_stake_accounts: Vec<Pubkey>, // List of purchased stake accounts, 4 + x*size
     pub authority: Pubkey, // The authority that will manage purchased stake accounts, 32
 }
+
+impl Bid {
+    pub fn partial_fill(&mut self, amount: u64) -> () {
+        self.amount -= amount;
+
+        if self.amount == 0 {
+            self.fulfilled = true;
+        }
+    }
+}

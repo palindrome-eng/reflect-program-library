@@ -20,6 +20,11 @@ wallet = "/Users/kubaplata/.config/solana/id.json"
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
+# Staking Program
+# [[test.genesis]]
+# address = "Stake11111111111111111111111111111111111111"
+# program = "./metaplex_token_metadata_program.so"
+
 [test.validator]
 slots_per_epoch = "32"
 
