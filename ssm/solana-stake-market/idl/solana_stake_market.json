@@ -161,7 +161,7 @@
             "type": "u64"
           },
           {
-            "name": "bidRate",
+            "name": "rate",
             "type": "u64"
           },
           {
@@ -200,10 +200,6 @@
           },
           {
             "name": "globalNonce",
-            "type": "u64"
-          },
-          {
-            "name": "totalTrades",
             "type": "u64"
           }
         ]
@@ -270,6 +266,11 @@
       "code": 6011,
       "name": "InvalidRemainingAccountsSchema",
       "msg": "Provided schema of RemainingAccounts is invalid."
+    },
+    {
+      "code": 6012,
+      "name": "StakeProgramWillThrowError",
+      "msg": "Stake problem will throw error."
     }
   ],
   "metadata": {

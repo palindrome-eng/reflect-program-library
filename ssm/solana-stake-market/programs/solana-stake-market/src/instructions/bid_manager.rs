@@ -77,7 +77,7 @@ pub fn place_bid(
     bid.index = order_book.global_nonce;
 
     bid.amount = amount;
-    bid.bid_rate = rate;
+    bid.rate = rate;
     
     bid.bidder = user.key();
     bid.authority = user.key();

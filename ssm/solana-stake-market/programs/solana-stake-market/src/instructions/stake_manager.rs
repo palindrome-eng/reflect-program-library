@@ -152,7 +152,7 @@ pub fn sell_stake<'info>(
         );
 
         // Transfer SOL from the bid vault to the stake seller.
-        let sol_to_transfer = ((stake_to_sell as f64) / 10_f64.powf(9_f64) * (bid.bid_rate as f64)) as u64;
+        let sol_to_transfer = ((stake_to_sell as f64) / 10_f64.powf(9_f64) * (bid.rate as f64)) as u64;
 
         let seeds = &[
             "vault".as_bytes(),
@@ -271,7 +271,7 @@ impl<'info> SellStake<'info> {
                     account_infos
                 )?;
 
-                msg!("Invoked {}/3 instructions (split). No error so far.", index + 1);
+                msg!("Invoked {}/3 instructions (split).", index + 1);
             }
         }
 
