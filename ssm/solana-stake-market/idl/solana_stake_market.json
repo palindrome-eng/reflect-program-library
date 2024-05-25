@@ -177,10 +177,6 @@
             "type": {
               "vec": "publicKey"
             }
-          },
-          {
-            "name": "authority",
-            "type": "publicKey"
           }
         ]
       }

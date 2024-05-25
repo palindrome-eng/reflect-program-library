@@ -21,7 +21,6 @@ export type BidArgs = {
   bidder: web3.PublicKey
   fulfilled: boolean
   purchasedStakeAccounts: web3.PublicKey[]
-  authority: web3.PublicKey
 }
 
 export const bidDiscriminator = [143, 246, 48, 245, 42, 145, 180, 88]
@@ -39,8 +38,7 @@ export class Bid implements BidArgs {
     readonly rate: beet.bignum,
     readonly bidder: web3.PublicKey,
     readonly fulfilled: boolean,
-    readonly purchasedStakeAccounts: web3.PublicKey[],
-    readonly authority: web3.PublicKey
+    readonly purchasedStakeAccounts: web3.PublicKey[]
   ) {}
 
   /**
@@ -53,8 +51,7 @@ export class Bid implements BidArgs {
       args.rate,
       args.bidder,
       args.fulfilled,
-      args.purchasedStakeAccounts,
-      args.authority
+      args.purchasedStakeAccounts
     )
   }
 
@@ -199,7 +196,6 @@ export class Bid implements BidArgs {
       bidder: this.bidder.toBase58(),
       fulfilled: this.fulfilled,
       purchasedStakeAccounts: this.purchasedStakeAccounts,
-      authority: this.authority.toBase58(),
     }
   }
 }
@@ -222,7 +218,6 @@ export const bidBeet = new beet.FixableBeetStruct<
     ['bidder', beetSolana.publicKey],
     ['fulfilled', beet.bool],
     ['purchasedStakeAccounts', beet.array(beetSolana.publicKey)],
-    ['authority', beetSolana.publicKey],
   ],
   Bid.fromArgs,
   'Bid'

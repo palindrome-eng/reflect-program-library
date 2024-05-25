@@ -148,6 +148,32 @@ describe("solana-stake-market", () => {
             5_000_000
         );
 
+        const {
+            amount: bidAmount,
+            fulfilled: bidFulfilled,
+            rate: bidRate,
+            bidder,
+            purchasedStakeAccounts
+        } = await Bid.fromAccountAddress(
+            provider.connection,
+            bidPda
+        );
+
+        expect(bidAmount.toString()).eq(amount.toString());
+        expect(bidFulfilled).eq(false);
+        expect(bidRate.toString()).eq(rate.toString());
+        expect(bidder.toString()).eq(provider.wallet.publicKey.toString());
+        expect(purchasedStakeAccounts.length).eq(0);
+
+        let orderBookData = await OrderBook.fromAccountAddress(
+            provider.connection,
+            orderBookAccount
+        );
+
+        expect(orderBookData.bids.toString()).eq("1");
+        expect(orderBookData.globalNonce.toString()).eq("1");
+        expect(orderBookData.tvl.toString()).eq(amount.toString());
+
         expect(vaultBalanceAfterPlacingBid).eq(toDeposit);
 
         // Close the bid
@@ -190,7 +216,10 @@ describe("solana-stake-market", () => {
         const rates = [970_000_000, 980_000_000, 990_000_000]; // Rates as per 0.97:1, 0.98:1, 0.99:1
 
         let orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
+
         let previousBidsCount = typeof orderBook.bids === "number" ? orderBook.bids : orderBook.bids.toNumber();
+        let previousTvl = parseInt(orderBook.tvl.toString());
+        let previousNonce = parseInt(orderBook.globalNonce.toString());
 
         const refreshOrderBook = async () => orderBook = await OrderBook.fromAccountAddress(provider.connection, orderBookAccount);
 
@@ -228,8 +257,14 @@ describe("solana-stake-market", () => {
                 .rpc().catch(err => console.error(err));
 
             await refreshOrderBook();
+
             expect(parseInt(orderBook.bids.toString())).eq(previousBidsCount + 1);
+            expect(parseInt(orderBook.tvl.toString())).eq(previousTvl + 1_000_000_000);
+            expect(parseInt(orderBook.globalNonce.toString())).eq(previousNonce + 1);
+
             previousBidsCount = typeof orderBook.bids === "number" ? orderBook.bids : orderBook.bids.toNumber();
+            previousTvl = parseInt(orderBook.tvl.toString());
+            previousNonce = parseInt(orderBook.globalNonce.toString());
         }
     });
 
@@ -317,7 +352,7 @@ describe("solana-stake-market", () => {
     //     expect(error).to.include("UnfundedBid", "Error should be related to insufficient funding.");
     // });
 
-    it("successfully creates stake account and activates stake", async () => {
+    it("Successfully creates stake account and activates stake", async () => {
         const minimumRent = await provider.connection.getMinimumBalanceForRentExemption(
             StakeProgram.space
         );
@@ -412,7 +447,7 @@ describe("solana-stake-market", () => {
         }
 
         while (true) {
-            await sleep(1);
+            await sleep(3);
 
             const {
                 state,
@@ -552,6 +587,16 @@ describe("solana-stake-market", () => {
             blockhash
         });
 
+        await sleep(1);
+        //
+        // const {
+        //     meta: {
+        //         logMessages
+        //     }
+        // } = await provider.connection.getParsedTransaction(sent, "confirmed");
+        //
+        // console.log(logMessages);
+
         await Promise.all(bids.map(async (bid) => {
             const accountInfo = await provider
                 .connection
@@ -568,6 +613,11 @@ describe("solana-stake-market", () => {
 
             const vaultBalance = await provider.connection.getBalance(vault);
             const bidAmount = typeof amount === "number" ? amount : amount.toNumber();
+
+            console.log({
+                vaultBalance,
+                bidAmount
+            });
 
             // Expect all bids to be fulfilled (since we're selling 3SOL into 3x 1SOL bids).
             expect(bidAmount).eq(0);

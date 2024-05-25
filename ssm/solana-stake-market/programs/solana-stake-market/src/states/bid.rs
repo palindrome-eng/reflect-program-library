@@ -9,7 +9,6 @@ pub struct Bid {
     pub bidder: Pubkey,   // Public key of the bidder, 32
     pub fulfilled: bool,  // Indicates if the bid is fulfilled, 1
     pub purchased_stake_accounts: Vec<Pubkey>, // List of purchased stake accounts, 4 + x*size
-    pub authority: Pubkey, // The authority that will manage purchased stake accounts, 32
 }
 
 impl Bid {

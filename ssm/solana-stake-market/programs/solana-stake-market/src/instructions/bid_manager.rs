@@ -14,7 +14,7 @@ pub struct PlaceBid<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 8 * 3 + 32 * 2 + 1 + 4 + 10 * 32, // Enough space for the Bid struct
+        space = 8 + 8 * 3 + 32 * 1 + 1 + 4 + 10 * 32, // Enough space for the Bid struct
         seeds = [
             "bid".as_bytes(), 
             &order_book.global_nonce.to_le_bytes()
@@ -80,7 +80,6 @@ pub fn place_bid(
     bid.rate = rate;
     
     bid.bidder = user.key();
-    bid.authority = user.key();
 
     bid.fulfilled = false;
     bid.purchased_stake_accounts = vec![];
