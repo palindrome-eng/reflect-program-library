@@ -32,7 +32,7 @@ pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
 
     // Calculate receipt token amount
     let receipt_amount = if ctx.accounts.deposit_pool.amount > 0 {
-        amount * ctx.accounts.deposit_pool.amount / (ctx.accounts.deposit_pool.amount + ctx.accounts.deposit_pool.amount)
+        amount * ctx.accounts.deposit_pool.amount / (ctx.accounts.deposit_pool.amount + ctx.accounts.reward_pool.amount)
     } else {
         amount
     };
