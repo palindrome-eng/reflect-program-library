@@ -61,6 +61,8 @@ pub fn init_vault_pools(
         CustomError::InvalidFreezeAuthority
     );
 
+    vault.receipt_token_mint = ctx.accounts.receipt_token_mint.key();
+    vault.deposit_token_mint = ctx.accounts.deposit_token_mint.key();
     vault.deposit_pool = *ctx.accounts.deposit_pool.to_account_info().key;
     vault.reward_pool = *ctx.accounts.reward_pool.to_account_info().key;
 

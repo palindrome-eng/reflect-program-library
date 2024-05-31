@@ -1,0 +1,351 @@
+{
+  "version": "0.1.0",
+  "name": "reflect_tokenised_bonds",
+  "instructions": [
+    {
+      "name": "createVault",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "minDeposit",
+          "type": "u64"
+        },
+        {
+          "name": "minLockup",
+          "type": "i64"
+        },
+        {
+          "name": "targetYieldRate",
+          "type": "u64"
+        },
+        {
+          "name": "vaultSeed",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initVaultPools",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "depositPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "depositTokenMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "receiptTokenMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vaultSeed",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "depositor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "depositTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "receiptTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "depositPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "receiptTokenMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "requestWithdraw",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "withdrawRequest",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "requester",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "receiptTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "receiptAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "completeWithdraw",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "withdrawRequest",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "receiptTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userDepositTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "depositPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "publicKey"
+          },
+          {
+            "name": "depositTokenMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "receiptTokenMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "minDeposit",
+            "type": "u64"
+          },
+          {
+            "name": "minLockup",
+            "type": "i64"
+          },
+          {
+            "name": "targetYieldRate",
+            "type": "u64"
+          },
+          {
+            "name": "depositPool",
+            "type": "publicKey"
+          },
+          {
+            "name": "rewardPool",
+            "type": "publicKey"
+          },
+          {
+            "name": "totalReceiptSupply",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WithdrawRequest",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "publicKey"
+          },
+          {
+            "name": "vault",
+            "type": "publicKey"
+          },
+          {
+            "name": "receiptAmount",
+            "type": "u64"
+          },
+          {
+            "name": "unlockDate",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientDeposit",
+      "msg": "Insufficient deposit amount."
+    },
+    {
+      "code": 6001,
+      "name": "LockupNotExpired",
+      "msg": "Lockup period has not expired."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidMintAuthority",
+      "msg": "Invalid mint authority. Move mint authority of the receipt token to the vault PDA."
+    },
+    {
+      "code": 6003,
+      "name": "InvalidFreezeAuthority",
+      "msg": "Invalid freeze authority. Move freeze authority of the receipt token to the vault PDA, or remove it completely."
+    },
+    {
+      "code": 6004,
+      "name": "NonZeroReceiptSupply",
+      "msg": "Supply of the receipt token has to be 0. Pre-minting is not allowed."
+    }
+  ],
+  "metadata": {
+    "address": "6ZZ1sxKGuXUBL8HSsHqHaYCg92G9VhMNTcJv1gFURCop",
+    "origin": "anchor",
+    "binaryVersion": "0.29.0",
+    "libVersion": "0.29.0"
+  }
+}
