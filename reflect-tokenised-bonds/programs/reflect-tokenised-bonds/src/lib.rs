@@ -20,7 +20,15 @@ mod reflect_tokenised_bonds {
         target_yield_rate: u64,
         vault_seed: u64,
     ) -> Result<()> {
-        instructions::create_vault::create_vault(ctx, deposit_token_mint, receipt_token_mint, min_deposit, min_lockup, target_yield_rate, vault_seed)
+        instructions::create_vault::create_vault(
+            ctx, 
+            deposit_token_mint, 
+            receipt_token_mint, 
+            min_deposit,
+            min_lockup, 
+            target_yield_rate, 
+            vault_seed
+        )
     }
 
     pub fn init_vault_pools(

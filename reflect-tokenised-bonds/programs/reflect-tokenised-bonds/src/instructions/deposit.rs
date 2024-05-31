@@ -6,20 +6,30 @@ use crate::state::vault::Vault;
 pub struct Deposit<'info> {
     #[account(mut)]
     pub vault: Account<'info, Vault>,
+
     #[account(mut)]
     pub depositor: Signer<'info>,
+
     #[account(
         mut,
         constraint = deposit_token_account.mint == vault.deposit_token_mint,
         constraint = deposit_token_account.owner == depositor.key(),
     )]
     pub deposit_token_account: Account<'info, TokenAccount>,
+
     #[account(
         mut,
         constraint = receipt_token_account.mint == vault.receipt_token_mint,
         constraint = receipt_token_account.owner == depositor.key(),
     )]
     pub receipt_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        constraint = reward_pool.key() == reward_pool.key()
+    )]
+    pub reward_pool: Account<'info, TokenAccount>,
+
     #[account(mut, address = vault.deposit_pool)]
     pub deposit_pool: Account<'info, TokenAccount>,
     #[account(mut)]
