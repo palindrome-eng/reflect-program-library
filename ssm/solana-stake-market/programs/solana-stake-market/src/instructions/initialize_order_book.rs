@@ -1,20 +1,24 @@
-// src/instructions/initialize_ob.rs
-
 use anchor_lang::prelude::*;
-use crate::states::OrderBook;
+use crate::{constants::ORDERBOOK_SEED, states::OrderBook};
 
 #[derive(Accounts)]
 pub struct InitializeOrderBook<'info> {
     #[account(
+        mut
+    )]
+    pub user: Signer<'info>,
+    
+    #[account(
         init,
         payer = user,
-        space = 8 + 3 * 8, // discriminator + order_book_stats.
-        seeds = [b"orderBook"],
+        space = 8 + 3 * 8,
+        seeds = [
+            ORDERBOOK_SEED.as_bytes()
+        ],
         bump
     )]
     pub order_book: Account<'info, OrderBook>,
-    #[account(mut)]
-    pub user: Signer<'info>,
+
     pub system_program: Program<'info, System>,
 }
 

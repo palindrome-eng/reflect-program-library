@@ -20,7 +20,6 @@ export type BidArgs = {
   rate: beet.bignum
   bidder: web3.PublicKey
   fulfilled: boolean
-  purchasedStakeAccounts: web3.PublicKey[]
 }
 
 export const bidDiscriminator = [143, 246, 48, 245, 42, 145, 180, 88]
@@ -37,8 +36,7 @@ export class Bid implements BidArgs {
     readonly amount: beet.bignum,
     readonly rate: beet.bignum,
     readonly bidder: web3.PublicKey,
-    readonly fulfilled: boolean,
-    readonly purchasedStakeAccounts: web3.PublicKey[]
+    readonly fulfilled: boolean
   ) {}
 
   /**
@@ -50,8 +48,7 @@ export class Bid implements BidArgs {
       args.amount,
       args.rate,
       args.bidder,
-      args.fulfilled,
-      args.purchasedStakeAccounts
+      args.fulfilled
     )
   }
 
@@ -122,36 +119,34 @@ export class Bid implements BidArgs {
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Bid} for the provided args.
-   *
-   * @param args need to be provided since the byte size for this account
-   * depends on them
+   * {@link Bid}
    */
-  static byteSize(args: BidArgs) {
-    const instance = Bid.fromArgs(args)
-    return bidBeet.toFixedFromValue({
-      accountDiscriminator: bidDiscriminator,
-      ...instance,
-    }).byteSize
+  static get byteSize() {
+    return bidBeet.byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
    * {@link Bid} data from rent
    *
-   * @param args need to be provided since the byte size for this account
-   * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
-    args: BidArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Bid.byteSize(args),
+      Bid.byteSize,
       commitment
     )
+  }
+
+  /**
+   * Determines if the provided {@link Buffer} has the correct byte size to
+   * hold {@link Bid} data.
+   */
+  static hasCorrectByteSize(buf: Buffer, offset = 0) {
+    return buf.byteLength - offset === Bid.byteSize
   }
 
   /**
@@ -195,7 +190,6 @@ export class Bid implements BidArgs {
       })(),
       bidder: this.bidder.toBase58(),
       fulfilled: this.fulfilled,
-      purchasedStakeAccounts: this.purchasedStakeAccounts,
     }
   }
 }
@@ -204,7 +198,7 @@ export class Bid implements BidArgs {
  * @category Accounts
  * @category generated
  */
-export const bidBeet = new beet.FixableBeetStruct<
+export const bidBeet = new beet.BeetStruct<
   Bid,
   BidArgs & {
     accountDiscriminator: number[] /* size: 8 */
@@ -217,7 +211,6 @@ export const bidBeet = new beet.FixableBeetStruct<
     ['rate', beet.u64],
     ['bidder', beetSolana.publicKey],
     ['fulfilled', beet.bool],
-    ['purchasedStakeAccounts', beet.array(beetSolana.publicKey)],
   ],
   Bid.fromArgs,
   'Bid'

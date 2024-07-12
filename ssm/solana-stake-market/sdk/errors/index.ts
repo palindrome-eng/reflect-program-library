@@ -290,30 +290,24 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * StakeProgramWillThrowError: 'Stake problem will throw error.'
+ * FillOverflow: 'Failed to partially fill the bid. Numerical overflow occurred.'
  *
  * @category Errors
  * @category generated
  */
-export class StakeProgramWillThrowErrorError extends Error {
+export class FillOverflowError extends Error {
   readonly code: number = 0x177c
-  readonly name: string = 'StakeProgramWillThrowError'
+  readonly name: string = 'FillOverflow'
   constructor() {
-    super('Stake problem will throw error.')
+    super('Failed to partially fill the bid. Numerical overflow occurred.')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, StakeProgramWillThrowErrorError)
+      Error.captureStackTrace(this, FillOverflowError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(
-  0x177c,
-  () => new StakeProgramWillThrowErrorError()
-)
-createErrorFromNameLookup.set(
-  'StakeProgramWillThrowError',
-  () => new StakeProgramWillThrowErrorError()
-)
+createErrorFromCodeLookup.set(0x177c, () => new FillOverflowError())
+createErrorFromNameLookup.set('FillOverflow', () => new FillOverflowError())
 
 /**
  * Attempts to resolve a custom program error from the provided error code.
