@@ -1,15 +1,14 @@
-//src/state/withdraw_request.rs
 use anchor_lang::prelude::*;
 
 #[account]
-pub struct WithdrawRequest {
+pub struct LockupState {
     pub user: Pubkey,
     pub vault: Pubkey,
     pub receipt_amount: u64,
     pub unlock_date: i64,
 }
 
-impl WithdrawRequest {
+impl LockupState {
     pub const LEN: usize = 8 + // discriminator
         32 + // user
         32 + // vault

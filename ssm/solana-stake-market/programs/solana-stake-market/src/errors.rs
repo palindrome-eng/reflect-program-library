@@ -26,7 +26,5 @@ pub enum SsmError {
     #[msg("Stake is not yet activated.")]
     StakeNotActivated,
     #[msg("Provided schema of RemainingAccounts is invalid.")]
-    InvalidRemainingAccountsSchema,
-    #[msg("Failed to partially fill the bid. Numerical overflow occurred.")]
-    FillOverflow
+    InvalidRemainingAccountsSchema
 }
