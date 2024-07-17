@@ -23,25 +23,27 @@ export const completeWithdrawStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _completeWithdraw_ instruction
  *
- * @property [_writable_] vault
- * @property [_writable_] withdrawRequest
  * @property [_writable_, **signer**] user
- * @property [_writable_] receiptTokenAccount
+ * @property [_writable_] lockup
+ * @property [_writable_] vault
+ * @property [_writable_] lockupReceiptTokenAccount
  * @property [_writable_] userDepositTokenAccount
  * @property [_writable_] depositPool
  * @property [_writable_] rewardPool
+ * @property [_writable_] receiptMint
  * @category Instructions
  * @category CompleteWithdraw
  * @category generated
  */
 export type CompleteWithdrawInstructionAccounts = {
-  vault: web3.PublicKey
-  withdrawRequest: web3.PublicKey
   user: web3.PublicKey
-  receiptTokenAccount: web3.PublicKey
+  lockup: web3.PublicKey
+  vault: web3.PublicKey
+  lockupReceiptTokenAccount: web3.PublicKey
   userDepositTokenAccount: web3.PublicKey
   depositPool: web3.PublicKey
   rewardPool: web3.PublicKey
+  receiptMint: web3.PublicKey
   tokenProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -67,22 +69,22 @@ export function createCompleteWithdrawInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.vault,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.withdrawRequest,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
       pubkey: accounts.user,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: accounts.receiptTokenAccount,
+      pubkey: accounts.lockup,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.vault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.lockupReceiptTokenAccount,
       isWritable: true,
       isSigner: false,
     },
@@ -98,6 +100,11 @@ export function createCompleteWithdrawInstruction(
     },
     {
       pubkey: accounts.rewardPool,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.receiptMint,
       isWritable: true,
       isSigner: false,
     },

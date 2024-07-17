@@ -1,7 +1,11 @@
+export * from './LockupState'
+export * from './RTBProtocol'
+export * from './UserAccount'
 export * from './Vault'
-export * from './WithdrawRequest'
 
+import { LockupState } from './LockupState'
+import { RTBProtocol } from './RTBProtocol'
+import { UserAccount } from './UserAccount'
 import { Vault } from './Vault'
-import { WithdrawRequest } from './WithdrawRequest'
 
-export const accountProviders = { Vault, WithdrawRequest }
+export const accountProviders = { LockupState, RTBProtocol, UserAccount, Vault }

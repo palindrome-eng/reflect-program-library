@@ -12,13 +12,36 @@ const createErrorFromCodeLookup: Map<number, () => ErrorWithCode> = new Map()
 const createErrorFromNameLookup: Map<string, () => ErrorWithCode> = new Map()
 
 /**
+ * InvalidVaultSeed: 'Vault PDA is derived with invalid vault seed.'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidVaultSeedError extends Error {
+  readonly code: number = 0x1770
+  readonly name: string = 'InvalidVaultSeed'
+  constructor() {
+    super('Vault PDA is derived with invalid vault seed.')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidVaultSeedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1770, () => new InvalidVaultSeedError())
+createErrorFromNameLookup.set(
+  'InvalidVaultSeed',
+  () => new InvalidVaultSeedError()
+)
+
+/**
  * InsufficientDeposit: 'Insufficient deposit amount.'
  *
  * @category Errors
  * @category generated
  */
 export class InsufficientDepositError extends Error {
-  readonly code: number = 0x1770
+  readonly code: number = 0x1771
   readonly name: string = 'InsufficientDeposit'
   constructor() {
     super('Insufficient deposit amount.')
@@ -28,7 +51,7 @@ export class InsufficientDepositError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1770, () => new InsufficientDepositError())
+createErrorFromCodeLookup.set(0x1771, () => new InsufficientDepositError())
 createErrorFromNameLookup.set(
   'InsufficientDeposit',
   () => new InsufficientDepositError()
@@ -41,7 +64,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class LockupNotExpiredError extends Error {
-  readonly code: number = 0x1771
+  readonly code: number = 0x1772
   readonly name: string = 'LockupNotExpired'
   constructor() {
     super('Lockup period has not expired.')
@@ -51,7 +74,7 @@ export class LockupNotExpiredError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1771, () => new LockupNotExpiredError())
+createErrorFromCodeLookup.set(0x1772, () => new LockupNotExpiredError())
 createErrorFromNameLookup.set(
   'LockupNotExpired',
   () => new LockupNotExpiredError()
@@ -64,7 +87,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InvalidMintAuthorityError extends Error {
-  readonly code: number = 0x1772
+  readonly code: number = 0x1773
   readonly name: string = 'InvalidMintAuthority'
   constructor() {
     super(
@@ -76,7 +99,7 @@ export class InvalidMintAuthorityError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1772, () => new InvalidMintAuthorityError())
+createErrorFromCodeLookup.set(0x1773, () => new InvalidMintAuthorityError())
 createErrorFromNameLookup.set(
   'InvalidMintAuthority',
   () => new InvalidMintAuthorityError()
@@ -89,7 +112,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InvalidFreezeAuthorityError extends Error {
-  readonly code: number = 0x1773
+  readonly code: number = 0x1774
   readonly name: string = 'InvalidFreezeAuthority'
   constructor() {
     super(
@@ -101,7 +124,7 @@ export class InvalidFreezeAuthorityError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1773, () => new InvalidFreezeAuthorityError())
+createErrorFromCodeLookup.set(0x1774, () => new InvalidFreezeAuthorityError())
 createErrorFromNameLookup.set(
   'InvalidFreezeAuthority',
   () => new InvalidFreezeAuthorityError()
@@ -114,7 +137,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class NonZeroReceiptSupplyError extends Error {
-  readonly code: number = 0x1774
+  readonly code: number = 0x1775
   readonly name: string = 'NonZeroReceiptSupply'
   constructor() {
     super(
@@ -126,7 +149,7 @@ export class NonZeroReceiptSupplyError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1774, () => new NonZeroReceiptSupplyError())
+createErrorFromCodeLookup.set(0x1775, () => new NonZeroReceiptSupplyError())
 createErrorFromNameLookup.set(
   'NonZeroReceiptSupply',
   () => new NonZeroReceiptSupplyError()
