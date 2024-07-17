@@ -22,7 +22,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     Transaction
 } from "@solana/web3.js";
-import BN from "bn.js";
+import BN, {min} from "bn.js";
 import {LockupState, RTBProtocol, Vault} from "../sdk";
 import {expect, use} from "chai";
 
@@ -72,6 +72,10 @@ async function createToken(
     return keypair.publicKey;
 }
 
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function transferAuthority(
     mint: PublicKey,
     currentAuthority: AnchorProvider,
@@ -110,18 +114,19 @@ async function mintTokens(
     mint: PublicKey,
     payer: AnchorProvider,
     amount: number,
-    recipient?: Keypair
+    recipient?: PublicKey
 ) {
 
     const ata = getAssociatedTokenAddressSync(
         mint,
-        recipient?.publicKey || payer.publicKey
+        recipient || payer.publicKey,
+        true
     );
 
     const ataIx = createAssociatedTokenAccountIdempotentInstruction(
         payer.publicKey,
         ata,
-        recipient?.publicKey || payer.publicKey,
+        recipient || payer.publicKey,
         mint,
     );
 
@@ -623,7 +628,7 @@ describe("reflect-tokenised-bonds", () => {
             depositTokenMint,
             provider,
             amount,
-            user
+            user.publicKey
         );
 
         const depositTokenAccount = getAssociatedTokenAddressSync(
@@ -828,5 +833,145 @@ describe("reflect-tokenised-bonds", () => {
             sendTransactionTimestamp + (typeof minLockup == "number" ? minLockup : minLockup.toNumber()),
             3
         );
+    });
+
+    it ("Deposits 500,000 reward token into the reward pool.", async () => {
+        const [vault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                new BN(0).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const {
+            rewardPool,
+            depositTokenMint
+        } = await Vault.fromAccountAddress(
+            provider.connection,
+            vault
+        );
+
+        await mintTokens(
+            depositTokenMint,
+            provider,
+            500_000,
+            rewardPool
+        );
+    });
+
+    it("Withdraws tokens and reward.", async () => {
+        const [vault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                new BN(0).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        let {
+            rewardPool,
+            depositTokenMint,
+            receiptTokenMint,
+            depositPool,
+            minLockup
+        }  = await Vault.fromAccountAddress(
+            provider.connection,
+            vault
+        );
+
+        console.log(`Awaiting ${ parseInt(minLockup.toString()) } seconds of the lockup.`);
+        await sleep(parseInt(minLockup.toString()) * 1000);
+
+        const [lockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lockup"),
+                (new BN(0)).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const userDepositTokenAccount = getAssociatedTokenAddressSync(
+            depositTokenMint,
+            user.publicKey
+        );
+
+        const lockupReceiptTokenAccount = getAssociatedTokenAddressSync(
+            receiptTokenMint,
+            lockup,
+            true
+        );
+
+        const preTxDepositPoolData = await getAccount(
+            provider.connection,
+            depositPool
+        );
+
+        const preTxRewardPoolData = await getAccount(
+            provider.connection,
+            rewardPool
+        );
+
+        const ix = await program
+            .methods
+            .withdraw(
+                new BN(0),
+                new BN(0)
+            )
+            .accounts({
+                user: user.publicKey,
+                vault,
+                rewardPool,
+                receiptMint: receiptTokenMint,
+                lockup,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                depositPool,
+                userDepositTokenAccount,
+                lockupReceiptTokenAccount
+            })
+            .signers([user])
+            .instruction();
+
+        const transaction = new Transaction();
+        transaction.add(ix);
+
+        const {
+            lastValidBlockHeight,
+            blockhash
+        } = await provider.connection.getLatestBlockhash();
+
+        transaction.feePayer = user.publicKey;
+        transaction.recentBlockhash = blockhash;
+
+        transaction.sign(user);
+        const signature = await provider.connection.sendRawTransaction(transaction.serialize(), { skipPreflight: true });
+
+        await provider.connection.confirmTransaction({
+            blockhash,
+            lastValidBlockHeight,
+            signature
+        }, "confirmed");
+
+        const rewardPoolData = await getAccount(
+            provider.connection,
+            rewardPool
+        );
+
+        let depositPoolData = await getAccount(
+            provider.connection,
+            depositPool
+        );
+
+        const userDepositTokenAccountData = await getAccount(
+            provider.connection,
+            userDepositTokenAccount
+        );
+
+        expect(rewardPoolData.amount.toString()).eq("0");
+        expect(depositPoolData.amount.toString()).eq("0");
+        expect(userDepositTokenAccountData.amount.toString()).eq(`${
+                parseInt(preTxDepositPoolData.amount.toString())
+                + parseInt(preTxRewardPoolData.amount.toString())
+        }`);
     });
 });

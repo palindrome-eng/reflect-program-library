@@ -60,7 +60,15 @@ mod reflect_tokenised_bonds {
         instructions::lockup(ctx, receipt_amount)
     }
 
-    pub fn complete_withdraw(ctx: Context<Withdraw>) -> Result<()> {
-        instructions::withdraw(ctx)
+    pub fn withdraw(
+        ctx: Context<Withdraw>, 
+        lockup_id: u64,
+        vault_id: u64
+    ) -> Result<()> {
+        instructions::withdraw(
+            ctx, 
+            lockup_id,
+            vault_id
+        )
     }
 }

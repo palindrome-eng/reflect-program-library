@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::instruction};
 use anchor_spl::token::{
     Burn,
     Token, 
@@ -9,8 +9,13 @@ use anchor_spl::token::{
     Mint,
 };
 use crate::state::*;
+use crate::constants::*;
 
-pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
+pub fn withdraw(
+    ctx: Context<Withdraw>,
+    lockup_id: u64,
+    vault_id: u64
+) -> Result<()> {
     let user = &ctx.accounts.user;
     let vault = &ctx.accounts.vault;
     let lockup = &ctx.accounts.lockup;
@@ -37,13 +42,18 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
     let reward_amount = (user_share as u128 * reward_pool.amount as u128 / total_supply as u128) as u64;
 
     burn(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             token_program.to_account_info(), 
             Burn {
                 mint: receipt_mint.to_account_info(),
                 from: lockup_receipt_token_account.to_account_info(),
-                authority: user.to_account_info(),
-            }
+                authority: lockup.to_account_info(),
+            },
+            &[&[
+                LOCKUP_SEED.as_bytes(),
+                &lockup_id.to_le_bytes(),
+                &[ctx.bumps.lockup]
+            ]]
         ), 
         lockup.receipt_amount
     )?;
@@ -51,13 +61,18 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
     // Transfer deposit tokens to the user
     if deposit_amount > 0 {
         transfer(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 token_program.to_account_info(), 
                 Transfer {
                     from: deposit_pool.to_account_info(),
                     to: user_deposit_token_account.to_account_info(),
                     authority: vault.to_account_info(),
-                }
+                },
+                &[&[
+                    VAULT_SEED.as_bytes(),
+                    &vault_id.to_le_bytes(),
+                    &[ctx.bumps.vault]
+                ]]
             ), 
             deposit_amount
         )?;
@@ -66,13 +81,18 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
     // Transfer reward tokens to the user
     if reward_amount > 0 {
         transfer(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 token_program.to_account_info(), 
                 Transfer {
                     from: reward_pool.to_account_info(),
                     to: user_deposit_token_account.to_account_info(),
                     authority: vault.to_account_info(),
-                }
+                },
+                &[&[
+                    VAULT_SEED.as_bytes(),
+                    &vault_id.to_le_bytes(),
+                    &[ctx.bumps.vault]
+                ]]
             ), 
             reward_amount
         )?;
@@ -82,6 +102,10 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
 }
 
 #[derive(Accounts)]
+#[instruction(
+    lockup_id: u64,
+    vault_id: u64
+)]
 pub struct Withdraw<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
@@ -90,10 +114,23 @@ pub struct Withdraw<'info> {
         mut, 
         has_one = user,
         has_one = vault,
+        seeds = [
+            LOCKUP_SEED.as_bytes(),
+            &lockup_id.to_le_bytes()
+        ],
+        bump,
+        close = user,
     )]
     pub lockup: Account<'info, LockupState>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            VAULT_SEED.as_bytes(),
+            &vault_id.to_le_bytes(),
+        ],
+        bump
+    )]
     pub vault: Account<'info, Vault>,
 
     #[account(

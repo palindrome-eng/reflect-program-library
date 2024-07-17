@@ -35,7 +35,7 @@ pub fn lockup(
                 to: lockup_receipt_token_account.to_account_info(),
                 authority: user.to_account_info(),
             }
-        ), 
+        ),
         receipt_amount
     )?;
 

@@ -11,17 +11,30 @@ import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
- * @category CompleteWithdraw
+ * @category Withdraw
  * @category generated
  */
-export const completeWithdrawStruct = new beet.BeetArgsStruct<{
-  instructionDiscriminator: number[] /* size: 8 */
-}>(
-  [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
-  'CompleteWithdrawInstructionArgs'
+export type WithdrawInstructionArgs = {
+  lockupId: beet.bignum
+}
+/**
+ * @category Instructions
+ * @category Withdraw
+ * @category generated
+ */
+export const withdrawStruct = new beet.BeetArgsStruct<
+  WithdrawInstructionArgs & {
+    instructionDiscriminator: number[] /* size: 8 */
+  }
+>(
+  [
+    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['lockupId', beet.u64],
+  ],
+  'WithdrawInstructionArgs'
 )
 /**
- * Accounts required by the _completeWithdraw_ instruction
+ * Accounts required by the _withdraw_ instruction
  *
  * @property [_writable_, **signer**] user
  * @property [_writable_] lockup
@@ -32,10 +45,10 @@ export const completeWithdrawStruct = new beet.BeetArgsStruct<{
  * @property [_writable_] rewardPool
  * @property [_writable_] receiptMint
  * @category Instructions
- * @category CompleteWithdraw
+ * @category Withdraw
  * @category generated
  */
-export type CompleteWithdrawInstructionAccounts = {
+export type WithdrawInstructionAccounts = {
   user: web3.PublicKey
   lockup: web3.PublicKey
   vault: web3.PublicKey
@@ -48,24 +61,28 @@ export type CompleteWithdrawInstructionAccounts = {
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const completeWithdrawInstructionDiscriminator = [
-  172, 129, 141, 17, 95, 253, 251, 98,
+export const withdrawInstructionDiscriminator = [
+  183, 18, 70, 156, 148, 109, 161, 34,
 ]
 
 /**
- * Creates a _CompleteWithdraw_ instruction.
+ * Creates a _Withdraw_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
+ * @param args to provide as instruction data to the program
+ *
  * @category Instructions
- * @category CompleteWithdraw
+ * @category Withdraw
  * @category generated
  */
-export function createCompleteWithdrawInstruction(
-  accounts: CompleteWithdrawInstructionAccounts,
+export function createWithdrawInstruction(
+  accounts: WithdrawInstructionAccounts,
+  args: WithdrawInstructionArgs,
   programId = new web3.PublicKey('6ZZ1sxKGuXUBL8HSsHqHaYCg92G9VhMNTcJv1gFURCop')
 ) {
-  const [data] = completeWithdrawStruct.serialize({
-    instructionDiscriminator: completeWithdrawInstructionDiscriminator,
+  const [data] = withdrawStruct.serialize({
+    instructionDiscriminator: withdrawInstructionDiscriminator,
+    ...args,
   })
   const keys: web3.AccountMeta[] = [
     {

@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 
 /**
@@ -15,6 +15,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type LockupStateArgs = {
+  id: beet.bignum
   user: web3.PublicKey
   vault: web3.PublicKey
   receiptAmount: beet.bignum
@@ -31,6 +32,7 @@ export const lockupStateDiscriminator = [25, 124, 231, 252, 84, 85, 50, 13]
  */
 export class LockupState implements LockupStateArgs {
   private constructor(
+    readonly id: beet.bignum,
     readonly user: web3.PublicKey,
     readonly vault: web3.PublicKey,
     readonly receiptAmount: beet.bignum,
@@ -42,6 +44,7 @@ export class LockupState implements LockupStateArgs {
    */
   static fromArgs(args: LockupStateArgs) {
     return new LockupState(
+      args.id,
       args.user,
       args.vault,
       args.receiptAmount,
@@ -152,6 +155,17 @@ export class LockupState implements LockupStateArgs {
    */
   pretty() {
     return {
+      id: (() => {
+        const x = <{ toNumber: () => number }>this.id
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       user: this.user.toBase58(),
       vault: this.vault.toBase58(),
       receiptAmount: (() => {
@@ -192,6 +206,7 @@ export const lockupStateBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['id', beet.u64],
     ['user', beetSolana.publicKey],
     ['vault', beetSolana.publicKey],
     ['receiptAmount', beet.u64],
