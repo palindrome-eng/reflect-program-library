@@ -4,6 +4,9 @@ use crate::{constants::RTB_SEED, state::*};
 pub fn initialize_protocol(
     ctx: Context<InitializeProtocol>
 ) -> Result<()> {
+    let rtb_protocol = &mut ctx.accounts.rtb_protocol;
+    rtb_protocol.next_vault_seed = 0;
+
     Ok(())
 }
 

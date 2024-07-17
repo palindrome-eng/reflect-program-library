@@ -11,77 +11,76 @@ import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
- * @category Deposit
+ * @category Lockup
  * @category generated
  */
-export type DepositInstructionArgs = {
-  amount: beet.bignum
-  vaultId: beet.bignum
+export type LockupInstructionArgs = {
+  receiptAmount: beet.bignum
 }
 /**
  * @category Instructions
- * @category Deposit
+ * @category Lockup
  * @category generated
  */
-export const depositStruct = new beet.BeetArgsStruct<
-  DepositInstructionArgs & {
+export const lockupStruct = new beet.BeetArgsStruct<
+  LockupInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['amount', beet.u64],
-    ['vaultId', beet.u64],
+    ['receiptAmount', beet.u64],
   ],
-  'DepositInstructionArgs'
+  'LockupInstructionArgs'
 )
 /**
- * Accounts required by the _deposit_ instruction
+ * Accounts required by the _lockup_ instruction
  *
  * @property [_writable_, **signer**] user
+ * @property [_writable_] userAccount
  * @property [_writable_] vault
- * @property [_writable_] depositTokenAccount
- * @property [_writable_] receiptTokenAccount
- * @property [_writable_] rewardPool
- * @property [_writable_] depositPool
- * @property [_writable_] receiptTokenMint
+ * @property [_writable_] lockup
+ * @property [_writable_] userReceiptTokenAccount
+ * @property [_writable_] lockupReceiptTokenAccount
+ * @property [] clock
  * @category Instructions
- * @category Deposit
+ * @category Lockup
  * @category generated
  */
-export type DepositInstructionAccounts = {
+export type LockupInstructionAccounts = {
   user: web3.PublicKey
+  userAccount: web3.PublicKey
   vault: web3.PublicKey
-  depositTokenAccount: web3.PublicKey
-  receiptTokenAccount: web3.PublicKey
-  rewardPool: web3.PublicKey
-  depositPool: web3.PublicKey
-  receiptTokenMint: web3.PublicKey
+  lockup: web3.PublicKey
+  userReceiptTokenAccount: web3.PublicKey
+  lockupReceiptTokenAccount: web3.PublicKey
   tokenProgram?: web3.PublicKey
+  systemProgram?: web3.PublicKey
+  clock: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const depositInstructionDiscriminator = [
-  242, 35, 198, 137, 82, 225, 242, 182,
+export const lockupInstructionDiscriminator = [
+  158, 73, 228, 89, 157, 8, 70, 144,
 ]
 
 /**
- * Creates a _Deposit_ instruction.
+ * Creates a _Lockup_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category Deposit
+ * @category Lockup
  * @category generated
  */
-export function createDepositInstruction(
-  accounts: DepositInstructionAccounts,
-  args: DepositInstructionArgs,
+export function createLockupInstruction(
+  accounts: LockupInstructionAccounts,
+  args: LockupInstructionArgs,
   programId = new web3.PublicKey('6ZZ1sxKGuXUBL8HSsHqHaYCg92G9VhMNTcJv1gFURCop')
 ) {
-  const [data] = depositStruct.serialize({
-    instructionDiscriminator: depositInstructionDiscriminator,
+  const [data] = lockupStruct.serialize({
+    instructionDiscriminator: lockupInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -91,37 +90,42 @@ export function createDepositInstruction(
       isSigner: true,
     },
     {
+      pubkey: accounts.userAccount,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.vault,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.depositTokenAccount,
+      pubkey: accounts.lockup,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.receiptTokenAccount,
+      pubkey: accounts.userReceiptTokenAccount,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.rewardPool,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.depositPool,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.receiptTokenMint,
+      pubkey: accounts.lockupReceiptTokenAccount,
       isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.clock,
       isWritable: false,
       isSigner: false,
     },

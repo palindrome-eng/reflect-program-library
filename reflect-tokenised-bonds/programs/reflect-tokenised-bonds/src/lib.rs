@@ -44,8 +44,16 @@ mod reflect_tokenised_bonds {
         instructions::init_vault_pools(ctx, vault_seed)
     }
 
-    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
-        instructions::deposit(ctx, amount)
+    pub fn deposit(
+        ctx: Context<Deposit>, 
+        amount: u64,
+        vault_id: u64,
+    ) -> Result<()> {
+        instructions::deposit(
+            ctx, 
+            amount,
+            vault_id
+        )
     }
 
     pub fn lockup(ctx: Context<Lockup>, receipt_amount: u64) -> Result<()> {

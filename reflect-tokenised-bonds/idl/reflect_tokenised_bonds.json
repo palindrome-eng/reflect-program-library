@@ -175,6 +175,10 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "vaultId",
+          "type": "u64"
         }
       ]
     },

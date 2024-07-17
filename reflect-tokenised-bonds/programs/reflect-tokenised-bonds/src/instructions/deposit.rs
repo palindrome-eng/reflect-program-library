@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::instruction;
 use anchor_spl::token::{
     Mint, 
     Token, 
@@ -10,8 +11,13 @@ use anchor_spl::token::{
 };
 use crate::state::*;
 use crate::errors::*;
+use crate::constants::*;
 
-pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+pub fn deposit(
+    ctx: Context<Deposit>, 
+    amount: u64,
+    vault_id: u64
+) -> Result<()> {
     let user = &ctx.accounts.user;
     let vault = &mut ctx.accounts.vault;
     let deposit_pool = &ctx.accounts.deposit_pool;
@@ -52,13 +58,18 @@ pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     )?;
     
     mint_to(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             token_program.to_account_info(), 
             MintTo {
                 mint: receipt_token_mint.to_account_info(),
                 to: receipt_token_account.to_account_info(),
                 authority: vault.to_account_info(),
-            }
+            },
+            &[&[
+                VAULT_SEED.as_bytes(),
+                &vault_id.to_le_bytes(),
+                &[ctx.bumps.vault]
+            ]]
         ), 
         receipt_amount
     )?;
@@ -67,6 +78,10 @@ pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
 }
 
 #[derive(Accounts)]
+#[instruction(
+    amount: u64,
+    vault_id: u64
+)]
 pub struct Deposit<'info> {
     #[account(
         mut
@@ -74,7 +89,12 @@ pub struct Deposit<'info> {
     pub user: Signer<'info>,
 
     #[account(
-        mut
+        mut,
+        seeds = [
+            VAULT_SEED.as_bytes(),
+            vault_id.to_le_bytes().as_ref()
+        ],
+        bump,
     )]
     pub vault: Account<'info, Vault>,
 
