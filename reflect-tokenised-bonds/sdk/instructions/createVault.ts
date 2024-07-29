@@ -41,15 +41,17 @@ export const createVaultStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _createVault_ instruction
  *
- * @property [_writable_] vault
  * @property [_writable_, **signer**] admin
+ * @property [_writable_] rtbProtocol
+ * @property [_writable_] vault
  * @category Instructions
  * @category CreateVault
  * @category generated
  */
 export type CreateVaultInstructionAccounts = {
-  vault: web3.PublicKey
   admin: web3.PublicKey
+  rtbProtocol: web3.PublicKey
+  vault: web3.PublicKey
   systemProgram?: web3.PublicKey
   rent?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -80,14 +82,19 @@ export function createCreateVaultInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.vault,
+      pubkey: accounts.admin,
+      isWritable: true,
+      isSigner: true,
+    },
+    {
+      pubkey: accounts.rtbProtocol,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.admin,
+      pubkey: accounts.vault,
       isWritable: true,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,

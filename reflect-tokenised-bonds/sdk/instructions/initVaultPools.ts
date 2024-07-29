@@ -36,8 +36,8 @@ export const initVaultPoolsStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _initVaultPools_ instruction
  *
- * @property [_writable_] vault
  * @property [_writable_, **signer**] admin
+ * @property [_writable_] vault
  * @property [_writable_] depositPool
  * @property [_writable_] rewardPool
  * @property [_writable_] depositTokenMint
@@ -47,8 +47,8 @@ export const initVaultPoolsStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type InitVaultPoolsInstructionAccounts = {
-  vault: web3.PublicKey
   admin: web3.PublicKey
+  vault: web3.PublicKey
   depositPool: web3.PublicKey
   rewardPool: web3.PublicKey
   depositTokenMint: web3.PublicKey
@@ -84,14 +84,14 @@ export function createInitVaultPoolsInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.vault,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
       pubkey: accounts.admin,
       isWritable: true,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.vault,
+      isWritable: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.depositPool,

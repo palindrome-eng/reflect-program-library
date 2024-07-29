@@ -3,17 +3,43 @@
   "name": "reflect_tokenised_bonds",
   "instructions": [
     {
-      "name": "createVault",
+      "name": "initializeProtocol",
       "accounts": [
         {
-          "name": "vault",
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rtbProtocol",
           "isMut": true,
           "isSigner": false
         },
         {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createVault",
+      "accounts": [
+        {
           "name": "admin",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "rtbProtocol",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "systemProgram",
@@ -49,14 +75,14 @@
       "name": "initVaultPools",
       "accounts": [
         {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "admin",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "depositPool",
@@ -105,14 +131,14 @@
       "name": "deposit",
       "accounts": [
         {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "vault",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "depositor",
-          "isMut": true,
-          "isSigner": true
         },
         {
           "name": "depositTokenAccount",
@@ -149,29 +175,43 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "vaultId",
+          "type": "u64"
         }
       ]
     },
     {
-      "name": "requestWithdraw",
+      "name": "lockup",
       "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "userAccount",
+          "isMut": true,
+          "isSigner": false
+        },
         {
           "name": "vault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "withdrawRequest",
+          "name": "lockup",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
-          "name": "requester",
+          "name": "userReceiptTokenAccount",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
-          "name": "receiptTokenAccount",
+          "name": "lockupReceiptTokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -186,7 +226,7 @@
           "isSigner": false
         },
         {
-          "name": "rent",
+          "name": "clock",
           "isMut": false,
           "isSigner": false
         }
@@ -199,25 +239,25 @@
       ]
     },
     {
-      "name": "completeWithdraw",
+      "name": "withdraw",
       "accounts": [
-        {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "withdrawRequest",
-          "isMut": true,
-          "isSigner": false
-        },
         {
           "name": "user",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "receiptTokenAccount",
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupReceiptTokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -237,15 +277,77 @@
           "isSigner": false
         },
         {
+          "name": "receiptMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "lockupId",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "LockupState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "type": "publicKey"
+          },
+          {
+            "name": "vault",
+            "type": "publicKey"
+          },
+          {
+            "name": "receiptAmount",
+            "type": "u64"
+          },
+          {
+            "name": "unlockDate",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RTBProtocol",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nextVaultSeed",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockups",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "Vault",
       "type": {
@@ -289,55 +391,36 @@
           }
         ]
       }
-    },
-    {
-      "name": "WithdrawRequest",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "publicKey"
-          },
-          {
-            "name": "vault",
-            "type": "publicKey"
-          },
-          {
-            "name": "receiptAmount",
-            "type": "u64"
-          },
-          {
-            "name": "unlockDate",
-            "type": "i64"
-          }
-        ]
-      }
     }
   ],
   "errors": [
     {
       "code": 6000,
+      "name": "InvalidVaultSeed",
+      "msg": "Vault PDA is derived with invalid vault seed."
+    },
+    {
+      "code": 6001,
       "name": "InsufficientDeposit",
       "msg": "Insufficient deposit amount."
     },
     {
-      "code": 6001,
+      "code": 6002,
       "name": "LockupNotExpired",
       "msg": "Lockup period has not expired."
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "InvalidMintAuthority",
       "msg": "Invalid mint authority. Move mint authority of the receipt token to the vault PDA."
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "InvalidFreezeAuthority",
       "msg": "Invalid freeze authority. Move freeze authority of the receipt token to the vault PDA, or remove it completely."
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "NonZeroReceiptSupply",
       "msg": "Supply of the receipt token has to be 0. Pre-minting is not allowed."
     }
