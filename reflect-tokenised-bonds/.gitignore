@@ -1,6 +1,7 @@
-
+.crates
 .anchor
 .DS_Store
+.idea
 target
 **/*.rs.bk
 node_modules

@@ -1,11 +1,9 @@
-#![feature(result_option_inspect)]
-
-// src/lib.rs
 use anchor_lang::prelude::*;
 pub mod instructions;
 pub mod states;
 pub mod errors;
 pub mod utils;
+pub mod constants;
 pub use instructions::*;
 
 declare_id!("sSmYaKe6tj5VKjPzHhpakpamw1PYoJFLQNyMJD3PU37");

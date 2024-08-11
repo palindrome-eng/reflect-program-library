@@ -51,7 +51,7 @@ describe("solana-stake-market", () => {
 
     before(async () => {
         [orderBookAccount] = PublicKey.findProgramAddressSync(
-            [Buffer.from("orderBook")],
+            [Buffer.from("order_book")],
             program.programId
         );
 
@@ -152,8 +152,7 @@ describe("solana-stake-market", () => {
             amount: bidAmount,
             fulfilled: bidFulfilled,
             rate: bidRate,
-            bidder,
-            purchasedStakeAccounts
+            bidder
         } = await Bid.fromAccountAddress(
             provider.connection,
             bidPda
@@ -163,7 +162,6 @@ describe("solana-stake-market", () => {
         expect(bidFulfilled).eq(false);
         expect(bidRate.toString()).eq(rate.toString());
         expect(bidder.toString()).eq(provider.wallet.publicKey.toString());
-        expect(purchasedStakeAccounts.length).eq(0);
 
         let orderBookData = await OrderBook.fromAccountAddress(
             provider.connection,

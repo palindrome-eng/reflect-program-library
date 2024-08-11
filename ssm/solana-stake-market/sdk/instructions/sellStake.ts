@@ -35,9 +35,9 @@ export const sellStakeStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _sellStake_ instruction
  *
+ * @property [_writable_, **signer**] seller
  * @property [_writable_] stakeAccount
  * @property [_writable_] orderBook
- * @property [_writable_, **signer**] seller
  * @property [] stakeProgram
  * @property [] rentSysvar
  * @property [] clock
@@ -46,13 +46,13 @@ export const sellStakeStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type SellStakeInstructionAccounts = {
+  seller: web3.PublicKey
   stakeAccount: web3.PublicKey
   orderBook: web3.PublicKey
-  seller: web3.PublicKey
   stakeProgram: web3.PublicKey
-  systemProgram?: web3.PublicKey
   rentSysvar: web3.PublicKey
   clock: web3.PublicKey
+  systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -81,6 +81,11 @@ export function createSellStakeInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
+      pubkey: accounts.seller,
+      isWritable: true,
+      isSigner: true,
+    },
+    {
       pubkey: accounts.stakeAccount,
       isWritable: true,
       isSigner: false,
@@ -91,17 +96,7 @@ export function createSellStakeInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.seller,
-      isWritable: true,
-      isSigner: true,
-    },
-    {
       pubkey: accounts.stakeProgram,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
@@ -112,6 +107,11 @@ export function createSellStakeInstruction(
     },
     {
       pubkey: accounts.clock,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },

@@ -22,15 +22,15 @@ export const initializeOrderBookWrapperStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _initializeOrderBookWrapper_ instruction
  *
- * @property [_writable_] orderBook
  * @property [_writable_, **signer**] user
+ * @property [_writable_] orderBook
  * @category Instructions
  * @category InitializeOrderBookWrapper
  * @category generated
  */
 export type InitializeOrderBookWrapperInstructionAccounts = {
-  orderBook: web3.PublicKey
   user: web3.PublicKey
+  orderBook: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -57,14 +57,14 @@ export function createInitializeOrderBookWrapperInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.orderBook,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
       pubkey: accounts.user,
       isWritable: true,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.orderBook,
+      isWritable: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,

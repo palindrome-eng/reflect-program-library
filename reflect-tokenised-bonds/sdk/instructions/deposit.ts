@@ -16,6 +16,7 @@ import * as web3 from '@solana/web3.js'
  */
 export type DepositInstructionArgs = {
   amount: beet.bignum
+  vaultId: beet.bignum
 }
 /**
  * @category Instructions
@@ -30,14 +31,15 @@ export const depositStruct = new beet.BeetArgsStruct<
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['amount', beet.u64],
+    ['vaultId', beet.u64],
   ],
   'DepositInstructionArgs'
 )
 /**
  * Accounts required by the _deposit_ instruction
  *
+ * @property [_writable_, **signer**] user
  * @property [_writable_] vault
- * @property [_writable_, **signer**] depositor
  * @property [_writable_] depositTokenAccount
  * @property [_writable_] receiptTokenAccount
  * @property [_writable_] rewardPool
@@ -48,8 +50,8 @@ export const depositStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type DepositInstructionAccounts = {
+  user: web3.PublicKey
   vault: web3.PublicKey
-  depositor: web3.PublicKey
   depositTokenAccount: web3.PublicKey
   receiptTokenAccount: web3.PublicKey
   rewardPool: web3.PublicKey
@@ -84,14 +86,14 @@ export function createDepositInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
+      pubkey: accounts.user,
+      isWritable: true,
+      isSigner: true,
+    },
+    {
       pubkey: accounts.vault,
       isWritable: true,
       isSigner: false,
-    },
-    {
-      pubkey: accounts.depositor,
-      isWritable: true,
-      isSigner: true,
     },
     {
       pubkey: accounts.depositTokenAccount,
