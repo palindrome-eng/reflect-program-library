@@ -7,7 +7,7 @@ pub struct Settings {
     pub tvl: u64,
     pub lockups: u64,
     pub whitelisted_assets: Vec<Pubkey>,
-    pub frozen: bool,
+    pub deposits_locked: bool,
 }
 
 impl Settings {

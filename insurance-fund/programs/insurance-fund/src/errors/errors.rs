@@ -19,4 +19,16 @@ pub enum InsuranceFundError {
 
     #[msg("NotEnoughFunds")]
     NotEnoughFunds,
+
+    #[msg("NotEnoughFundsToSlash")]
+    NotEnoughFundsToSlash,
+
+    #[msg("DepositsLocked")]
+    DepositsLocked,
+
+    #[msg("DepositsOpen")]
+    DepositsOpen,
+
+    #[msg("DepositsNotSlashed")]
+    DepositsNotSlashed,
 }

@@ -41,6 +41,8 @@ pub fn restake(
     deposit.lockup = lockup.key();
     deposit.user = user.key();
     deposit.unlock_ts = unix_ts + lockup.duration;
+    deposit.last_slashed = None;
+    deposit.amount_slashed = 0;
 
     transfer(
         CpiContext::new(
@@ -76,7 +78,7 @@ pub struct Restake<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen
+        constraint = !settings.deposits_locked @ InsuranceFundError::DepositsLocked
     )]
     pub settings: Account<'info, Settings>,
 
@@ -108,12 +110,12 @@ pub struct Restake<'info> {
         mut,
         address = lockup.asset
     )]
-    pub asset: Account<'info, Mint>,
+    pub asset_mint: Account<'info, Mint>,
 
     #[account(
         mut,
         associated_token::authority = user,
-        associated_token::mint = asset,
+        associated_token::mint = asset_mint,
         constraint = user_asset_ata.amount >= args.amount @ InsuranceFundError::NotEnoughFunds
     )]
     pub user_asset_ata: Account<'info, TokenAccount>,
@@ -122,7 +124,8 @@ pub struct Restake<'info> {
         mut,
         seeds = [
             VAULT_SEED.as_bytes(),
-            lockup.key().as_ref()
+            lockup.key().as_ref(),
+            asset_mint.key().as_ref(),
         ],
         bump,
         constraint = lockup_asset_vault.amount + args.amount <= lockup.deposit_cap @ InsuranceFundError::DepositCapOverflow

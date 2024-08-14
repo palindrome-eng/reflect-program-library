@@ -7,6 +7,14 @@ pub enum YieldMode {
     Dual([u64; 2]) // Offers both rUSD and $R yields
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
+pub struct SlashState {
+    // How many times was this lockup slashed
+    pub index: u64,
+    // Total amount slashed
+    pub amount: u64,
+}
+
 #[account]
 pub struct Lockup {
     pub bump: u8,
@@ -18,8 +26,9 @@ pub struct Lockup {
     pub yield_mode: YieldMode,
     pub deposit_cap: u64,
     pub deposits: u64,
+    pub slash_state: SlashState,
 }
 
 impl Lockup {
-    pub const SIZE: usize = 8 + 1 + 6 * 8 + 32 + 17;
+    pub const SIZE: usize = 8 + 1 + 6 * 8 + 32 + 17 + 16;
 }

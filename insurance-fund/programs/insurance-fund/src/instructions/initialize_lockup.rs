@@ -37,6 +37,10 @@ pub fn initialize_lockup(
     lockup.min_deposit = min_deposit;
     lockup.yield_bps = yield_bps;
     lockup.yield_mode = yield_mode;
+    lockup.slash_state = SlashState {
+        index: 0,
+        amount: 0
+    };
 
     settings.lockups += 1;
 
@@ -81,6 +85,12 @@ pub struct InitializeLockup<'info> {
     #[account(
         init,
         payer = superadmin,
+        seeds = [
+            VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            asset_mint.key().as_ref(),
+        ],
+        bump,
         token::mint = asset_mint,
         token::authority = lockup,
     )]
