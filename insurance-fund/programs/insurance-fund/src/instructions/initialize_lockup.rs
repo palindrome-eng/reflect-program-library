@@ -14,6 +14,7 @@ pub struct InitializeLockupArgs {
     pub duration: u64,
     pub yield_bps: u64,
     pub yield_mode: YieldMode,
+    pub boosts: Vec<RewardBoost>
 }
 
 pub fn initialize_lockup(
@@ -28,7 +29,8 @@ pub fn initialize_lockup(
         duration,
         min_deposit,
         yield_bps,
-        yield_mode
+        yield_mode,
+        boosts
     } = args;
 
     lockup.index = settings.lockups;
@@ -41,6 +43,7 @@ pub fn initialize_lockup(
         index: 0,
         amount: 0
     };
+    lockup.reward_boosts = boosts;
 
     settings.lockups += 1;
 
@@ -60,6 +63,10 @@ pub struct InitializeLockup<'info> {
 
     #[account(
         mut,
+        seeds = [
+            SETTINGS_SEED.as_bytes()
+        ],
+        bump,
         has_one = superadmin
     )]
     pub settings: Account<'info, Settings>,
@@ -72,13 +79,18 @@ pub struct InitializeLockup<'info> {
         ],
         bump,
         payer = superadmin,
-        space = Lockup::SIZE
+        space = Lockup::SIZE + args.boosts.len() * RewardBoost::LEN
     )]
     pub lockup: Account<'info, Lockup>,
 
     #[account(
         mut,
-        constraint = settings.whitelisted_assets.contains(&asset_mint.key()) @ InsuranceFundError::AssetNotWhitelisted
+        constraint = settings
+            .assets
+            .iter()
+            .map(|asset| asset.mint)
+            .collect::<Vec<Pubkey>>()
+            .contains(&asset_mint.key()) @ InsuranceFundError::AssetNotWhitelisted
     )]
     pub asset_mint: Account<'info, Mint>,
 

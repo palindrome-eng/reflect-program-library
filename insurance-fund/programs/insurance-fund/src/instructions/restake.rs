@@ -31,6 +31,7 @@ pub fn restake(
     let settings = &mut ctx.accounts.settings;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
+    let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let lockup = &mut ctx.accounts.lockup;
     let deposit = &mut ctx.accounts.deposit;
 
@@ -44,6 +45,22 @@ pub fn restake(
     deposit.last_slashed = None;
     deposit.amount_slashed = 0;
 
+    let cold_wallet_deposit = ((amount as f64) * 0.7) as u64;
+
+    // Transfer to multisig
+    transfer(
+        CpiContext::new(
+            token_program.to_account_info(),
+            Transfer {
+                from: user_asset_ata.to_account_info(),
+                authority: user.to_account_info(),
+                to: cold_wallet_vault.to_account_info()
+            }
+        ), 
+        cold_wallet_deposit
+    )?;
+
+    // Transfer to hot wallet
     transfer(
         CpiContext::new(
             token_program.to_account_info(), 
@@ -53,11 +70,11 @@ pub fn restake(
                 authority: user.to_account_info()
             }
         ), 
-        amount
+        amount - cold_wallet_deposit
     )?;
 
     lockup.deposits += 1;
-    settings.tvl += amount;
+    settings.increase_tvl(&lockup.asset, amount)?;
 
     Ok(())
 }
@@ -105,6 +122,20 @@ pub struct Restake<'info> {
         space = Deposit::LEN
     )]
     pub deposit: Account<'info, Deposit>,
+
+    // For now it's SystemAccount - should be Squads multisig type?
+    #[account(
+        mut,
+        address = settings.cold_wallet
+    )]
+    pub cold_wallet: SystemAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = cold_wallet
+    )]
+    pub cold_wallet_vault: Account<'info, TokenAccount>,
 
     #[account(
         mut,

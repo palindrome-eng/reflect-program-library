@@ -9,3 +9,6 @@ pub use restake::*;
 
 pub mod slash;
 pub use slash::*;
+
+pub mod add_asset;
+pub use add_asset::*;

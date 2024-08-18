@@ -9,7 +9,3 @@ pub use slash_pool::*;
 // Slashes individual pools.
 pub mod slash_deposits;
 pub use slash_deposits::*;
-
-// Unlocks all balances after slashing.
-pub mod unlock_deposits;
-pub use unlock_deposits::*;

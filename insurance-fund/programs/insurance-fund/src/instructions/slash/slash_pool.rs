@@ -29,7 +29,7 @@ pub fn slash_pool(
     let slash = &ctx.accounts.slash;
     let token_program = &ctx.accounts.token_program;
 
-    let lockup = &ctx.accounts.lockup;
+    let lockup = &mut ctx.accounts.lockup;
     let signer_seeds = &[
         LOCKUP_SEED.as_bytes(),
         &lockup_id.to_le_bytes(),
@@ -51,6 +51,9 @@ pub fn slash_pool(
         ), 
         slash.slashed_amount
     )?;
+
+    lockup.slash_state.amount += slash.slashed_amount;
+    lockup.slash_state.index += 1;
 
     Ok(())
 }

@@ -3,7 +3,8 @@ use crate::states::*;
 use crate::constants::*;
 
 pub fn initialize_insurance_fund(
-    ctx: Context<InitializeInsuranceFund>
+    ctx: Context<InitializeInsuranceFund>,
+    cold_wallet: Pubkey,
 ) -> Result<()> {
     let superadmin = &ctx.accounts.superadmin;
     let settings = &mut ctx.accounts.settings;
@@ -11,7 +12,7 @@ pub fn initialize_insurance_fund(
     settings.superadmin = *superadmin.key;
     settings.bump = ctx.bumps.settings;
     settings.lockups = 0;
-    settings.tvl = 0;
+    settings.cold_wallet = cold_wallet;
 
     Ok(())
 }

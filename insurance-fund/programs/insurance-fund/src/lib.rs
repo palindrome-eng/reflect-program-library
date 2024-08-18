@@ -24,4 +24,12 @@ pub mod insurance_fund {
     ) -> Result<()> {
         instructions::initialize_lockup(ctx, args)
     }
+
+    pub fn add_asset(
+        ctx: Context<AddAsset>,
+    ) -> Result<()> {
+        instructions::add_asset(ctx)
+    }
+
+    pub fn 
 }

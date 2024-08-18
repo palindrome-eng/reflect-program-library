@@ -100,7 +100,8 @@ pub struct SlashDeposits<'info> {
             &args.slash_id.to_le_bytes()
         ],
         bump,
-        constraint = slash.index == args.slash_id @ InsuranceFundError::InvalidInput
+        constraint = slash.index == args.slash_id @ InsuranceFundError::InvalidInput,
+        constraint = slash.slashed_accounts <= lockup.deposits @ InsuranceFundError::AllDepositsSlashed
     )]
     pub slash: Account<'info, Slash>,
 

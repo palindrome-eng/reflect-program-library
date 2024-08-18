@@ -8,6 +8,18 @@ pub enum YieldMode {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
+pub struct RewardBoost {
+    // Minimum USD value of the deposit to be included in the tier.
+    pub min_usd_value: u64,
+    // % of the $R rewards in basepoints
+    pub boost_bps: u64,
+}
+
+impl RewardBoost {
+    pub const LEN: usize = 2 * 8;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub struct SlashState {
     // How many times was this lockup slashed
     pub index: u64,
@@ -27,8 +39,9 @@ pub struct Lockup {
     pub deposit_cap: u64,
     pub deposits: u64,
     pub slash_state: SlashState,
+    pub reward_boosts: Vec<RewardBoost>,
 }
 
 impl Lockup {
-    pub const SIZE: usize = 8 + 1 + 6 * 8 + 32 + 17 + 16;
+    pub const SIZE: usize = 8 + 1 + 6 * 8 + 32 + 17 + 16 + 4;
 }

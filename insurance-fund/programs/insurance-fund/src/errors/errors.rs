@@ -31,4 +31,7 @@ pub enum InsuranceFundError {
 
     #[msg("DepositsNotSlashed")]
     DepositsNotSlashed,
+
+    #[msg("AllDepositsSlashed")]
+    AllDepositsSlashed
 }
