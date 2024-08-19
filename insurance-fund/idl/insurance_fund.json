@@ -1,0 +1,786 @@
+{
+  "version": "0.1.0",
+  "name": "insurance_fund",
+  "constants": [
+    {
+      "name": "SETTINGS_SEED",
+      "type": "string",
+      "value": "\"settings\""
+    },
+    {
+      "name": "LOCKUP_SEED",
+      "type": "string",
+      "value": "\"lockup\""
+    },
+    {
+      "name": "VAULT_SEED",
+      "type": "string",
+      "value": "\"vault\""
+    },
+    {
+      "name": "DEPOSIT_SEED",
+      "type": "string",
+      "value": "\"deposit\""
+    },
+    {
+      "name": "SLASH_SEED",
+      "type": "string",
+      "value": "\"slash\""
+    }
+  ],
+  "instructions": [
+    {
+      "name": "initializeInsuranceFund",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "coldWallet",
+          "type": "publicKey"
+        }
+      ]
+    },
+    {
+      "name": "initializeLockup",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetLockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "InitializeLockupArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addAsset",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracle",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "restake",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deposit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "coldWallet",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "coldWalletVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupAssetVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RestakeArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "initializeSlash",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetLockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "slash",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "InitializeSlashArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "slashDeposits",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "slash",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetLockup",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SlashDepositsArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "slashPool",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "slash",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetLockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SlashPoolArgs"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Deposit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "initialUsdValue",
+            "type": "u64"
+          },
+          {
+            "name": "amountSlashed",
+            "type": "u64"
+          },
+          {
+            "name": "lockup",
+            "type": "publicKey"
+          },
+          {
+            "name": "unlockTs",
+            "type": "u64"
+          },
+          {
+            "name": "lastSlashed",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Lockup",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "index",
+            "type": "u64"
+          },
+          {
+            "name": "asset",
+            "type": "publicKey"
+          },
+          {
+            "name": "minDeposit",
+            "type": "u64"
+          },
+          {
+            "name": "duration",
+            "type": "u64"
+          },
+          {
+            "name": "yieldBps",
+            "type": "u64"
+          },
+          {
+            "name": "yieldMode",
+            "type": {
+              "defined": "YieldMode"
+            }
+          },
+          {
+            "name": "depositCap",
+            "type": "u64"
+          },
+          {
+            "name": "deposits",
+            "type": "u64"
+          },
+          {
+            "name": "slashState",
+            "type": {
+              "defined": "SlashState"
+            }
+          },
+          {
+            "name": "rewardBoosts",
+            "type": {
+              "vec": {
+                "defined": "RewardBoost"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Settings",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "superadmin",
+            "type": "publicKey"
+          },
+          {
+            "name": "coldWallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "lockups",
+            "type": "u64"
+          },
+          {
+            "name": "assets",
+            "type": {
+              "vec": {
+                "defined": "Asset"
+              }
+            }
+          },
+          {
+            "name": "depositsLocked",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Slash",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u64"
+          },
+          {
+            "name": "targetAccounts",
+            "type": "u64"
+          },
+          {
+            "name": "slashedAccounts",
+            "type": "u64"
+          },
+          {
+            "name": "targetAmount",
+            "type": "u64"
+          },
+          {
+            "name": "slashedAmount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "InitializeLockupArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "publicKey"
+          },
+          {
+            "name": "minDeposit",
+            "type": "u64"
+          },
+          {
+            "name": "depositCap",
+            "type": "u64"
+          },
+          {
+            "name": "duration",
+            "type": "u64"
+          },
+          {
+            "name": "yieldBps",
+            "type": "u64"
+          },
+          {
+            "name": "yieldMode",
+            "type": {
+              "defined": "YieldMode"
+            }
+          },
+          {
+            "name": "boosts",
+            "type": {
+              "vec": {
+                "defined": "RewardBoost"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RestakeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeSlashArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlashDepositsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "slashId",
+            "type": "u64"
+          },
+          {
+            "name": "slashAmount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlashPoolArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "slashId",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RewardBoost",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "minUsdValue",
+            "type": "u64"
+          },
+          {
+            "name": "boostBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlashState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Asset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "oracle",
+            "type": "publicKey"
+          },
+          {
+            "name": "tvl",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "YieldMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Single",
+            "fields": [
+              {
+                "array": [
+                  "u64",
+                  1
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Dual",
+            "fields": [
+              {
+                "array": [
+                  "u64",
+                  2
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidSigner",
+      "msg": "InvalidSigner"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidInput",
+      "msg": "InvalidInput"
+    },
+    {
+      "code": 6002,
+      "name": "AssetNotWhitelisted",
+      "msg": "AssetNotWhitelisted"
+    },
+    {
+      "code": 6003,
+      "name": "DepositTooLow",
+      "msg": "DepositTooLow"
+    },
+    {
+      "code": 6004,
+      "name": "DepositCapOverflow",
+      "msg": "DepositCapOverflow"
+    },
+    {
+      "code": 6005,
+      "name": "NotEnoughFunds",
+      "msg": "NotEnoughFunds"
+    },
+    {
+      "code": 6006,
+      "name": "NotEnoughFundsToSlash",
+      "msg": "NotEnoughFundsToSlash"
+    },
+    {
+      "code": 6007,
+      "name": "DepositsLocked",
+      "msg": "DepositsLocked"
+    },
+    {
+      "code": 6008,
+      "name": "DepositsOpen",
+      "msg": "DepositsOpen"
+    },
+    {
+      "code": 6009,
+      "name": "DepositsNotSlashed",
+      "msg": "DepositsNotSlashed"
+    },
+    {
+      "code": 6010,
+      "name": "AllDepositsSlashed",
+      "msg": "AllDepositsSlashed"
+    },
+    {
+      "code": 6011,
+      "name": "SlashAmountMismatch",
+      "msg": "SlashAmountMismatch"
+    }
+  ],
+  "metadata": {
+    "address": "CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB",
+    "origin": "anchor",
+    "binaryVersion": "0.29.0",
+    "libVersion": "0.29.0"
+  }
+}

@@ -2,15 +2,15 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 use anchor_spl::token::Token;
 use anchor_spl::token::TokenAccount;
-use crate::borsh::*;
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct InitializeLockupArgs {
     pub asset: Pubkey,
     pub min_deposit: u64,
+    pub deposit_cap: u64,
     pub duration: u64,
     pub yield_bps: u64,
     pub yield_mode: YieldMode,
@@ -30,15 +30,18 @@ pub fn initialize_lockup(
         min_deposit,
         yield_bps,
         yield_mode,
-        boosts
+        boosts,
+        deposit_cap
     } = args;
 
+    lockup.bump = ctx.bumps.lockup;
     lockup.index = settings.lockups;
     lockup.asset = asset;
     lockup.duration = duration;
     lockup.min_deposit = min_deposit;
     lockup.yield_bps = yield_bps;
     lockup.yield_mode = yield_mode;
+    lockup.deposit_cap = deposit_cap;
     lockup.slash_state = SlashState {
         index: 0,
         amount: 0

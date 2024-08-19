@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use crate::borsh::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
@@ -11,7 +10,7 @@ use anchor_spl::token::{
     transfer
 };
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct SlashPoolArgs {
     pub lockup_id: u64,
     pub slash_id: u64,
@@ -63,7 +62,10 @@ pub fn slash_pool(
     args: SlashPoolArgs
 )]
 pub struct SlashPool<'info> {
-    #[account()]
+    #[account(
+        mut,
+        address = settings.superadmin
+    )]
     pub superadmin: Signer<'info>,
 
     #[account(
@@ -109,7 +111,8 @@ pub struct SlashPool<'info> {
         mut,
         seeds = [
             VAULT_SEED.as_bytes(),
-            lockup.key().as_ref()
+            lockup.key().as_ref(),
+            asset.key().as_ref()
         ],
         bump,
         constraint = destination.amount >= slash.slashed_amount @ InsuranceFundError::NotEnoughFundsToSlash

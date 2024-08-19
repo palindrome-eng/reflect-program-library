@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use crate::borsh::*;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
 use crate::constants::*;
@@ -11,7 +10,7 @@ use anchor_spl::token::{
     Transfer
 };
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RestakeArgs {
     pub lockup_id: u64,
     pub amount: u64,
@@ -45,7 +44,12 @@ pub fn restake(
     deposit.last_slashed = None;
     deposit.amount_slashed = 0;
 
-    let cold_wallet_deposit = ((amount as f64) * 0.7) as u64;
+    let SharesConfig {
+        cold_wallet_share_bps,
+        hot_wallet_share_bps: _
+    } = settings.shares_config;
+
+    let cold_wallet_deposit = ((cold_wallet_share_bps as f64 / 10_000_f64) * (amount as f64)) as u64;
 
     // Transfer to multisig
     transfer(

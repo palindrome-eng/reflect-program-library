@@ -1,16 +1,14 @@
 use anchor_lang::prelude::*;
-
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
-use crate::borsh::*;
 use anchor_spl::token::{
     Token,
     TokenAccount,
     Mint
 };
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct InitializeSlashArgs {
     lockup_id: u64,
     amount: u64,

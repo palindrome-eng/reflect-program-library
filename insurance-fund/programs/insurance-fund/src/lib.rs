@@ -14,8 +14,12 @@ pub mod insurance_fund {
 
     pub fn initialize_insurance_fund(
         ctx: Context<InitializeInsuranceFund>, 
+        args: InitializeInsuranceFundArgs
     ) -> Result<()> {
-        instructions::initialize_insurance_fund(ctx)
+        instructions::initialize_insurance_fund(
+            ctx,
+            args
+        )
     }
 
     pub fn initialize_lockup(
@@ -31,5 +35,34 @@ pub mod insurance_fund {
         instructions::add_asset(ctx)
     }
 
-    pub fn 
+    pub fn restake(
+        ctx: Context<Restake>,
+        args: RestakeArgs
+    ) -> Result<()> {
+        instructions::restake(
+            ctx,
+            args
+        )
+    }
+
+    pub fn initialize_slash(
+        ctx: Context<InitializeSlash>,
+        args: InitializeSlashArgs
+    ) -> Result<()> {
+        instructions::initialize_slash(ctx, args)
+    }
+    
+    pub fn slash_deposits(
+        ctx: Context<SlashDeposits>,
+        args: SlashDepositsArgs
+    ) -> Result<()> {
+        instructions::slash_deposits(ctx, args)
+    }
+
+    pub fn slash_pool(
+        ctx: Context<SlashPool>,
+        args: SlashPoolArgs
+    ) -> Result<()> {
+        instructions::slash_pool(ctx, args)
+    }
 }

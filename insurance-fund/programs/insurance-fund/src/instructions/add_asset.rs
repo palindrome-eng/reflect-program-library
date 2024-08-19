@@ -38,6 +38,9 @@ pub struct AddAsset<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
+        realloc = Settings::SIZE + (settings.assets.len() + 1) * Asset::SIZE,
+        realloc::payer = superadmin,
+        realloc::zero = false,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -50,4 +53,9 @@ pub struct AddAsset<'info> {
         mut
     )]
     pub oracle: Account<'info, PriceUpdateV2>,
+
+    #[account(
+
+    )]
+    pub system_program: Program<'info, System>,
 }

@@ -1,18 +1,42 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
+use crate::errors::InsuranceFundError;
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct InitializeInsuranceFundArgs {
+    pub cold_wallet: Pubkey,
+    pub hot_wallet_share_bps: u64,
+    pub cold_wallet_share_bps: u64
+}
 
 pub fn initialize_insurance_fund(
     ctx: Context<InitializeInsuranceFund>,
-    cold_wallet: Pubkey,
+    args: InitializeInsuranceFundArgs
 ) -> Result<()> {
+
+    let InitializeInsuranceFundArgs {
+        cold_wallet,
+        cold_wallet_share_bps,
+        hot_wallet_share_bps
+    } = args;
+
+    require!(
+        cold_wallet_share_bps + hot_wallet_share_bps == 10_000,
+        InsuranceFundError::ShareConfigOverflow
+    );
+
     let superadmin = &ctx.accounts.superadmin;
     let settings = &mut ctx.accounts.settings;
 
-    settings.superadmin = *superadmin.key;
+    settings.superadmin = superadmin.key();
     settings.bump = ctx.bumps.settings;
     settings.lockups = 0;
     settings.cold_wallet = cold_wallet;
+    settings.assets = Vec::new();
+    settings.deposits_locked = false;
+    settings.shares_config.cold_wallet_share_bps = cold_wallet_share_bps;
+    settings.shares_config.hot_wallet_share_bps = hot_wallet_share_bps;
 
     Ok(())
 }
@@ -31,7 +55,7 @@ pub struct InitializeInsuranceFund<'info> {
         ],
         bump,
         payer = superadmin,
-        space = Settings::SIZE
+        space = Settings::SIZE + 1000
     )]
     pub settings: Account<'info, Settings>,
 

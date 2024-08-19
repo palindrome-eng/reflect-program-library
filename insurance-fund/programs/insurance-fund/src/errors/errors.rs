@@ -33,5 +33,11 @@ pub enum InsuranceFundError {
     DepositsNotSlashed,
 
     #[msg("AllDepositsSlashed")]
-    AllDepositsSlashed
+    AllDepositsSlashed,
+
+    #[msg("SlashAmountMismatch")]
+    SlashAmountMismatch,
+
+    #[msg("ShareConfigOverflow")]
+    ShareConfigOverflow
 }

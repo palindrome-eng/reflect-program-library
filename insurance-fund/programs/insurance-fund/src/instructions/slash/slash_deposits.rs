@@ -1,14 +1,13 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::states::*;
-use crate::borsh::*;
 use anchor_spl::token::{
     Mint,
     TokenAccount
 };
 use crate::errors::InsuranceFundError;
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct SlashDepositsArgs {
     lockup_id: u64,
     slash_id: u64,
@@ -27,6 +26,7 @@ pub fn slash_deposits(
         slash_id
     } = args;
 
+    let settings = &ctx.accounts.settings;
     let lockup = &ctx.accounts.lockup;
     let asset_lockup = &ctx.accounts.asset_lockup;
 
@@ -39,6 +39,16 @@ pub fn slash_deposits(
     let total_deposit = asset_lockup.amount;
     let slashed_share_bps = 10_000 * slash_amount / total_deposit;
 
+    require!(
+        slash_amount == slash.target_amount,
+        InsuranceFundError::SlashAmountMismatch
+    );
+
+    let SharesConfig {
+        cold_wallet_share_bps,
+        hot_wallet_share_bps
+    } = settings.shares_config;
+
     for (index, deposit_account_info) in deposits.iter().enumerate() {
         ctx.accounts.validate_deposit(
             deposit_account_info,
@@ -49,7 +59,8 @@ pub fn slash_deposits(
         let deposit_data = deposit_account_info.try_borrow_mut_data()?;
         let mut deposit = Deposit::try_deserialize(&mut deposit_data.as_ref())?;
 
-        let slashed = deposit.amount * slashed_share_bps / 10_000;
+        let slashed = deposit.amount * slashed_share_bps / 10_000 * hot_wallet_share_bps / 10_000;
+
         deposit.amount -= slashed;
         deposit.amount_slashed = slashed;
         deposit.last_slashed = Some(slash_id);
