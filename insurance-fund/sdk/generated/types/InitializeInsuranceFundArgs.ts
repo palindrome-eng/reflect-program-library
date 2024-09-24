@@ -8,21 +8,22 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
-export type Asset = {
-  mint: web3.PublicKey
-  oracle: web3.PublicKey
-  tvl: beet.bignum
+export type InitializeInsuranceFundArgs = {
+  coldWallet: web3.PublicKey
+  hotWalletShareBps: beet.bignum
+  coldWalletShareBps: beet.bignum
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const assetBeet = new beet.BeetArgsStruct<Asset>(
-  [
-    ['mint', beetSolana.publicKey],
-    ['oracle', beetSolana.publicKey],
-    ['tvl', beet.u64],
-  ],
-  'Asset'
-)
+export const initializeInsuranceFundArgsBeet =
+  new beet.BeetArgsStruct<InitializeInsuranceFundArgs>(
+    [
+      ['coldWallet', beetSolana.publicKey],
+      ['hotWalletShareBps', beet.u64],
+      ['coldWalletShareBps', beet.u64],
+    ],
+    'InitializeInsuranceFundArgs'
+  )

@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
+use crate::events::*;
 use anchor_spl::token::{
     Token,
     TokenAccount,
@@ -27,13 +28,22 @@ pub fn initialize_slash(
     let slash = &mut ctx.accounts.slash;
     let settings = &mut ctx.accounts.settings;
     
-    settings.deposits_locked = true;
+    lockup.locked = true;
 
     slash.index = lockup.slash_state.index;
     slash.target_accounts = lockup.deposits;
     slash.target_amount = amount;
     slash.slashed_accounts = 0;
     slash.slashed_amount = 0;
+
+    let clock = Clock::get()?;
+    emit!(InitializeSlashEvent {
+        id: slash.index,
+        amount: amount,
+        slot: clock.slot,
+        asset: lockup.asset.key(),
+        lockup: lockup.key()
+    });
 
     Ok(())
 }
@@ -56,8 +66,7 @@ pub struct InitializeSlash<'info> {
         ],
         bump,
         has_one = superadmin,
-        // Constraint to make sure that the previous slash has been finalised.
-        constraint = !settings.deposits_locked @ InsuranceFundError::DepositsLocked
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -68,6 +77,8 @@ pub struct InitializeSlash<'info> {
             &args.lockup_id.to_le_bytes()
         ],
         bump,
+        // Make sure that previous slash was finalized
+        constraint = !lockup.locked
     )]
     pub lockup: Account<'info, Lockup>,
 
@@ -106,6 +117,9 @@ pub struct InitializeSlash<'info> {
     
     #[account()]
     pub token_program: Program<'info, Token>,
+
+    #[account()]
+    pub clock: Sysvar<'info, Clock>,
 
     #[account()]
     pub system_program: Program<'info, System>,

@@ -9,7 +9,6 @@ import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { YieldMode, yieldModeBeet } from './YieldMode'
-import { RewardBoost, rewardBoostBeet } from './RewardBoost'
 export type InitializeLockupArgs = {
   asset: web3.PublicKey
   minDeposit: beet.bignum
@@ -17,7 +16,6 @@ export type InitializeLockupArgs = {
   duration: beet.bignum
   yieldBps: beet.bignum
   yieldMode: YieldMode
-  boosts: RewardBoost[]
 }
 
 /**
@@ -33,7 +31,6 @@ export const initializeLockupArgsBeet =
       ['duration', beet.u64],
       ['yieldBps', beet.u64],
       ['yieldMode', yieldModeBeet],
-      ['boosts', beet.array(rewardBoostBeet)],
     ],
     'InitializeLockupArgs'
   )

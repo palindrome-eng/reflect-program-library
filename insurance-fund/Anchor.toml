@@ -21,4 +21,7 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 url = "https://api.mainnet-beta.solana.com"
 
 [[test.validator.clone]]
-address = "CLAwKhTHcq2f6gKYYyNP6hTYvqBmQkPsoF9oEGJTfNWn"
+address = "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"
+
+[[test.validator.clone]]
+address = "rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ"

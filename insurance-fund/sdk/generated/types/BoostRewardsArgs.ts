@@ -6,7 +6,8 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type RewardBoost = {
+export type BoostRewardsArgs = {
+  lockupId: beet.bignum
   minUsdValue: beet.bignum
   boostBps: beet.bignum
 }
@@ -15,10 +16,11 @@ export type RewardBoost = {
  * @category userTypes
  * @category generated
  */
-export const rewardBoostBeet = new beet.BeetArgsStruct<RewardBoost>(
+export const boostRewardsArgsBeet = new beet.BeetArgsStruct<BoostRewardsArgs>(
   [
+    ['lockupId', beet.u64],
     ['minUsdValue', beet.u64],
     ['boostBps', beet.u64],
   ],
-  'RewardBoost'
+  'BoostRewardsArgs'
 )

@@ -14,7 +14,6 @@ pub struct InitializeLockupArgs {
     pub duration: u64,
     pub yield_bps: u64,
     pub yield_mode: YieldMode,
-    pub boosts: Vec<RewardBoost>
 }
 
 pub fn initialize_lockup(
@@ -30,7 +29,6 @@ pub fn initialize_lockup(
         min_deposit,
         yield_bps,
         yield_mode,
-        boosts,
         deposit_cap
     } = args;
 
@@ -46,7 +44,7 @@ pub fn initialize_lockup(
         index: 0,
         amount: 0
     };
-    lockup.reward_boosts = boosts;
+    lockup.reward_boosts = 0;
 
     settings.lockups += 1;
 
@@ -82,18 +80,23 @@ pub struct InitializeLockup<'info> {
         ],
         bump,
         payer = superadmin,
-        space = Lockup::SIZE + args.boosts.len() * RewardBoost::LEN
+        space = Lockup::SIZE,
     )]
     pub lockup: Account<'info, Lockup>,
 
     #[account(
         mut,
-        constraint = settings
-            .assets
-            .iter()
-            .map(|asset| asset.mint)
-            .collect::<Vec<Pubkey>>()
-            .contains(&asset_mint.key()) @ InsuranceFundError::AssetNotWhitelisted
+        seeds = [
+            ASSET_SEED.as_bytes(),
+            &asset_mint.key().to_bytes()
+        ],
+        bump,
+    )]
+    pub asset: Account<'info, Asset>,
+
+    #[account(
+        mut,
+        address = asset.mint,
     )]
     pub asset_mint: Account<'info, Mint>,
 
@@ -110,6 +113,20 @@ pub struct InitializeLockup<'info> {
         token::authority = lockup,
     )]
     pub asset_lockup: Account<'info, TokenAccount>,
+
+    #[account(
+        init,
+        payer = superadmin,
+        seeds = [
+            REWARD_POOL_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            asset_mint.key().as_ref(),
+        ],
+        bump,
+        token::mint = asset_mint,
+        token::authority = lockup,
+    )]
+    pub asset_reward_pool: Account<'info, TokenAccount>,
 
     #[account(
         address = Token::id()

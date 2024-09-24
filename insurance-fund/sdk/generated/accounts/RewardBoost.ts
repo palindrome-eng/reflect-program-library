@@ -5,71 +5,55 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
-import { SharesConfig, sharesConfigBeet } from '../types/SharesConfig'
 
 /**
- * Arguments used to create {@link Settings}
+ * Arguments used to create {@link RewardBoost}
  * @category Accounts
  * @category generated
  */
-export type SettingsArgs = {
-  bump: number
-  superadmin: web3.PublicKey
-  coldWallet: web3.PublicKey
-  lockups: beet.bignum
-  sharesConfig: SharesConfig
-  frozen: boolean
+export type RewardBoostArgs = {
+  minUsdValue: beet.bignum
+  boostBps: beet.bignum
 }
 
-export const settingsDiscriminator = [223, 179, 163, 190, 177, 224, 67, 173]
+export const rewardBoostDiscriminator = [242, 10, 119, 47, 141, 5, 66, 151]
 /**
- * Holds the data for the {@link Settings} Account and provides de/serialization
+ * Holds the data for the {@link RewardBoost} Account and provides de/serialization
  * functionality for that data
  *
  * @category Accounts
  * @category generated
  */
-export class Settings implements SettingsArgs {
+export class RewardBoost implements RewardBoostArgs {
   private constructor(
-    readonly bump: number,
-    readonly superadmin: web3.PublicKey,
-    readonly coldWallet: web3.PublicKey,
-    readonly lockups: beet.bignum,
-    readonly sharesConfig: SharesConfig,
-    readonly frozen: boolean
+    readonly minUsdValue: beet.bignum,
+    readonly boostBps: beet.bignum
   ) {}
 
   /**
-   * Creates a {@link Settings} instance from the provided args.
+   * Creates a {@link RewardBoost} instance from the provided args.
    */
-  static fromArgs(args: SettingsArgs) {
-    return new Settings(
-      args.bump,
-      args.superadmin,
-      args.coldWallet,
-      args.lockups,
-      args.sharesConfig,
-      args.frozen
-    )
+  static fromArgs(args: RewardBoostArgs) {
+    return new RewardBoost(args.minUsdValue, args.boostBps)
   }
 
   /**
-   * Deserializes the {@link Settings} from the data of the provided {@link web3.AccountInfo}.
+   * Deserializes the {@link RewardBoost} from the data of the provided {@link web3.AccountInfo}.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static fromAccountInfo(
     accountInfo: web3.AccountInfo<Buffer>,
     offset = 0
-  ): [Settings, number] {
-    return Settings.deserialize(accountInfo.data, offset)
+  ): [RewardBoost, number] {
+    return RewardBoost.deserialize(accountInfo.data, offset)
   }
 
   /**
    * Retrieves the account info from the provided address and deserializes
-   * the {@link Settings} from its data.
+   * the {@link RewardBoost} from its data.
    *
    * @throws Error if no account info is found at the address or if deserialization fails
    */
@@ -77,15 +61,15 @@ export class Settings implements SettingsArgs {
     connection: web3.Connection,
     address: web3.PublicKey,
     commitmentOrConfig?: web3.Commitment | web3.GetAccountInfoConfig
-  ): Promise<Settings> {
+  ): Promise<RewardBoost> {
     const accountInfo = await connection.getAccountInfo(
       address,
       commitmentOrConfig
     )
     if (accountInfo == null) {
-      throw new Error(`Unable to find Settings account at ${address}`)
+      throw new Error(`Unable to find RewardBoost account at ${address}`)
     }
-    return Settings.fromAccountInfo(accountInfo, 0)[0]
+    return RewardBoost.fromAccountInfo(accountInfo, 0)[0]
   }
 
   /**
@@ -99,39 +83,39 @@ export class Settings implements SettingsArgs {
       'CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB'
     )
   ) {
-    return beetSolana.GpaBuilder.fromStruct(programId, settingsBeet)
+    return beetSolana.GpaBuilder.fromStruct(programId, rewardBoostBeet)
   }
 
   /**
-   * Deserializes the {@link Settings} from the provided data Buffer.
+   * Deserializes the {@link RewardBoost} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
-  static deserialize(buf: Buffer, offset = 0): [Settings, number] {
-    return settingsBeet.deserialize(buf, offset)
+  static deserialize(buf: Buffer, offset = 0): [RewardBoost, number] {
+    return rewardBoostBeet.deserialize(buf, offset)
   }
 
   /**
-   * Serializes the {@link Settings} into a Buffer.
+   * Serializes the {@link RewardBoost} into a Buffer.
    * @returns a tuple of the created Buffer and the offset up to which the buffer was written to store it.
    */
   serialize(): [Buffer, number] {
-    return settingsBeet.serialize({
-      accountDiscriminator: settingsDiscriminator,
+    return rewardBoostBeet.serialize({
+      accountDiscriminator: rewardBoostDiscriminator,
       ...this,
     })
   }
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Settings}
+   * {@link RewardBoost}
    */
   static get byteSize() {
-    return settingsBeet.byteSize
+    return rewardBoostBeet.byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
-   * {@link Settings} data from rent
+   * {@link RewardBoost} data from rent
    *
    * @param connection used to retrieve the rent exemption information
    */
@@ -140,30 +124,27 @@ export class Settings implements SettingsArgs {
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Settings.byteSize,
+      RewardBoost.byteSize,
       commitment
     )
   }
 
   /**
    * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link Settings} data.
+   * hold {@link RewardBoost} data.
    */
   static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === Settings.byteSize
+    return buf.byteLength - offset === RewardBoost.byteSize
   }
 
   /**
-   * Returns a readable version of {@link Settings} properties
+   * Returns a readable version of {@link RewardBoost} properties
    * and can be used to convert to JSON and/or logging
    */
   pretty() {
     return {
-      bump: this.bump,
-      superadmin: this.superadmin.toBase58(),
-      coldWallet: this.coldWallet.toBase58(),
-      lockups: (() => {
-        const x = <{ toNumber: () => number }>this.lockups
+      minUsdValue: (() => {
+        const x = <{ toNumber: () => number }>this.minUsdValue
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -173,8 +154,17 @@ export class Settings implements SettingsArgs {
         }
         return x
       })(),
-      sharesConfig: this.sharesConfig,
-      frozen: this.frozen,
+      boostBps: (() => {
+        const x = <{ toNumber: () => number }>this.boostBps
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -183,21 +173,17 @@ export class Settings implements SettingsArgs {
  * @category Accounts
  * @category generated
  */
-export const settingsBeet = new beet.BeetStruct<
-  Settings,
-  SettingsArgs & {
+export const rewardBoostBeet = new beet.BeetStruct<
+  RewardBoost,
+  RewardBoostArgs & {
     accountDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['bump', beet.u8],
-    ['superadmin', beetSolana.publicKey],
-    ['coldWallet', beetSolana.publicKey],
-    ['lockups', beet.u64],
-    ['sharesConfig', sharesConfigBeet],
-    ['frozen', beet.bool],
+    ['minUsdValue', beet.u64],
+    ['boostBps', beet.u64],
   ],
-  Settings.fromArgs,
-  'Settings'
+  RewardBoost.fromArgs,
+  'RewardBoost'
 )

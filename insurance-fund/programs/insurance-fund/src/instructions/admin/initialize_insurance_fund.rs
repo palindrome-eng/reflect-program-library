@@ -33,8 +33,6 @@ pub fn initialize_insurance_fund(
     settings.bump = ctx.bumps.settings;
     settings.lockups = 0;
     settings.cold_wallet = cold_wallet;
-    settings.assets = Vec::new();
-    settings.deposits_locked = false;
     settings.shares_config.cold_wallet_share_bps = cold_wallet_share_bps;
     settings.shares_config.hot_wallet_share_bps = hot_wallet_share_bps;
 
@@ -55,7 +53,7 @@ pub struct InitializeInsuranceFund<'info> {
         ],
         bump,
         payer = superadmin,
-        space = Settings::SIZE + 1000
+        space = Settings::SIZE,
     )]
     pub settings: Account<'info, Settings>,
 

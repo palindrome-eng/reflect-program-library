@@ -39,5 +39,20 @@ pub enum InsuranceFundError {
     SlashAmountMismatch,
 
     #[msg("ShareConfigOverflow")]
-    ShareConfigOverflow
+    ShareConfigOverflow,
+
+    #[msg("Frozen")]
+    Frozen,
+
+    #[msg("InvalidOracle")]
+    InvalidOracle,
+
+    #[msg("MathOverflow")]
+    MathOverflow,
+
+    #[msg("LockupInForce")]
+    LockupInForce,
+
+    #[msg("BoostNotApplied")]
+    BoostNotApplied,
 }

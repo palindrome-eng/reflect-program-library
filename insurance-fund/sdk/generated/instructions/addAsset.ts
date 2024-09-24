@@ -25,6 +25,7 @@ export const addAssetStruct = new beet.BeetArgsStruct<{
  * @property [_writable_, **signer**] superadmin
  * @property [_writable_] settings
  * @property [_writable_] asset
+ * @property [_writable_] assetMint
  * @property [_writable_] oracle
  * @category Instructions
  * @category AddAsset
@@ -34,6 +35,7 @@ export type AddAssetInstructionAccounts = {
   superadmin: web3.PublicKey
   settings: web3.PublicKey
   asset: web3.PublicKey
+  assetMint: web3.PublicKey
   oracle: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -71,6 +73,11 @@ export function createAddAssetInstruction(
     },
     {
       pubkey: accounts.asset,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.assetMint,
       isWritable: true,
       isSigner: false,
     },

@@ -8,88 +8,91 @@
 import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { RestakeArgs, restakeArgsBeet } from '../types/RestakeArgs'
+import { WithdrawArgs, withdrawArgsBeet } from '../types/WithdrawArgs'
 
 /**
  * @category Instructions
- * @category Restake
+ * @category Withdraw
  * @category generated
  */
-export type RestakeInstructionArgs = {
-  args: RestakeArgs
+export type WithdrawInstructionArgs = {
+  args: WithdrawArgs
 }
 /**
  * @category Instructions
- * @category Restake
+ * @category Withdraw
  * @category generated
  */
-export const restakeStruct = new beet.BeetArgsStruct<
-  RestakeInstructionArgs & {
+export const withdrawStruct = new beet.FixableBeetArgsStruct<
+  WithdrawInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', restakeArgsBeet],
+    ['args', withdrawArgsBeet],
   ],
-  'RestakeInstructionArgs'
+  'WithdrawInstructionArgs'
 )
 /**
- * Accounts required by the _restake_ instruction
+ * Accounts required by the _withdraw_ instruction
  *
  * @property [_writable_, **signer**] user
  * @property [_writable_] settings
  * @property [_writable_] lockup
  * @property [_writable_] deposit
- * @property [_writable_] coldWallet
- * @property [_writable_] coldWalletVault
+ * @property [_writable_] rewardBoost (optional)
  * @property [_writable_] asset
  * @property [_writable_] assetMint
  * @property [_writable_] userAssetAta
  * @property [_writable_] lockupAssetVault
+ * @property [_writable_] assetRewardPool
  * @property [] clock
  * @category Instructions
- * @category Restake
+ * @category Withdraw
  * @category generated
  */
-export type RestakeInstructionAccounts = {
+export type WithdrawInstructionAccounts = {
   user: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
   deposit: web3.PublicKey
-  coldWallet: web3.PublicKey
-  coldWalletVault: web3.PublicKey
+  rewardBoost?: web3.PublicKey
   asset: web3.PublicKey
   assetMint: web3.PublicKey
   userAssetAta: web3.PublicKey
   lockupAssetVault: web3.PublicKey
+  assetRewardPool: web3.PublicKey
   clock: web3.PublicKey
   tokenProgram?: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const restakeInstructionDiscriminator = [
-  97, 161, 241, 167, 6, 32, 213, 53,
+export const withdrawInstructionDiscriminator = [
+  183, 18, 70, 156, 148, 109, 161, 34,
 ]
 
 /**
- * Creates a _Restake_ instruction.
+ * Creates a _Withdraw_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category Restake
+ * @category Withdraw
  * @category generated
  */
-export function createRestakeInstruction(
-  accounts: RestakeInstructionAccounts,
-  args: RestakeInstructionArgs,
+export function createWithdrawInstruction(
+  accounts: WithdrawInstructionAccounts,
+  args: WithdrawInstructionArgs,
   programId = new web3.PublicKey('CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB')
 ) {
-  const [data] = restakeStruct.serialize({
-    instructionDiscriminator: restakeInstructionDiscriminator,
+  const [data] = withdrawStruct.serialize({
+    instructionDiscriminator: withdrawInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -114,13 +117,8 @@ export function createRestakeInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.coldWallet,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.coldWalletVault,
-      isWritable: true,
+      pubkey: accounts.rewardBoost ?? programId,
+      isWritable: accounts.rewardBoost != null,
       isSigner: false,
     },
     {
@@ -140,6 +138,11 @@ export function createRestakeInstruction(
     },
     {
       pubkey: accounts.lockupAssetVault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.assetRewardPool,
       isWritable: true,
       isSigner: false,
     },

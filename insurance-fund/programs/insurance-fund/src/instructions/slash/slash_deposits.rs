@@ -5,6 +5,7 @@ use anchor_spl::token::{
     Mint,
     TokenAccount
 };
+use crate::events::*;
 use crate::errors::InsuranceFundError;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -59,7 +60,7 @@ pub fn slash_deposits(
         let deposit_data = deposit_account_info.try_borrow_mut_data()?;
         let mut deposit = Deposit::try_deserialize(&mut deposit_data.as_ref())?;
 
-        let slashed = deposit.amount * slashed_share_bps / 10_000 * hot_wallet_share_bps / 10_000;
+        let slashed = deposit.amount * slashed_share_bps / 10_000;
 
         deposit.amount -= slashed;
         deposit.amount_slashed = slashed;
@@ -69,6 +70,14 @@ pub fn slash_deposits(
         slash.slashed_amount += slashed;
         slash.slashed_accounts += 1;
     }
+
+    let slash = &ctx.accounts.slash;
+    emit!(ProcessSlashEvent {
+        progress_accounts: slash.slashed_accounts,
+        target_accounts: slash.target_accounts,
+        progress_amount: slash.slashed_amount,
+        target_amount: slash.target_amount
+    });
 
     Ok(())
 }

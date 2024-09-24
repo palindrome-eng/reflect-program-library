@@ -43,8 +43,10 @@ export const initializeLockupStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_, **signer**] superadmin
  * @property [_writable_] settings
  * @property [_writable_] lockup
+ * @property [_writable_] asset
  * @property [_writable_] assetMint
  * @property [_writable_] assetLockup
+ * @property [_writable_] assetRewardPool
  * @category Instructions
  * @category InitializeLockup
  * @category generated
@@ -53,8 +55,10 @@ export type InitializeLockupInstructionAccounts = {
   superadmin: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
+  asset: web3.PublicKey
   assetMint: web3.PublicKey
   assetLockup: web3.PublicKey
+  assetRewardPool: web3.PublicKey
   tokenProgram?: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -100,12 +104,22 @@ export function createInitializeLockupInstruction(
       isSigner: false,
     },
     {
+      pubkey: accounts.asset,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.assetMint,
       isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.assetLockup,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.assetRewardPool,
       isWritable: true,
       isSigner: false,
     },

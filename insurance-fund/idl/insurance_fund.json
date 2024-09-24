@@ -26,6 +26,21 @@
       "name": "SLASH_SEED",
       "type": "string",
       "value": "\"slash\""
+    },
+    {
+      "name": "ASSET_SEED",
+      "type": "string",
+      "value": "\"asset\""
+    },
+    {
+      "name": "REWARD_BOOST_SEED",
+      "type": "string",
+      "value": "\"reward_boost\""
+    },
+    {
+      "name": "REWARD_POOL_SEED",
+      "type": "string",
+      "value": "\"reward_pool\""
     }
   ],
   "instructions": [
@@ -50,8 +65,10 @@
       ],
       "args": [
         {
-          "name": "coldWallet",
-          "type": "publicKey"
+          "name": "args",
+          "type": {
+            "defined": "InitializeInsuranceFundArgs"
+          }
         }
       ]
     },
@@ -74,12 +91,22 @@
           "isSigner": false
         },
         {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "assetMint",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "assetLockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetRewardPool",
           "isMut": true,
           "isSigner": false
         },
@@ -118,6 +145,11 @@
         },
         {
           "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
           "isMut": true,
           "isSigner": false
         },
@@ -168,6 +200,11 @@
           "isSigner": false
         },
         {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "assetMint",
           "isMut": true,
           "isSigner": false
@@ -208,6 +245,85 @@
       ]
     },
     {
+      "name": "withdraw",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deposit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardBoost",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupAssetVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetRewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "WithdrawArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "initializeSlash",
       "accounts": [
         {
@@ -242,6 +358,11 @@
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
           "isMut": false,
           "isSigner": false
         },
@@ -355,9 +476,74 @@
           }
         }
       ]
+    },
+    {
+      "name": "depositRewards",
+      "accounts": [
+        {
+          "name": "caller",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "callerAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetRewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "DepositRewardsArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "Asset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "oracle",
+            "type": {
+              "defined": "Oracle"
+            }
+          },
+          {
+            "name": "tvl",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "Deposit",
       "type": {
@@ -406,6 +592,10 @@
             "type": "u8"
           },
           {
+            "name": "locked",
+            "type": "bool"
+          },
+          {
             "name": "index",
             "type": "u64"
           },
@@ -447,11 +637,23 @@
           },
           {
             "name": "rewardBoosts",
-            "type": {
-              "vec": {
-                "defined": "RewardBoost"
-              }
-            }
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RewardBoost",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "minUsdValue",
+            "type": "u64"
+          },
+          {
+            "name": "boostBps",
+            "type": "u64"
           }
         ]
       }
@@ -478,15 +680,13 @@
             "type": "u64"
           },
           {
-            "name": "assets",
+            "name": "sharesConfig",
             "type": {
-              "vec": {
-                "defined": "Asset"
-              }
+              "defined": "SharesConfig"
             }
           },
           {
-            "name": "depositsLocked",
+            "name": "frozen",
             "type": "bool"
           }
         ]
@@ -523,6 +723,46 @@
   ],
   "types": [
     {
+      "name": "BoostRewardsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "minUsdValue",
+            "type": "u64"
+          },
+          {
+            "name": "boostBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeInsuranceFundArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "coldWallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "hotWalletShareBps",
+            "type": "u64"
+          },
+          {
+            "name": "coldWalletShareBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "InitializeLockupArgs",
       "type": {
         "kind": "struct",
@@ -552,20 +792,12 @@
             "type": {
               "defined": "YieldMode"
             }
-          },
-          {
-            "name": "boosts",
-            "type": {
-              "vec": {
-                "defined": "RewardBoost"
-              }
-            }
           }
         ]
       }
     },
     {
-      "name": "RestakeArgs",
+      "name": "DepositRewardsArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -633,16 +865,42 @@
       }
     },
     {
-      "name": "RewardBoost",
+      "name": "RestakeArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "minUsdValue",
+            "name": "lockupId",
             "type": "u64"
           },
           {
-            "name": "boostBps",
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WithdrawArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "depositId",
+            "type": "u64"
+          },
+          {
+            "name": "rewardBoostId",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "amount",
             "type": "u64"
           }
         ]
@@ -665,21 +923,37 @@
       }
     },
     {
-      "name": "Asset",
+      "name": "SharesConfig",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "oracle",
-            "type": "publicKey"
-          },
-          {
-            "name": "tvl",
+            "name": "hotWalletShareBps",
             "type": "u64"
+          },
+          {
+            "name": "coldWalletShareBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Oracle",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pyth",
+            "fields": [
+              "publicKey"
+            ]
+          },
+          {
+            "name": "Switchboard",
+            "fields": [
+              "publicKey"
+            ]
           }
         ]
       }
@@ -713,6 +987,148 @@
           }
         ]
       }
+    }
+  ],
+  "events": [
+    {
+      "name": "RestakeEvent",
+      "fields": [
+        {
+          "name": "from",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "asset",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "lockupTs",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "WithdrawEvent",
+      "fields": [
+        {
+          "name": "from",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "asset",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "baseAmount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "rewardAmount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "DepositRewardEvent",
+      "fields": [
+        {
+          "name": "from",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "asset",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "InitializeSlashEvent",
+      "fields": [
+        {
+          "name": "id",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "lockup",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "asset",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "slot",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "ProcessSlashEvent",
+      "fields": [
+        {
+          "name": "progressAccounts",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "targetAccounts",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "progressAmount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "targetAmount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "FinalizeSlash",
+      "fields": [
+        {
+          "name": "id",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -775,6 +1191,36 @@
       "code": 6011,
       "name": "SlashAmountMismatch",
       "msg": "SlashAmountMismatch"
+    },
+    {
+      "code": 6012,
+      "name": "ShareConfigOverflow",
+      "msg": "ShareConfigOverflow"
+    },
+    {
+      "code": 6013,
+      "name": "Frozen",
+      "msg": "Frozen"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidOracle",
+      "msg": "InvalidOracle"
+    },
+    {
+      "code": 6015,
+      "name": "MathOverflow",
+      "msg": "MathOverflow"
+    },
+    {
+      "code": 6016,
+      "name": "LockupInForce",
+      "msg": "LockupInForce"
+    },
+    {
+      "code": 6017,
+      "name": "BoostNotApplied",
+      "msg": "BoostNotApplied"
     }
   ],
   "metadata": {

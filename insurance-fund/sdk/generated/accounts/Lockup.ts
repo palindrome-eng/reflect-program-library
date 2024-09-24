@@ -10,7 +10,6 @@ import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { YieldMode, yieldModeBeet } from '../types/YieldMode'
 import { SlashState, slashStateBeet } from '../types/SlashState'
-import { RewardBoost, rewardBoostBeet } from '../types/RewardBoost'
 
 /**
  * Arguments used to create {@link Lockup}
@@ -19,6 +18,7 @@ import { RewardBoost, rewardBoostBeet } from '../types/RewardBoost'
  */
 export type LockupArgs = {
   bump: number
+  locked: boolean
   index: beet.bignum
   asset: web3.PublicKey
   minDeposit: beet.bignum
@@ -28,7 +28,7 @@ export type LockupArgs = {
   depositCap: beet.bignum
   deposits: beet.bignum
   slashState: SlashState
-  rewardBoosts: RewardBoost[]
+  rewardBoosts: beet.bignum
 }
 
 export const lockupDiscriminator = [1, 45, 32, 32, 57, 81, 88, 67]
@@ -42,6 +42,7 @@ export const lockupDiscriminator = [1, 45, 32, 32, 57, 81, 88, 67]
 export class Lockup implements LockupArgs {
   private constructor(
     readonly bump: number,
+    readonly locked: boolean,
     readonly index: beet.bignum,
     readonly asset: web3.PublicKey,
     readonly minDeposit: beet.bignum,
@@ -51,7 +52,7 @@ export class Lockup implements LockupArgs {
     readonly depositCap: beet.bignum,
     readonly deposits: beet.bignum,
     readonly slashState: SlashState,
-    readonly rewardBoosts: RewardBoost[]
+    readonly rewardBoosts: beet.bignum
   ) {}
 
   /**
@@ -60,6 +61,7 @@ export class Lockup implements LockupArgs {
   static fromArgs(args: LockupArgs) {
     return new Lockup(
       args.bump,
+      args.locked,
       args.index,
       args.asset,
       args.minDeposit,
@@ -179,6 +181,7 @@ export class Lockup implements LockupArgs {
   pretty() {
     return {
       bump: this.bump,
+      locked: this.locked,
       index: (() => {
         const x = <{ toNumber: () => number }>this.index
         if (typeof x.toNumber === 'function') {
@@ -248,7 +251,17 @@ export class Lockup implements LockupArgs {
         return x
       })(),
       slashState: this.slashState,
-      rewardBoosts: this.rewardBoosts,
+      rewardBoosts: (() => {
+        const x = <{ toNumber: () => number }>this.rewardBoosts
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -266,6 +279,7 @@ export const lockupBeet = new beet.FixableBeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['bump', beet.u8],
+    ['locked', beet.bool],
     ['index', beet.u64],
     ['asset', beetSolana.publicKey],
     ['minDeposit', beet.u64],
@@ -275,7 +289,7 @@ export const lockupBeet = new beet.FixableBeetStruct<
     ['depositCap', beet.u64],
     ['deposits', beet.u64],
     ['slashState', slashStateBeet],
-    ['rewardBoosts', beet.array(rewardBoostBeet)],
+    ['rewardBoosts', beet.u64],
   ],
   Lockup.fromArgs,
   'Lockup'

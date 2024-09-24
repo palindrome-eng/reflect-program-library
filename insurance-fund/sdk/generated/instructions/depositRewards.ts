@@ -9,94 +9,84 @@ import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  InitializeSlashArgs,
-  initializeSlashArgsBeet,
-} from '../types/InitializeSlashArgs'
+  DepositRewardsArgs,
+  depositRewardsArgsBeet,
+} from '../types/DepositRewardsArgs'
 
 /**
  * @category Instructions
- * @category InitializeSlash
+ * @category DepositRewards
  * @category generated
  */
-export type InitializeSlashInstructionArgs = {
-  args: InitializeSlashArgs
+export type DepositRewardsInstructionArgs = {
+  args: DepositRewardsArgs
 }
 /**
  * @category Instructions
- * @category InitializeSlash
+ * @category DepositRewards
  * @category generated
  */
-export const initializeSlashStruct = new beet.BeetArgsStruct<
-  InitializeSlashInstructionArgs & {
+export const depositRewardsStruct = new beet.BeetArgsStruct<
+  DepositRewardsInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', initializeSlashArgsBeet],
+    ['args', depositRewardsArgsBeet],
   ],
-  'InitializeSlashInstructionArgs'
+  'DepositRewardsInstructionArgs'
 )
 /**
- * Accounts required by the _initializeSlash_ instruction
+ * Accounts required by the _depositRewards_ instruction
  *
- * @property [_writable_, **signer**] superadmin
- * @property [_writable_] settings
+ * @property [_writable_, **signer**] caller
  * @property [_writable_] lockup
  * @property [_writable_] assetMint
- * @property [_writable_] assetLockup
- * @property [_writable_] slash
- * @property [] clock
+ * @property [_writable_] callerAssetAta
+ * @property [_writable_] assetRewardPool
  * @category Instructions
- * @category InitializeSlash
+ * @category DepositRewards
  * @category generated
  */
-export type InitializeSlashInstructionAccounts = {
-  superadmin: web3.PublicKey
-  settings: web3.PublicKey
+export type DepositRewardsInstructionAccounts = {
+  caller: web3.PublicKey
   lockup: web3.PublicKey
   assetMint: web3.PublicKey
-  assetLockup: web3.PublicKey
-  slash: web3.PublicKey
+  callerAssetAta: web3.PublicKey
+  assetRewardPool: web3.PublicKey
   tokenProgram?: web3.PublicKey
-  clock: web3.PublicKey
-  systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const initializeSlashInstructionDiscriminator = [
-  130, 26, 93, 222, 84, 233, 156, 7,
+export const depositRewardsInstructionDiscriminator = [
+  52, 249, 112, 72, 206, 161, 196, 1,
 ]
 
 /**
- * Creates a _InitializeSlash_ instruction.
+ * Creates a _DepositRewards_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category InitializeSlash
+ * @category DepositRewards
  * @category generated
  */
-export function createInitializeSlashInstruction(
-  accounts: InitializeSlashInstructionAccounts,
-  args: InitializeSlashInstructionArgs,
+export function createDepositRewardsInstruction(
+  accounts: DepositRewardsInstructionAccounts,
+  args: DepositRewardsInstructionArgs,
   programId = new web3.PublicKey('CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB')
 ) {
-  const [data] = initializeSlashStruct.serialize({
-    instructionDiscriminator: initializeSlashInstructionDiscriminator,
+  const [data] = depositRewardsStruct.serialize({
+    instructionDiscriminator: depositRewardsInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.superadmin,
+      pubkey: accounts.caller,
       isWritable: true,
       isSigner: true,
-    },
-    {
-      pubkey: accounts.settings,
-      isWritable: true,
-      isSigner: false,
     },
     {
       pubkey: accounts.lockup,
@@ -109,27 +99,17 @@ export function createInitializeSlashInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.assetLockup,
+      pubkey: accounts.callerAssetAta,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.slash,
+      pubkey: accounts.assetRewardPool,
       isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.clock,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },

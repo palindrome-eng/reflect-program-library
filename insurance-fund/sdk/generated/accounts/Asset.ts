@@ -8,68 +8,55 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
-import { SharesConfig, sharesConfigBeet } from '../types/SharesConfig'
+import { Oracle, oracleBeet } from '../types/Oracle'
 
 /**
- * Arguments used to create {@link Settings}
+ * Arguments used to create {@link Asset}
  * @category Accounts
  * @category generated
  */
-export type SettingsArgs = {
-  bump: number
-  superadmin: web3.PublicKey
-  coldWallet: web3.PublicKey
-  lockups: beet.bignum
-  sharesConfig: SharesConfig
-  frozen: boolean
+export type AssetArgs = {
+  mint: web3.PublicKey
+  oracle: Oracle
+  tvl: beet.bignum
 }
 
-export const settingsDiscriminator = [223, 179, 163, 190, 177, 224, 67, 173]
+export const assetDiscriminator = [234, 180, 241, 252, 139, 224, 160, 8]
 /**
- * Holds the data for the {@link Settings} Account and provides de/serialization
+ * Holds the data for the {@link Asset} Account and provides de/serialization
  * functionality for that data
  *
  * @category Accounts
  * @category generated
  */
-export class Settings implements SettingsArgs {
+export class Asset implements AssetArgs {
   private constructor(
-    readonly bump: number,
-    readonly superadmin: web3.PublicKey,
-    readonly coldWallet: web3.PublicKey,
-    readonly lockups: beet.bignum,
-    readonly sharesConfig: SharesConfig,
-    readonly frozen: boolean
+    readonly mint: web3.PublicKey,
+    readonly oracle: Oracle,
+    readonly tvl: beet.bignum
   ) {}
 
   /**
-   * Creates a {@link Settings} instance from the provided args.
+   * Creates a {@link Asset} instance from the provided args.
    */
-  static fromArgs(args: SettingsArgs) {
-    return new Settings(
-      args.bump,
-      args.superadmin,
-      args.coldWallet,
-      args.lockups,
-      args.sharesConfig,
-      args.frozen
-    )
+  static fromArgs(args: AssetArgs) {
+    return new Asset(args.mint, args.oracle, args.tvl)
   }
 
   /**
-   * Deserializes the {@link Settings} from the data of the provided {@link web3.AccountInfo}.
+   * Deserializes the {@link Asset} from the data of the provided {@link web3.AccountInfo}.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static fromAccountInfo(
     accountInfo: web3.AccountInfo<Buffer>,
     offset = 0
-  ): [Settings, number] {
-    return Settings.deserialize(accountInfo.data, offset)
+  ): [Asset, number] {
+    return Asset.deserialize(accountInfo.data, offset)
   }
 
   /**
    * Retrieves the account info from the provided address and deserializes
-   * the {@link Settings} from its data.
+   * the {@link Asset} from its data.
    *
    * @throws Error if no account info is found at the address or if deserialization fails
    */
@@ -77,15 +64,15 @@ export class Settings implements SettingsArgs {
     connection: web3.Connection,
     address: web3.PublicKey,
     commitmentOrConfig?: web3.Commitment | web3.GetAccountInfoConfig
-  ): Promise<Settings> {
+  ): Promise<Asset> {
     const accountInfo = await connection.getAccountInfo(
       address,
       commitmentOrConfig
     )
     if (accountInfo == null) {
-      throw new Error(`Unable to find Settings account at ${address}`)
+      throw new Error(`Unable to find Asset account at ${address}`)
     }
-    return Settings.fromAccountInfo(accountInfo, 0)[0]
+    return Asset.fromAccountInfo(accountInfo, 0)[0]
   }
 
   /**
@@ -99,71 +86,72 @@ export class Settings implements SettingsArgs {
       'CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB'
     )
   ) {
-    return beetSolana.GpaBuilder.fromStruct(programId, settingsBeet)
+    return beetSolana.GpaBuilder.fromStruct(programId, assetBeet)
   }
 
   /**
-   * Deserializes the {@link Settings} from the provided data Buffer.
+   * Deserializes the {@link Asset} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
-  static deserialize(buf: Buffer, offset = 0): [Settings, number] {
-    return settingsBeet.deserialize(buf, offset)
+  static deserialize(buf: Buffer, offset = 0): [Asset, number] {
+    return assetBeet.deserialize(buf, offset)
   }
 
   /**
-   * Serializes the {@link Settings} into a Buffer.
+   * Serializes the {@link Asset} into a Buffer.
    * @returns a tuple of the created Buffer and the offset up to which the buffer was written to store it.
    */
   serialize(): [Buffer, number] {
-    return settingsBeet.serialize({
-      accountDiscriminator: settingsDiscriminator,
+    return assetBeet.serialize({
+      accountDiscriminator: assetDiscriminator,
       ...this,
     })
   }
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Settings}
+   * {@link Asset} for the provided args.
+   *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    */
-  static get byteSize() {
-    return settingsBeet.byteSize
+  static byteSize(args: AssetArgs) {
+    const instance = Asset.fromArgs(args)
+    return assetBeet.toFixedFromValue({
+      accountDiscriminator: assetDiscriminator,
+      ...instance,
+    }).byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
-   * {@link Settings} data from rent
+   * {@link Asset} data from rent
    *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
+    args: AssetArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Settings.byteSize,
+      Asset.byteSize(args),
       commitment
     )
   }
 
   /**
-   * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link Settings} data.
-   */
-  static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === Settings.byteSize
-  }
-
-  /**
-   * Returns a readable version of {@link Settings} properties
+   * Returns a readable version of {@link Asset} properties
    * and can be used to convert to JSON and/or logging
    */
   pretty() {
     return {
-      bump: this.bump,
-      superadmin: this.superadmin.toBase58(),
-      coldWallet: this.coldWallet.toBase58(),
-      lockups: (() => {
-        const x = <{ toNumber: () => number }>this.lockups
+      mint: this.mint.toBase58(),
+      oracle: this.oracle.__kind,
+      tvl: (() => {
+        const x = <{ toNumber: () => number }>this.tvl
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -173,8 +161,6 @@ export class Settings implements SettingsArgs {
         }
         return x
       })(),
-      sharesConfig: this.sharesConfig,
-      frozen: this.frozen,
     }
   }
 }
@@ -183,21 +169,18 @@ export class Settings implements SettingsArgs {
  * @category Accounts
  * @category generated
  */
-export const settingsBeet = new beet.BeetStruct<
-  Settings,
-  SettingsArgs & {
+export const assetBeet = new beet.FixableBeetStruct<
+  Asset,
+  AssetArgs & {
     accountDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['bump', beet.u8],
-    ['superadmin', beetSolana.publicKey],
-    ['coldWallet', beetSolana.publicKey],
-    ['lockups', beet.u64],
-    ['sharesConfig', sharesConfigBeet],
-    ['frozen', beet.bool],
+    ['mint', beetSolana.publicKey],
+    ['oracle', oracleBeet],
+    ['tvl', beet.u64],
   ],
-  Settings.fromArgs,
-  'Settings'
+  Asset.fromArgs,
+  'Asset'
 )

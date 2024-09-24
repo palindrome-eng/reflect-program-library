@@ -5,9 +5,12 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
-import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
+import {
+  InitializeInsuranceFundArgs,
+  initializeInsuranceFundArgsBeet,
+} from '../types/InitializeInsuranceFundArgs'
 
 /**
  * @category Instructions
@@ -15,7 +18,7 @@ import * as beet from '@metaplex-foundation/beet'
  * @category generated
  */
 export type InitializeInsuranceFundInstructionArgs = {
-  coldWallet: web3.PublicKey
+  args: InitializeInsuranceFundArgs
 }
 /**
  * @category Instructions
@@ -29,7 +32,7 @@ export const initializeInsuranceFundStruct = new beet.BeetArgsStruct<
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['coldWallet', beetSolana.publicKey],
+    ['args', initializeInsuranceFundArgsBeet],
   ],
   'InitializeInsuranceFundInstructionArgs'
 )

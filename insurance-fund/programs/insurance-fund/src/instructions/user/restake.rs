@@ -1,5 +1,10 @@
 use anchor_lang::prelude::*;
 use crate::errors::InsuranceFundError;
+use crate::events::RestakeEvent;
+use crate::helpers::{
+    get_price_from_pyth,
+    get_price_from_switchboard
+};
 use crate::states::*;
 use crate::constants::*;
 use anchor_spl::token::{
@@ -16,8 +21,8 @@ pub struct RestakeArgs {
     pub amount: u64,
 }
 
-pub fn restake(
-    ctx: Context<Restake>,
+pub fn restake<'a>(
+    ctx: Context<'_, 'a, '_, '_, Restake<'a>>,
     args: RestakeArgs
 ) -> Result<()> {
     let RestakeArgs {
@@ -28,11 +33,20 @@ pub fn restake(
     let token_program = &ctx.accounts.token_program;
     let user = &ctx.accounts.user;
     let settings = &mut ctx.accounts.settings;
+    let asset = &mut ctx.accounts.asset;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
     let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let lockup = &mut ctx.accounts.lockup;
     let deposit = &mut ctx.accounts.deposit;
+    let oracle = &mut ctx.accounts.oracle;
+
+    let price: u64 = match asset.oracle {
+        Oracle::Pyth(_) => get_price_from_pyth(oracle)?,
+        Oracle::Switchboard(_) => get_price_from_switchboard(oracle)?
+    };
+
+    let usd_value = amount * price / 10_u64.pow(PRICE_PRECISION as u32);
 
     let clock = Clock::get()?;
     let unix_ts = clock.unix_timestamp as u64;
@@ -42,6 +56,7 @@ pub fn restake(
     deposit.user = user.key();
     deposit.unlock_ts = unix_ts + lockup.duration;
     deposit.last_slashed = None;
+    deposit.initial_usd_value = usd_value;
     deposit.amount_slashed = 0;
 
     let SharesConfig {
@@ -60,7 +75,7 @@ pub fn restake(
                 authority: user.to_account_info(),
                 to: cold_wallet_vault.to_account_info()
             }
-        ), 
+        ),
         cold_wallet_deposit
     )?;
 
@@ -78,7 +93,14 @@ pub fn restake(
     )?;
 
     lockup.deposits += 1;
-    settings.increase_tvl(&lockup.asset, amount)?;
+    asset.increase_tvl(amount)?;
+
+    emit!(RestakeEvent {
+        from: user.key(),
+        asset: asset.key(),
+        amount,
+        lockup_ts: deposit.unlock_ts
+    });
 
     Ok(())
 }
@@ -99,7 +121,6 @@ pub struct Restake<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.deposits_locked @ InsuranceFundError::DepositsLocked
     )]
     pub settings: Account<'info, Settings>,
 
@@ -110,6 +131,7 @@ pub struct Restake<'info> {
             &args.lockup_id.to_le_bytes()
         ],
         bump,
+        constraint = !lockup.locked @ InsuranceFundError::DepositsLocked,
         constraint = lockup.min_deposit <= args.amount @ InsuranceFundError::DepositTooLow,
     )]
     pub lockup: Account<'info, Lockup>,
@@ -143,7 +165,18 @@ pub struct Restake<'info> {
 
     #[account(
         mut,
-        address = lockup.asset
+        seeds = [
+            ASSET_SEED.as_bytes(),
+            &asset_mint.key().to_bytes()
+        ],
+        bump,
+        constraint = asset.mint == asset_mint.key()
+    )]
+    pub asset: Account<'info, Asset>,
+
+    #[account(
+        mut,
+        address = lockup.asset,
     )]
     pub asset_mint: Account<'info, Mint>,
 
@@ -151,7 +184,7 @@ pub struct Restake<'info> {
         mut,
         associated_token::authority = user,
         associated_token::mint = asset_mint,
-        constraint = user_asset_ata.amount >= args.amount @ InsuranceFundError::NotEnoughFunds
+        constraint = user_asset_ata.amount >= args.amount @ InsuranceFundError::NotEnoughFunds,
     )]
     pub user_asset_ata: Account<'info, TokenAccount>,
 
@@ -166,6 +199,13 @@ pub struct Restake<'info> {
         constraint = lockup_asset_vault.amount + args.amount <= lockup.deposit_cap @ InsuranceFundError::DepositCapOverflow
     )]
     pub lockup_asset_vault: Account<'info, TokenAccount>,
+
+    /// CHECK: Directly checking the address + checking type later.
+    #[account(
+        mut,
+        address = asset.oracle.key().clone()
+    )]
+    pub oracle: UncheckedAccount<'info>,
 
     #[account()]
     pub clock: Sysvar<'info, Clock>,

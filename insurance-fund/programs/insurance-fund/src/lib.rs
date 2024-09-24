@@ -4,6 +4,8 @@ pub mod states;
 pub mod constants;
 pub mod errors;
 pub mod instructions;
+pub mod events;
+pub mod helpers;
 use crate::instructions::*;
 
 declare_id!("CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB");
@@ -45,6 +47,13 @@ pub mod insurance_fund {
         )
     }
 
+    pub fn withdraw(
+        ctx: Context<Withdraw>,
+        args: WithdrawArgs
+    ) -> Result<()> {
+        instructions::withdraw(ctx, args)
+    }
+
     pub fn initialize_slash(
         ctx: Context<InitializeSlash>,
         args: InitializeSlashArgs
@@ -64,5 +73,12 @@ pub mod insurance_fund {
         args: SlashPoolArgs
     ) -> Result<()> {
         instructions::slash_pool(ctx, args)
+    }
+
+    pub fn deposit_rewards(
+        ctx: Context<DepositRewards>,
+        args: DepositRewardsArgs
+    ) -> Result<()> {
+        instructions::deposit_rewards(ctx, args)
     }
 }

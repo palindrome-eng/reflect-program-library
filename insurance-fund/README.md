@@ -15,3 +15,6 @@ Slashing is a per-lockup process. Slashing of accounts under one lockup does not
 Slashing starts with `initialize_slash` instruction invoked by Insurance Fund `superadmin`. This instruction is responsible for creating `Slash` account, which is used for tracking different stages of slashing.
 
 The next step of slashing is `slash_deposits` instruction. This instructions should be bundled together and invoked in an ordered manner by an off-chain crank. This instruction is responsible for iterative modification of all deposits of a certain lockup. `Slash` account holds fields like `target_accounts` and `slashed_accounts`. Slashing process cannot be finalized unless values of both fields are equal (meaning all target accounts have been slashed). To prevent slashing the same account twice, what could happen in case of off-chain crank misconfiguration, specific `deposit` accounts holds a `last_slashed` field. Since all slashing processes are indexed, the same `deposit` account cannot be slashed `if deposit.last_slashed == <current slash index>`.
+
+# TODO
+- oracles on deposit, select reward boost

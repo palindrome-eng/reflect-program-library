@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
+use crate::events::*;
 use anchor_spl::token::{
     Mint,
     Token,
@@ -53,6 +54,12 @@ pub fn slash_pool(
 
     lockup.slash_state.amount += slash.slashed_amount;
     lockup.slash_state.index += 1;
+    lockup.locked = false;
+
+    emit!(FinalizeSlash {
+        id: slash.index,
+        amount: slash.slashed_amount,
+    });
 
     Ok(())
 }

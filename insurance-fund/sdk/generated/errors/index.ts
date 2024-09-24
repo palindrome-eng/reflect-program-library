@@ -270,6 +270,132 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * ShareConfigOverflow: 'ShareConfigOverflow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ShareConfigOverflowError extends Error {
+  readonly code: number = 0x177c
+  readonly name: string = 'ShareConfigOverflow'
+  constructor() {
+    super('ShareConfigOverflow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ShareConfigOverflowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x177c, () => new ShareConfigOverflowError())
+createErrorFromNameLookup.set(
+  'ShareConfigOverflow',
+  () => new ShareConfigOverflowError()
+)
+
+/**
+ * Frozen: 'Frozen'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class FrozenError extends Error {
+  readonly code: number = 0x177d
+  readonly name: string = 'Frozen'
+  constructor() {
+    super('Frozen')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, FrozenError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x177d, () => new FrozenError())
+createErrorFromNameLookup.set('Frozen', () => new FrozenError())
+
+/**
+ * InvalidOracle: 'InvalidOracle'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidOracleError extends Error {
+  readonly code: number = 0x177e
+  readonly name: string = 'InvalidOracle'
+  constructor() {
+    super('InvalidOracle')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidOracleError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x177e, () => new InvalidOracleError())
+createErrorFromNameLookup.set('InvalidOracle', () => new InvalidOracleError())
+
+/**
+ * MathOverflow: 'MathOverflow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MathOverflowError extends Error {
+  readonly code: number = 0x177f
+  readonly name: string = 'MathOverflow'
+  constructor() {
+    super('MathOverflow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MathOverflowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x177f, () => new MathOverflowError())
+createErrorFromNameLookup.set('MathOverflow', () => new MathOverflowError())
+
+/**
+ * LockupInForce: 'LockupInForce'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class LockupInForceError extends Error {
+  readonly code: number = 0x1780
+  readonly name: string = 'LockupInForce'
+  constructor() {
+    super('LockupInForce')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, LockupInForceError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1780, () => new LockupInForceError())
+createErrorFromNameLookup.set('LockupInForce', () => new LockupInForceError())
+
+/**
+ * BoostNotApplied: 'BoostNotApplied'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class BoostNotAppliedError extends Error {
+  readonly code: number = 0x1781
+  readonly name: string = 'BoostNotApplied'
+  constructor() {
+    super('BoostNotApplied')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, BoostNotAppliedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1781, () => new BoostNotAppliedError())
+createErrorFromNameLookup.set(
+  'BoostNotApplied',
+  () => new BoostNotAppliedError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated
