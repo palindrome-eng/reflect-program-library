@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
-
+use crate::helpers::{
+    get_price_from_pyth,
+    get_price_from_switchboard
+};
 use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq)]
@@ -42,9 +45,20 @@ impl Asset {
         &mut self,
         amount: u64
     ) -> Result<()> {
-        self.tvl.checked_sub(amount)
+        self.tvl
+            .checked_sub(amount)
             .ok_or(InsuranceFundError::MathOverflow)?;
         
         Ok(())
+    }
+
+    pub fn get_price(
+        &self,
+        account: &AccountInfo
+    ) -> Result<u64> {
+        match self.oracle {
+            Oracle::Pyth(_) => get_price_from_pyth(account),
+            Oracle::Switchboard(_) => get_price_from_switchboard(account)
+        }
     }
 }

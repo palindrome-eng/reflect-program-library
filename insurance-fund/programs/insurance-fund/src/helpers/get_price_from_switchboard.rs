@@ -3,10 +3,11 @@ use switchboard_solana::AggregatorAccountData;
 
 use crate::{constants::PRICE_PRECISION, errors::InsuranceFundError};
 
-pub fn get_price_from_switchboard<'a>(
-    account: &'a AccountInfo<'a>
+pub fn get_price_from_switchboard(
+    account: &AccountInfo
 ) -> Result<u64> {
-    let oracle_data = AggregatorAccountData::new(account)?;
+    let account_data = account.try_borrow_mut_data()?;
+    let oracle_data = AggregatorAccountData::new_from_bytes(&account_data.as_ref())?;
     let result = oracle_data.get_result()?;
 
     // Only want the first 9 digits

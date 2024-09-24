@@ -1,4 +1,8 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*};
+use anchor_spl::token::{
+    Transfer,
+    transfer
+};
 
 use crate::errors::InsuranceFundError;
 
@@ -27,5 +31,19 @@ impl Settings {
 
     pub fn freeze(&mut self) {
         self.frozen = true;
+    }
+
+    pub fn calculate_cold_wallet_deposit(
+        &self,
+        amount: u64
+    ) -> u64 {
+        amount * self.shares_config.cold_wallet_share_bps / 10_000
+    }
+
+    pub fn calculate_hot_wallet_deposit(
+        &self,
+        amount: u64
+    ) -> u64 {
+        amount * self.shares_config.hot_wallet_share_bps / 10_000
     }
 }

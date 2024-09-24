@@ -21,8 +21,8 @@ pub struct RestakeArgs {
     pub amount: u64,
 }
 
-pub fn restake<'a>(
-    ctx: Context<'_, 'a, '_, '_, Restake<'a>>,
+pub fn restake(
+    ctx: Context<Restake>,
     args: RestakeArgs
 ) -> Result<()> {
     let RestakeArgs {
@@ -39,14 +39,6 @@ pub fn restake<'a>(
     let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let lockup = &mut ctx.accounts.lockup;
     let deposit = &mut ctx.accounts.deposit;
-    let oracle = &mut ctx.accounts.oracle;
-
-    let price: u64 = match asset.oracle {
-        Oracle::Pyth(_) => get_price_from_pyth(oracle)?,
-        Oracle::Switchboard(_) => get_price_from_switchboard(oracle)?
-    };
-
-    let usd_value = amount * price / 10_u64.pow(PRICE_PRECISION as u32);
 
     let clock = Clock::get()?;
     let unix_ts = clock.unix_timestamp as u64;
@@ -56,15 +48,7 @@ pub fn restake<'a>(
     deposit.user = user.key();
     deposit.unlock_ts = unix_ts + lockup.duration;
     deposit.last_slashed = None;
-    deposit.initial_usd_value = usd_value;
     deposit.amount_slashed = 0;
-
-    let SharesConfig {
-        cold_wallet_share_bps,
-        hot_wallet_share_bps: _
-    } = settings.shares_config;
-
-    let cold_wallet_deposit = ((cold_wallet_share_bps as f64 / 10_000_f64) * (amount as f64)) as u64;
 
     // Transfer to multisig
     transfer(
@@ -76,7 +60,7 @@ pub fn restake<'a>(
                 to: cold_wallet_vault.to_account_info()
             }
         ),
-        cold_wallet_deposit
+        settings.calculate_cold_wallet_deposit(amount)
     )?;
 
     // Transfer to hot wallet
@@ -89,7 +73,7 @@ pub fn restake<'a>(
                 authority: user.to_account_info()
             }
         ), 
-        amount - cold_wallet_deposit
+        settings.calculate_hot_wallet_deposit(amount)
     )?;
 
     lockup.deposits += 1;
@@ -205,7 +189,7 @@ pub struct Restake<'info> {
         mut,
         address = asset.oracle.key().clone()
     )]
-    pub oracle: UncheckedAccount<'info>,
+    pub oracle: AccountInfo<'info>,
 
     #[account()]
     pub clock: Sysvar<'info, Clock>,

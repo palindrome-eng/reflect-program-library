@@ -62,13 +62,8 @@ pub fn slash_deposits(
 
         let slashed = deposit.amount * slashed_share_bps / 10_000;
 
-        deposit.amount -= slashed;
-        deposit.amount_slashed = slashed;
-        deposit.last_slashed = Some(slash_id);
-
-        let slash = &mut ctx.accounts.slash;
-        slash.slashed_amount += slashed;
-        slash.slashed_accounts += 1;
+        deposit.slash(slashed, slash_id)?;
+        slash.slash_account(slashed)?;
     }
 
     let slash = &ctx.accounts.slash;

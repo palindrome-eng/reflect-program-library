@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::errors::InsuranceFundError;
 
 #[account]
 pub struct RewardBoost {
@@ -10,4 +11,16 @@ pub struct RewardBoost {
 
 impl RewardBoost {
     pub const SIZE: usize = 2 * 8;
+
+    pub fn validate(
+        &self,
+        amount: u64
+    ) -> Result<()> {
+        require!(
+            amount >= self.min_usd_value,
+            InsuranceFundError::BoostNotApplied
+        );
+
+        Ok(())
+    }
 }

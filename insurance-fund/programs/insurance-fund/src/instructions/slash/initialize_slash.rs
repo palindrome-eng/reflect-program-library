@@ -21,12 +21,11 @@ pub fn initialize_slash(
 ) -> Result<()> {
     let InitializeSlashArgs {
         amount,
-        lockup_id
+        lockup_id: _
     } = args;
 
     let lockup = &mut ctx.accounts.lockup;
     let slash = &mut ctx.accounts.slash;
-    let settings = &mut ctx.accounts.settings;
     
     lockup.locked = true;
 
@@ -37,6 +36,7 @@ pub fn initialize_slash(
     slash.slashed_amount = 0;
 
     let clock = Clock::get()?;
+    
     emit!(InitializeSlashEvent {
         id: slash.index,
         amount: amount,
