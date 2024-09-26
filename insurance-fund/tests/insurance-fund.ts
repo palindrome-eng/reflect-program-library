@@ -326,6 +326,7 @@ describe("insurance-fund", () => {
                 coldWalletVault,
                 assetMint: lockupData.asset,
                 userAssetAta,
+                oracle: new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG"),
                 lockupAssetVault,
                 clock: SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -493,8 +494,10 @@ describe("insurance-fund", () => {
             depositsToSlash.push(deposit);
         }
 
+        console.log({ depositsToSlash });
+
         // Slash individual deposits
-        await program
+        const tx = await program
             .methods
             .slashDeposits({
                 lockupId,
@@ -517,6 +520,19 @@ describe("insurance-fund", () => {
                 }
             }))
             .rpc();
+
+        await sleep(15);
+
+        const {
+            meta: {
+                logMessages
+            }
+        } = await program
+            .provider
+            .connection
+            .getParsedTransaction(tx, "confirmed");
+
+        console.log(logMessages);
 
         const {
             slashedAccounts: slashedDeposits,
@@ -547,6 +563,24 @@ describe("insurance-fund", () => {
             provider.connection,
             lockupAssetVault
         );
+
+        await sleep(10);
+        const {
+            slashedAccounts,
+            targetAccounts,
+            slashedAmount,
+            targetAmount
+        } = await Slash.fromAccountAddress(
+            provider.connection,
+            slash
+        );
+
+        console.log({ 
+            slashedAccounts: slashedAccounts.toString(),
+            targetAccounts: targetAccounts.toString(),
+            slashedAmount: slashedAmount.toString(),
+            targetAmount: targetAmount.toString()
+        });
 
         // Slash entire pool
         await program

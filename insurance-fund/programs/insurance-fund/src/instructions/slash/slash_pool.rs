@@ -39,6 +39,9 @@ pub fn slash_pool(
     let destination = &ctx.accounts.destination;
     let asset_lockup = &ctx.accounts.asset_lockup;
 
+    msg!("asset_lockup: {:?}", asset_lockup.amount);
+    msg!("slashed_amount: {:?}", slash.slashed_amount);
+
     transfer(
         CpiContext::new_with_signer(
             token_program.to_account_info(), 

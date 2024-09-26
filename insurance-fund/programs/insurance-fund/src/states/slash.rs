@@ -15,14 +15,14 @@ impl Slash {
     pub const LEN: usize = 8 + 5 * 8;
 
     pub fn slash_account(
-        &self,
+        &mut self,
         amount: u64
     ) -> Result<()> {
-        self.slashed_amount
+        self.slashed_amount = self.slashed_amount
             .checked_add(amount)
             .ok_or(InsuranceFundError::MathOverflow)?;
 
-        self.slashed_accounts
+        self.slashed_accounts = self.slashed_accounts
             .checked_add(1)
             .ok_or(InsuranceFundError::MathOverflow)?;
 
