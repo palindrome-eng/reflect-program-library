@@ -10,6 +10,10 @@ use crate::states::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 
+// TODO: Intent should be created no matter how big the deposit size is, but how big the requested withdrawal is.
+// If the deposit is larger than entire hot wallet share of the insurance fund, but single withdrawal is smaller,
+// the withdrawal should be processed as normal.
+
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateIntentArgs {
     pub amount: u64,

@@ -708,4 +708,78 @@ describe("insurance-fund", () => {
             .signers([user])
             .rpc()
     });
+
+    it("Creates withdrawal intent for >30% of the insurance fund.", async () => {
+        const lockupId = new BN(0);
+        const depositId = new BN(0);
+
+        const [lockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lockup"),
+                lockupId.toArrayLike(Buffer, "le", 8)
+            ],
+            PROGRAM_ID
+        );
+
+        const [deposit] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("deposit"),
+                lockup.toBuffer(),
+                depositId.toArrayLike(Buffer, "le", 8)
+            ],
+            PROGRAM_ID
+        );
+
+        const {
+            asset: assetMint
+        } = await Lockup.fromAccountAddress(
+            provider.connection,
+            lockup
+        );
+
+        const userAssetAta = getAssociatedTokenAddressSync(
+            assetMint,
+            user.publicKey,
+            false
+        );
+
+        const [lockupAssetVault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                lockup.toBuffer(),
+                assetMint.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const [intent] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("intent"),
+                deposit.toBuffer()
+            ],
+            PROGRAM_ID
+        );
+
+        await program
+            .methods
+            .createIntent({
+                amount: new BN(0),
+                lockupId,
+                depositId,
+            })
+            .accounts({
+                user: user.publicKey,
+                settings,
+                lockup,
+                deposit,
+                assetMint,
+                userAssetAta,
+                lockupAssetVault,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                clock: SYSVAR_CLOCK_PUBKEY,
+                intent
+            })
+            .rpc()
+    });
 });

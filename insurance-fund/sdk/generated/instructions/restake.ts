@@ -47,6 +47,7 @@ export const restakeStruct = new beet.BeetArgsStruct<
  * @property [_writable_] assetMint
  * @property [_writable_] userAssetAta
  * @property [_writable_] lockupAssetVault
+ * @property [_writable_] oracle
  * @property [] clock
  * @category Instructions
  * @category Restake
@@ -63,6 +64,7 @@ export type RestakeInstructionAccounts = {
   assetMint: web3.PublicKey
   userAssetAta: web3.PublicKey
   lockupAssetVault: web3.PublicKey
+  oracle: web3.PublicKey
   clock: web3.PublicKey
   tokenProgram?: web3.PublicKey
   systemProgram?: web3.PublicKey
@@ -140,6 +142,11 @@ export function createRestakeInstruction(
     },
     {
       pubkey: accounts.lockupAssetVault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.oracle,
       isWritable: true,
       isSigner: false,
     },

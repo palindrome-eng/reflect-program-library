@@ -1,4 +1,5 @@
 export * from './BoostRewardsArgs'
+export * from './CreateIntentArgs'
 export * from './DepositRewardsArgs'
 export * from './InitializeInsuranceFundArgs'
 export * from './InitializeLockupArgs'

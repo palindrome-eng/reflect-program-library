@@ -41,6 +41,16 @@
       "name": "REWARD_POOL_SEED",
       "type": "string",
       "value": "\"reward_pool\""
+    },
+    {
+      "name": "PRICE_PRECISION",
+      "type": "i32",
+      "value": "9"
+    },
+    {
+      "name": "INTENT_SEED",
+      "type": "string",
+      "value": "\"intent\""
     }
   ],
   "instructions": [
@@ -216,6 +226,11 @@
         },
         {
           "name": "lockupAssetVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracle",
           "isMut": true,
           "isSigner": false
         },
@@ -583,6 +598,26 @@
       }
     },
     {
+      "name": "Intent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "totalDeposit",
+            "type": "u64"
+          },
+          {
+            "name": "lockup",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
       "name": "Lockup",
       "type": {
         "kind": "struct",
@@ -859,6 +894,26 @@
           },
           {
             "name": "slashId",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateIntentArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "depositId",
             "type": "u64"
           }
         ]

@@ -18,3 +18,4 @@ The next step of slashing is `slash_deposits` instruction. This instructions sho
 
 # TODO
 - oracles on deposit, select reward boost
+- withdrawal intents shouldn't be created via additional instruction, but conditionally depending on the `amount` parameter passed to the `withdraw()` instruction
