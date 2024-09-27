@@ -145,6 +145,8 @@ pub struct Withdraw<'info> {
         constraint = deposit.unlock_ts <= (clock.unix_timestamp as u64) @ InsuranceFundError::LockupInForce,
         // Cannot withdraw more than in deposit
         constraint = deposit.amount >= args.amount @ InsuranceFundError::NotEnoughFunds,
+        // Enforce account ownership
+        has_one = user
     )]
     pub deposit: Account<'info, Deposit>,
 
