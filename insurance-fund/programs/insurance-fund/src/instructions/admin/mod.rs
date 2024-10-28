@@ -9,3 +9,6 @@ pub use initialize_lockup::*;
 
 pub mod boost_rewards;
 pub use boost_rewards::*;
+
+pub mod freeze_insurance_fund;
+pub use freeze_insurance_fund::*;

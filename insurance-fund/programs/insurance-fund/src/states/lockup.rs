@@ -23,14 +23,15 @@ pub struct Lockup {
     pub asset: Pubkey,
     pub min_deposit: u64,
     pub duration: u64,
+    // Not required, yield will depend on the crank depositing into the pool
     pub yield_bps: u64,
     pub yield_mode: YieldMode,
-    pub deposit_cap: u64,
+    pub deposit_cap: Option<u64>,
     pub deposits: u64,
     pub slash_state: SlashState,
     pub reward_boosts: u64,
 }
 
 impl Lockup {
-    pub const SIZE: usize = 8 + 1 + 1 + 6 * 8 + 32 + 17 + 16 + 8;
+    pub const SIZE: usize = 8 + 1 + 1 + 6 * 8 + 1 + 32 + 17 + 16 + 8;
 }

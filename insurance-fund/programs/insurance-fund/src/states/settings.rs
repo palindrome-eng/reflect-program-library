@@ -33,6 +33,10 @@ impl Settings {
         self.frozen = true;
     }
 
+    pub fn unfreeze(&mut self) {
+        self.frozen = false;
+    }
+
     pub fn calculate_cold_wallet_deposit(
         &self,
         amount: u64

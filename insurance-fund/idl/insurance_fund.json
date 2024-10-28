@@ -83,6 +83,29 @@
       ]
     },
     {
+      "name": "manageFreeze",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ManageFreezeArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "initializeLockup",
       "accounts": [
         {
@@ -111,7 +134,7 @@
           "isSigner": false
         },
         {
-          "name": "assetLockup",
+          "name": "lockupAssetVault",
           "isMut": true,
           "isSigner": false
         },
@@ -310,6 +333,16 @@
         },
         {
           "name": "assetRewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "coldWallet",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "coldWalletVault",
           "isMut": true,
           "isSigner": false
         },
@@ -534,6 +567,74 @@
           }
         }
       ]
+    },
+    {
+      "name": "createIntent",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupAssetVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deposit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "intent",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateIntentArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -658,7 +759,9 @@
           },
           {
             "name": "depositCap",
-            "type": "u64"
+            "type": {
+              "option": "u64"
+            }
           },
           {
             "name": "deposits",
@@ -773,6 +876,18 @@
           {
             "name": "boostBps",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManageFreezeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "freeze",
+            "type": "bool"
           }
         ]
       }
@@ -1279,7 +1394,7 @@
     }
   ],
   "metadata": {
-    "address": "CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB",
+    "address": "BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e",
     "origin": "anchor",
     "binaryVersion": "0.29.0",
     "libVersion": "0.29.0"

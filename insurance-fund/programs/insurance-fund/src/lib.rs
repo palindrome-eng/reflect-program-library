@@ -8,7 +8,7 @@ pub mod events;
 pub mod helpers;
 use crate::instructions::*;
 
-declare_id!("CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB");
+declare_id!("BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e");
 
 #[program]
 pub mod insurance_fund {
@@ -22,6 +22,13 @@ pub mod insurance_fund {
             ctx,
             args
         )
+    }
+
+    pub fn manage_freeze(
+        ctx: Context<ManageFreeze>,
+        args: ManageFreezeArgs
+    ) -> Result<()> {
+        instructions::manage_freeze(ctx, args)
     }
 
     pub fn initialize_lockup(

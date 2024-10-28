@@ -28,7 +28,7 @@ pub fn create_intent(
     let CreateIntentArgs {
         amount,
         deposit_id: _,
-        lockup_id: __
+        lockup_id
     } = args;
 
     // TODO: Cover case when single withdrawal is >hot wallet && >cold wallet, i.e 70% of the insurance fund
@@ -48,16 +48,24 @@ pub fn create_intent(
         cold_wallet_share_bps 
     } = settings.shares_config;
 
-    let total_estimated_lockup = lockup_asset_vault.amount / (hot_wallet_share_bps / 10_000);
-    let total_cold_wallet_lockup = total_estimated_lockup * cold_wallet_share_bps / 10_000;
-    let total_hot_wallet_lockup = deposit.amount;
+    let total_estimated_lockup = lockup_asset_vault.amount as f64 / (hot_wallet_share_bps as f64 / 10_000_f64);
+    let total_cold_wallet_lockup = (total_estimated_lockup as f64 * cold_wallet_share_bps as f64 / 10_000_f64) as u64;
+    let total_hot_wallet_lockup = lockup_asset_vault.amount;
 
     // TODO: Update `asset` TVL stat.
 
     if (amount > total_cold_wallet_lockup) {
         // Difference between hot wallet deposit and user's deposit
         let difference = amount - total_hot_wallet_lockup;
-        let seeds = &[];
+
+        let seeds = &[
+            LOCKUP_SEED.as_bytes(),
+            &lockup_id.to_le_bytes(),
+            &[ctx.bumps.lockup]
+        ];
+
+        msg!("total_hot_wallet_lockup: {:?}", total_hot_wallet_lockup);
+        msg!("lockup_asset_vault: {:?}", lockup_asset_vault.amount);
 
         // Transfer ENTIRE hot wallet share of the insurance fund.
         transfer(

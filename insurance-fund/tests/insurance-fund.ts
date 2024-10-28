@@ -86,6 +86,44 @@ describe("insurance-fund", () => {
         expect(frozen).eq(false);
     });
 
+    it('Freezes/unfreezes protocol', async () => {
+        await program
+            .methods
+            .manageFreeze({
+                freeze: true
+            })
+            .accounts({
+                superadmin: provider.publicKey,
+                settings
+            })
+            .rpc()
+
+        let settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
+        expect(settingsData.frozen).eq(true);
+
+        await program
+            .methods
+            .manageFreeze({
+                freeze: false
+            })
+            .accounts({
+                superadmin: provider.publicKey,
+                settings
+            })
+            .rpc();
+
+        settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
+        expect(settingsData.frozen).eq(false);
+    });
+
     it("Mints and adds assets to insurance pool.", async () => {
         const assets: PublicKey[] = [];
 
@@ -192,7 +230,7 @@ describe("insurance-fund", () => {
                         settings,
                         lockup,
                         assetMint: mint,
-                        assetLockup,
+                        lockupAssetVault: assetLockup,
                         tokenProgram: TOKEN_PROGRAM_ID,
                         systemProgram: SystemProgram.programId,
                         asset,
@@ -234,7 +272,7 @@ describe("insurance-fund", () => {
         }
     });
 
-    it("Lock-ups tokens.", async () => {
+    it("Locks-up tokens.", async () => {
         const lockupId = new BN(0);
 
         const [lockup] = PublicKey.findProgramAddressSync(
@@ -385,8 +423,6 @@ describe("insurance-fund", () => {
             deposit
         );
 
-        console.log({ amount: depositedAmount.toString() });
-
         expect(userPointer.toString()).eq(user.publicKey.toString());
         expect(lockupPointer.toString()).eq(lockup.toString());
         expect(depositedAmount.toString()).eq(amount.toString());
@@ -494,7 +530,6 @@ describe("insurance-fund", () => {
             depositsToSlash.push(deposit);
         }
 
-        console.log({ depositsToSlash });
 
         // Slash individual deposits
         const tx = await program
@@ -521,18 +556,16 @@ describe("insurance-fund", () => {
             }))
             .rpc();
 
-        await sleep(15);
-
-        const {
-            meta: {
-                logMessages
-            }
-        } = await program
-            .provider
-            .connection
-            .getParsedTransaction(tx, "confirmed");
-
-        console.log(logMessages);
+        // await sleep(10);
+        //
+        // const {
+        //     meta: {
+        //         logMessages
+        //     }
+        // } = await program
+        //     .provider
+        //     .connection
+        //     .getParsedTransaction(tx, "confirmed");
 
         const {
             slashedAccounts: slashedDeposits,
@@ -564,7 +597,6 @@ describe("insurance-fund", () => {
             lockupAssetVault
         );
 
-        await sleep(10);
         const {
             slashedAccounts,
             targetAccounts,
@@ -574,13 +606,6 @@ describe("insurance-fund", () => {
             provider.connection,
             slash
         );
-
-        console.log({ 
-            slashedAccounts: slashedAccounts.toString(),
-            targetAccounts: targetAccounts.toString(),
-            slashedAmount: slashedAmount.toString(),
-            targetAmount: targetAmount.toString()
-        });
 
         // Slash entire pool
         await program
@@ -607,11 +632,6 @@ describe("insurance-fund", () => {
             provider.connection,
             lockupAssetVault
         );
-
-        console.log({
-            lockupAssetVaultBalancePost: lockupAssetVaultBalancePost.toString(),
-            lockupAssetVaultBalancePre: lockupAssetVaultBalancePre.toString(),
-        })
     });
 
     it("Withdraws & claims rewards.", async () => {
@@ -648,8 +668,6 @@ describe("insurance-fund", () => {
             provider.connection,
             lockupAssetVault
         );
-
-        console.log({ lockupAssetVaultBalance: lockupAssetVaultBalance.toString() })
 
         const [deposit] = PublicKey.findProgramAddressSync(
             [
@@ -688,7 +706,7 @@ describe("insurance-fund", () => {
                 lockupId,
                 depositId,
                 rewardBoostId: null,
-                amount: new BN(800 * LAMPORTS_PER_SOL)
+                amount: new BN(5 * LAMPORTS_PER_SOL)
             })
             .accounts({
                 user: user.publicKey,
@@ -730,6 +748,15 @@ describe("insurance-fund", () => {
             PROGRAM_ID
         );
 
+        const depositData = await Deposit.fromAccountAddress(
+            provider.connection,
+            deposit
+        );
+
+        const {
+            amount: leftToWithdraw
+        } = depositData;
+
         const {
             asset: assetMint
         } = await Lockup.fromAccountAddress(
@@ -763,7 +790,7 @@ describe("insurance-fund", () => {
         await program
             .methods
             .createIntent({
-                amount: new BN(0),
+                amount: new BN(leftToWithdraw),
                 lockupId,
                 depositId,
             })
@@ -780,6 +807,7 @@ describe("insurance-fund", () => {
                 clock: SYSVAR_CLOCK_PUBKEY,
                 intent
             })
+            .signers([user])
             .rpc()
     });
 });

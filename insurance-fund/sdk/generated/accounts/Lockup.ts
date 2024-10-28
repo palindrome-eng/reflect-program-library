@@ -25,7 +25,7 @@ export type LockupArgs = {
   duration: beet.bignum
   yieldBps: beet.bignum
   yieldMode: YieldMode
-  depositCap: beet.bignum
+  depositCap: beet.COption<beet.bignum>
   deposits: beet.bignum
   slashState: SlashState
   rewardBoosts: beet.bignum
@@ -49,7 +49,7 @@ export class Lockup implements LockupArgs {
     readonly duration: beet.bignum,
     readonly yieldBps: beet.bignum,
     readonly yieldMode: YieldMode,
-    readonly depositCap: beet.bignum,
+    readonly depositCap: beet.COption<beet.bignum>,
     readonly deposits: beet.bignum,
     readonly slashState: SlashState,
     readonly rewardBoosts: beet.bignum
@@ -115,7 +115,7 @@ export class Lockup implements LockupArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB'
+      'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, lockupBeet)
@@ -228,17 +228,7 @@ export class Lockup implements LockupArgs {
         return x
       })(),
       yieldMode: this.yieldMode.__kind,
-      depositCap: (() => {
-        const x = <{ toNumber: () => number }>this.depositCap
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
+      depositCap: this.depositCap,
       deposits: (() => {
         const x = <{ toNumber: () => number }>this.deposits
         if (typeof x.toNumber === 'function') {
@@ -286,7 +276,7 @@ export const lockupBeet = new beet.FixableBeetStruct<
     ['duration', beet.u64],
     ['yieldBps', beet.u64],
     ['yieldMode', yieldModeBeet],
-    ['depositCap', beet.u64],
+    ['depositCap', beet.coption(beet.u64)],
     ['deposits', beet.u64],
     ['slashState', slashStateBeet],
     ['rewardBoosts', beet.u64],

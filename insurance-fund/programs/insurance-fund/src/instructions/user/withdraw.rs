@@ -11,6 +11,9 @@ use anchor_spl::token::{
     Transfer,
 };
 
+// Not sure if there isn't some retarded shit happening on withdrawal, resulting in unfair distribution
+// of funds. TODO: Fix
+
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
 pub struct WithdrawArgs {
     pub lockup_id: u64,
@@ -38,14 +41,23 @@ pub fn withdraw(
     let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
     let asset_mint = &ctx.accounts.asset_mint;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
+    let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
 
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
 
     let total_rewards = asset_reward_pool.amount;
-    let total_lockup = lockup_asset_vault.amount;
+    msg!("total_rewards: {:?}", total_rewards); 
+
+    // Pretty sure this is fucked up
+    let total_lockup = lockup_asset_vault.amount + cold_wallet_vault.amount;
+    msg!("total_lockup: {:?}", total_lockup);
 
     let user_lockup = deposit.amount;
-    let user_rewards = total_rewards * user_lockup / total_lockup;
+    msg!("user_lockup: {:?}", user_lockup);
+
+    let user_share = user_lockup as f64 / total_lockup as f64;
+    let user_rewards = (total_rewards as f64 * user_share) as u64;
+    msg!("user_rewards: {:?}", user_rewards);
 
     msg!(
         "deposit share: {:?}",
@@ -213,6 +225,20 @@ pub struct Withdraw<'info> {
         token::authority = lockup,
     )]
     pub asset_reward_pool: Account<'info, TokenAccount>,
+
+    /// CHECK: Directly checking address against field in settings
+    #[account(
+        mut,
+        address = settings.cold_wallet
+    )]
+    pub cold_wallet: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = cold_wallet
+    )]
+    pub cold_wallet_vault: Account<'info, TokenAccount>,
 
     #[account()]
     pub clock: Sysvar<'info, Clock>,

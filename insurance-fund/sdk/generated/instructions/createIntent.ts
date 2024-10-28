@@ -8,84 +8,92 @@
 import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { SlashPoolArgs, slashPoolArgsBeet } from '../types/SlashPoolArgs'
+import {
+  CreateIntentArgs,
+  createIntentArgsBeet,
+} from '../types/CreateIntentArgs'
 
 /**
  * @category Instructions
- * @category SlashPool
+ * @category CreateIntent
  * @category generated
  */
-export type SlashPoolInstructionArgs = {
-  args: SlashPoolArgs
+export type CreateIntentInstructionArgs = {
+  args: CreateIntentArgs
 }
 /**
  * @category Instructions
- * @category SlashPool
+ * @category CreateIntent
  * @category generated
  */
-export const slashPoolStruct = new beet.BeetArgsStruct<
-  SlashPoolInstructionArgs & {
+export const createIntentStruct = new beet.BeetArgsStruct<
+  CreateIntentInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', slashPoolArgsBeet],
+    ['args', createIntentArgsBeet],
   ],
-  'SlashPoolInstructionArgs'
+  'CreateIntentInstructionArgs'
 )
 /**
- * Accounts required by the _slashPool_ instruction
+ * Accounts required by the _createIntent_ instruction
  *
- * @property [_writable_, **signer**] superadmin
+ * @property [_writable_, **signer**] user
  * @property [_writable_] settings
  * @property [_writable_] lockup
- * @property [_writable_] slash
- * @property [_writable_] asset
- * @property [_writable_] assetLockup
- * @property [_writable_] destination
+ * @property [_writable_] assetMint
+ * @property [_writable_] userAssetAta
+ * @property [_writable_] lockupAssetVault
+ * @property [_writable_] deposit
+ * @property [_writable_] intent
+ * @property [] clock
  * @category Instructions
- * @category SlashPool
+ * @category CreateIntent
  * @category generated
  */
-export type SlashPoolInstructionAccounts = {
-  superadmin: web3.PublicKey
+export type CreateIntentInstructionAccounts = {
+  user: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
-  slash: web3.PublicKey
-  asset: web3.PublicKey
-  assetLockup: web3.PublicKey
-  destination: web3.PublicKey
+  assetMint: web3.PublicKey
+  userAssetAta: web3.PublicKey
+  lockupAssetVault: web3.PublicKey
+  deposit: web3.PublicKey
+  intent: web3.PublicKey
+  systemProgram?: web3.PublicKey
   tokenProgram?: web3.PublicKey
+  clock: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const slashPoolInstructionDiscriminator = [
-  96, 203, 37, 117, 91, 235, 38, 76,
+export const createIntentInstructionDiscriminator = [
+  216, 214, 79, 121, 23, 194, 96, 104,
 ]
 
 /**
- * Creates a _SlashPool_ instruction.
+ * Creates a _CreateIntent_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SlashPool
+ * @category CreateIntent
  * @category generated
  */
-export function createSlashPoolInstruction(
-  accounts: SlashPoolInstructionAccounts,
-  args: SlashPoolInstructionArgs,
+export function createCreateIntentInstruction(
+  accounts: CreateIntentInstructionAccounts,
+  args: CreateIntentInstructionArgs,
   programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
 ) {
-  const [data] = slashPoolStruct.serialize({
-    instructionDiscriminator: slashPoolInstructionDiscriminator,
+  const [data] = createIntentStruct.serialize({
+    instructionDiscriminator: createIntentInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.superadmin,
+      pubkey: accounts.user,
       isWritable: true,
       isSigner: true,
     },
@@ -100,27 +108,42 @@ export function createSlashPoolInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.slash,
+      pubkey: accounts.assetMint,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.asset,
+      pubkey: accounts.userAssetAta,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.assetLockup,
+      pubkey: accounts.lockupAssetVault,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.destination,
+      pubkey: accounts.deposit,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.intent,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
       isSigner: false,
     },
     {
       pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.clock,
       isWritable: false,
       isSigner: false,
     },

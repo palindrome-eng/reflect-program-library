@@ -80,7 +80,7 @@ export class RewardBoost implements RewardBoostArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB'
+      'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, rewardBoostBeet)

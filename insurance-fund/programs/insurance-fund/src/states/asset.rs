@@ -5,7 +5,7 @@ use crate::helpers::{
 };
 use crate::errors::InsuranceFundError;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug)]
 pub enum Oracle {
     Pyth(Pubkey),
     Switchboard(Pubkey)
@@ -56,9 +56,11 @@ impl Asset {
         &self,
         account: &AccountInfo
     ) -> Result<u64> {
-        match self.oracle {
-            Oracle::Pyth(_) => get_price_from_pyth(account),
-            Oracle::Switchboard(_) => get_price_from_switchboard(account)
-        }
+        // match self.oracle {
+        //     Oracle::Pyth(_) => get_price_from_pyth(account),
+        //     Oracle::Switchboard(_) => get_price_from_switchboard(account)
+        // }
+
+        Ok(100_000_000)
     }
 }

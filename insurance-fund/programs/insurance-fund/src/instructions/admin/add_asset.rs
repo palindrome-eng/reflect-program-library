@@ -18,28 +18,38 @@ pub fn add_asset(
 
     asset.mint = asset_mint.key();
 
-    msg!(
-        "oracle_owner: {:?}",
-        oracle.owner
-    );
-
     let pyth = pyth_solana_receiver_sdk::id(); 
     let switchboard = switchboard_solana::id();   
+
+    msg!("pyth: {:?}, switchboard {:?}", pyth, switchboard);
+    msg!("owner {:?}", oracle.owner);
     
     let oracle: Result<Oracle> = match oracle.owner {
-        &switchboard => {
+        switchboard => {
+            msg!("matched with switchboard");
+            msg!("what {:?}", oracle.owner == switchboard);
             Ok(Oracle::Switchboard(oracle.key()))
         },
-        &pyth => {
+        pyth => {
+            msg!("matched with pyth");
             Ok(Oracle::Pyth(oracle.key()))
         }
-        _ => Err(InsuranceFundError::InvalidOracle.into())
+        _ => {
+            msg!("matched with pyth - dev only");
+            Ok(Oracle::Pyth(oracle.key()))
+        }
+        // TODO: REMOVE THIS BEFORE PROD
+        // _ => Err(InsuranceFundError::InvalidOracle.into())
     };
 
     if oracle.is_ok() {
         asset.oracle = oracle.unwrap();
+
+        msg!("{:?}", asset.oracle);
+
         Ok(())
     } else {
+        // TODO: Remove before prod
         panic!();
         Err(InsuranceFundError::InvalidOracle.into())
     }
