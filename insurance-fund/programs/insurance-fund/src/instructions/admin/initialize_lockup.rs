@@ -39,7 +39,7 @@ pub fn initialize_lockup(
     lockup.min_deposit = min_deposit;
     lockup.yield_bps = yield_bps;
     lockup.yield_mode = yield_mode;
-    lockup.deposit_cap = deposit_cap;
+    lockup.deposit_cap = if deposit_cap > 0 { Some(deposit_cap) } else { None };
     lockup.slash_state = SlashState {
         index: 0,
         amount: 0
@@ -68,7 +68,8 @@ pub struct InitializeLockup<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin
+        has_one = superadmin,
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -112,7 +113,7 @@ pub struct InitializeLockup<'info> {
         token::mint = asset_mint,
         token::authority = lockup,
     )]
-    pub asset_lockup: Account<'info, TokenAccount>,
+    pub lockup_asset_vault: Account<'info, TokenAccount>,
 
     #[account(
         init,

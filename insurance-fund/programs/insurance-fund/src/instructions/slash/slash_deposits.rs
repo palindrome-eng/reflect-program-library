@@ -40,6 +40,10 @@ pub fn slash_deposits(
     let total_deposit = asset_lockup.amount;
     let slashed_share_bps = 10_000 * slash_amount / total_deposit;
 
+    msg!("total_deposit: {:?}", total_deposit);
+    msg!("to slash: {:?}", slash_amount);
+    msg!("slashed_share_bps: {:?}", slashed_share_bps);
+
     require!(
         slash_amount == slash.target_amount,
         InsuranceFundError::SlashAmountMismatch
@@ -60,10 +64,19 @@ pub fn slash_deposits(
         let deposit_data = deposit_account_info.try_borrow_mut_data()?;
         let mut deposit = Deposit::try_deserialize(&mut deposit_data.as_ref())?;
 
-        let slashed = deposit.amount * slashed_share_bps / 10_000;
+        msg!("deposit: {:?}", deposit.amount);
+
+        // We only slash 30% (hot_wallet_share_bps)
+        // 70% of the slash will be taken from the cold wallet
+        // to make sure that the ratio is preserved.
+        let slashed = deposit.amount * hot_wallet_share_bps / 10_000 * slashed_share_bps / 10_000;
+        msg!("slashed: {:?}", slashed);
 
         deposit.slash(slashed, slash_id)?;
-        slash.slash_account(slashed)?;
+        {
+            let slash = &mut ctx.accounts.slash;
+            slash.slash_account(slashed)?;
+        }
     }
 
     let slash = &ctx.accounts.slash;
@@ -116,6 +129,7 @@ pub struct SlashDeposits<'info> {
         ],
         bump,
         constraint = slash.index == args.slash_id @ InsuranceFundError::InvalidInput,
+        constraint = slash.index == lockup.slash_state.index @ InsuranceFundError::InvalidInput,
         constraint = slash.slashed_accounts <= lockup.deposits @ InsuranceFundError::AllDepositsSlashed
     )]
     pub slash: Account<'info, Slash>,

@@ -45,7 +45,7 @@ export const initializeLockupStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] lockup
  * @property [_writable_] asset
  * @property [_writable_] assetMint
- * @property [_writable_] assetLockup
+ * @property [_writable_] lockupAssetVault
  * @property [_writable_] assetRewardPool
  * @category Instructions
  * @category InitializeLockup
@@ -57,7 +57,7 @@ export type InitializeLockupInstructionAccounts = {
   lockup: web3.PublicKey
   asset: web3.PublicKey
   assetMint: web3.PublicKey
-  assetLockup: web3.PublicKey
+  lockupAssetVault: web3.PublicKey
   assetRewardPool: web3.PublicKey
   tokenProgram?: web3.PublicKey
   systemProgram?: web3.PublicKey
@@ -81,7 +81,7 @@ export const initializeLockupInstructionDiscriminator = [
 export function createInitializeLockupInstruction(
   accounts: InitializeLockupInstructionAccounts,
   args: InitializeLockupInstructionArgs,
-  programId = new web3.PublicKey('CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB')
+  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
 ) {
   const [data] = initializeLockupStruct.serialize({
     instructionDiscriminator: initializeLockupInstructionDiscriminator,
@@ -114,7 +114,7 @@ export function createInitializeLockupInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.assetLockup,
+      pubkey: accounts.lockupAssetVault,
       isWritable: true,
       isSigner: false,
     },

@@ -8,7 +8,7 @@ pub mod events;
 pub mod helpers;
 use crate::instructions::*;
 
-declare_id!("CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB");
+declare_id!("BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e");
 
 #[program]
 pub mod insurance_fund {
@@ -24,11 +24,25 @@ pub mod insurance_fund {
         )
     }
 
+    pub fn manage_freeze(
+        ctx: Context<ManageFreeze>,
+        args: ManageFreezeArgs
+    ) -> Result<()> {
+        instructions::manage_freeze(ctx, args)
+    }
+
     pub fn initialize_lockup(
         ctx: Context<InitializeLockup>,
         args: InitializeLockupArgs
     ) -> Result<()> {
         instructions::initialize_lockup(ctx, args)
+    }
+
+    pub fn manage_lockup_lock(
+        ctx: Context<ManageLockupLock>,
+        args: ManageLockupLockArgs
+    ) -> Result<()> {
+        instructions::manage_lockup_lock(ctx, args)
     }
 
     pub fn add_asset(
@@ -75,10 +89,31 @@ pub mod insurance_fund {
         instructions::slash_pool(ctx, args)
     }
 
+    pub fn slash_cold_wallet(
+        ctx: Context<SlashColdWallet>,
+        args: SlashColdWalletArgs
+    ) -> Result<()> {
+        instructions::slash_cold_wallet(ctx, args)
+    }
+
     pub fn deposit_rewards(
         ctx: Context<DepositRewards>,
         args: DepositRewardsArgs
     ) -> Result<()> {
         instructions::deposit_rewards(ctx, args)
+    }
+
+    pub fn create_intent(
+        ctx: Context<CreateIntent>,
+        args: CreateIntentArgs
+    ) -> Result<()> {
+        instructions::create_intent(ctx, args)
+    }
+
+    pub fn process_intent(
+        ctx: Context<ProcessIntent>,
+        args: ProcessIntentArgs
+    ) -> Result<()> {
+        instructions::process_intent(ctx, args)
     }
 }

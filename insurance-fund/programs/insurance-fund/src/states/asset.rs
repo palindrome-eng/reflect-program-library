@@ -5,7 +5,7 @@ use crate::helpers::{
 };
 use crate::errors::InsuranceFundError;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug)]
 pub enum Oracle {
     Pyth(Pubkey),
     Switchboard(Pubkey)
@@ -25,11 +25,14 @@ impl Oracle {
 pub struct Asset {
     pub mint: Pubkey,
     pub oracle: Oracle,
-    pub tvl: u64
+    // For stats
+    pub tvl: u64,
+    pub lockups: u64,
+    pub deposits: u64,
 }
 
 impl Asset {
-    pub const SIZE: usize = 8 + 32 + 8 + Oracle::SIZE;
+    pub const SIZE: usize = 8 + 32 + 3 * 8 + Oracle::SIZE;
 
     pub fn increase_tvl(
         &mut self,
@@ -60,5 +63,12 @@ impl Asset {
             Oracle::Pyth(_) => get_price_from_pyth(account),
             Oracle::Switchboard(_) => get_price_from_switchboard(account)
         }
+    }
+    
+    pub fn add_lockup(
+        &mut self,
+    ) -> Result<()> {
+        self.lockups += 1;
+        Ok(())
     }
 }

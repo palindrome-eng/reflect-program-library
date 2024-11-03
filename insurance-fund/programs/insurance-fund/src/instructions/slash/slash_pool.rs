@@ -28,6 +28,7 @@ pub fn slash_pool(
 
     let slash = &ctx.accounts.slash;
     let token_program = &ctx.accounts.token_program;
+    let asset = &mut ctx.accounts.asset;
 
     let lockup = &mut ctx.accounts.lockup;
     let signer_seeds = &[
@@ -38,6 +39,9 @@ pub fn slash_pool(
 
     let destination = &ctx.accounts.destination;
     let asset_lockup = &ctx.accounts.asset_lockup;
+
+    msg!("asset_lockup: {:?}", asset_lockup.amount);
+    msg!("slashed_amount: {:?}", slash.slashed_amount);
 
     transfer(
         CpiContext::new_with_signer(
@@ -54,7 +58,9 @@ pub fn slash_pool(
 
     lockup.slash_state.amount += slash.slashed_amount;
     lockup.slash_state.index += 1;
-    lockup.locked = false;
+    lockup.unlock();
+
+    asset.decrease_tvl(slash.slashed_amount)?;
 
     emit!(FinalizeSlash {
         id: slash.index,
@@ -104,7 +110,8 @@ pub struct SlashPool<'info> {
         ],
         bump,
         // All deposits have to be slashed before slashing the pool.
-        constraint = slash.target_accounts == slash.slashed_accounts @ InsuranceFundError::DepositsNotSlashed
+        constraint = slash.target_accounts == slash.slashed_accounts @ InsuranceFundError::DepositsNotSlashed,
+        constraint = slash.index == lockup.slash_state.index @ InsuranceFundError::InvalidInput
     )]
     pub slash: Account<'info, Slash>,
 
@@ -112,14 +119,24 @@ pub struct SlashPool<'info> {
         mut,
         address = lockup.asset
     )]
-    pub asset: Account<'info, Mint>,
+    pub asset_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        seeds = [
+            ASSET_SEED.as_bytes(),
+            &asset_mint.key().to_bytes()
+        ],
+        bump,
+    )]
+    pub asset: Account<'info, Asset>,
 
     #[account(
         mut,
         seeds = [
             VAULT_SEED.as_bytes(),
             lockup.key().as_ref(),
-            asset.key().as_ref()
+            asset_mint.key().as_ref()
         ],
         bump,
         constraint = destination.amount >= slash.slashed_amount @ InsuranceFundError::NotEnoughFundsToSlash
@@ -128,7 +145,7 @@ pub struct SlashPool<'info> {
 
     #[account(
         mut,
-        token::mint = asset,
+        token::mint = asset_mint,
     )]
     pub destination: Account<'info, TokenAccount>,
 

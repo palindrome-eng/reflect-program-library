@@ -2,11 +2,7 @@ use anchor_lang::prelude::*;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
 use crate::constants::*;
-use anchor_spl::token::{
-    Mint,
-    Token
-};
-use pyth_solana_receiver_sdk::*;
+use anchor_spl::token::Mint;
 
 pub fn add_asset(
     ctx: Context<AddAsset>
@@ -18,30 +14,27 @@ pub fn add_asset(
 
     asset.mint = asset_mint.key();
 
-    msg!(
-        "oracle_owner: {:?}",
-        oracle.owner
-    );
-
     let pyth = pyth_solana_receiver_sdk::id(); 
     let switchboard = switchboard_solana::id();   
     
     let oracle: Result<Oracle> = match oracle.owner {
-        &switchboard => {
+        switchboard => {
             Ok(Oracle::Switchboard(oracle.key()))
         },
-        &pyth => {
+        pyth => {
             Ok(Oracle::Pyth(oracle.key()))
         }
-        _ => Err(InsuranceFundError::InvalidOracle.into())
+        _ => {
+            Err(InsuranceFundError::InvalidOracle.into())
+        }
     };
 
-    if oracle.is_ok() {
-        asset.oracle = oracle.unwrap();
-        Ok(())
-    } else {
-        panic!();
-        Err(InsuranceFundError::InvalidOracle.into())
+    match oracle {
+        Ok(oracle) => {
+            asset.oracle = oracle;
+            Ok(())
+        },
+        Err(err) => Err(err)
     }
 }
 
@@ -58,6 +51,7 @@ pub struct AddAsset<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -84,8 +78,6 @@ pub struct AddAsset<'info> {
     )]
     pub oracle: UncheckedAccount<'info>,
 
-    #[account(
-
-    )]
+    #[account()]
     pub system_program: Program<'info, System>,
 }

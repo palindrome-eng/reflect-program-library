@@ -27,7 +27,7 @@ pub fn initialize_slash(
     let lockup = &mut ctx.accounts.lockup;
     let slash = &mut ctx.accounts.slash;
     
-    lockup.locked = true;
+    lockup.lock();
 
     slash.index = lockup.slash_state.index;
     slash.target_accounts = lockup.deposits;

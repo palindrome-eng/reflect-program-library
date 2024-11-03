@@ -15,3 +15,6 @@ pub use asset::*;
 
 pub mod reward_boost;
 pub use reward_boost::*;
+
+pub mod intent;
+pub use intent::*;

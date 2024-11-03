@@ -69,7 +69,7 @@ export const initializeInsuranceFundInstructionDiscriminator = [
 export function createInitializeInsuranceFundInstruction(
   accounts: InitializeInsuranceFundInstructionAccounts,
   args: InitializeInsuranceFundInstructionArgs,
-  programId = new web3.PublicKey('CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB')
+  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
 ) {
   const [data] = initializeInsuranceFundStruct.serialize({
     instructionDiscriminator: initializeInsuranceFundInstructionDiscriminator,

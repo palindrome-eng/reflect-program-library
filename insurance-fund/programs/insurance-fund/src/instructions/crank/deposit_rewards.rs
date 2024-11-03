@@ -17,6 +17,10 @@ pub struct DepositRewardsArgs {
     pub amount: u64
 }
 
+// Entire rewards logic is a bit fucked up, since it requires the reward to be in the same currency
+// as the deposit, which won't be the case on production.
+// TODO: Rework this to be less fucked up
+
 pub fn deposit_rewards(
     ctx: Context<DepositRewards>,
     args: DepositRewardsArgs

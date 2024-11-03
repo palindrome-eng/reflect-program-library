@@ -8,78 +8,70 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  SlashDepositsArgs,
-  slashDepositsArgsBeet,
-} from '../types/SlashDepositsArgs'
+  ManageFreezeArgs,
+  manageFreezeArgsBeet,
+} from '../types/ManageFreezeArgs'
 
 /**
  * @category Instructions
- * @category SlashDeposits
+ * @category ManageFreeze
  * @category generated
  */
-export type SlashDepositsInstructionArgs = {
-  args: SlashDepositsArgs
+export type ManageFreezeInstructionArgs = {
+  args: ManageFreezeArgs
 }
 /**
  * @category Instructions
- * @category SlashDeposits
+ * @category ManageFreeze
  * @category generated
  */
-export const slashDepositsStruct = new beet.BeetArgsStruct<
-  SlashDepositsInstructionArgs & {
+export const manageFreezeStruct = new beet.BeetArgsStruct<
+  ManageFreezeInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', slashDepositsArgsBeet],
+    ['args', manageFreezeArgsBeet],
   ],
-  'SlashDepositsInstructionArgs'
+  'ManageFreezeInstructionArgs'
 )
 /**
- * Accounts required by the _slashDeposits_ instruction
+ * Accounts required by the _manageFreeze_ instruction
  *
  * @property [_writable_, **signer**] superadmin
  * @property [_writable_] settings
- * @property [_writable_] lockup
- * @property [_writable_] slash
- * @property [_writable_] assetMint
- * @property [_writable_] assetLockup
  * @category Instructions
- * @category SlashDeposits
+ * @category ManageFreeze
  * @category generated
  */
-export type SlashDepositsInstructionAccounts = {
+export type ManageFreezeInstructionAccounts = {
   superadmin: web3.PublicKey
   settings: web3.PublicKey
-  lockup: web3.PublicKey
-  slash: web3.PublicKey
-  assetMint: web3.PublicKey
-  assetLockup: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const slashDepositsInstructionDiscriminator = [
-  67, 60, 14, 139, 108, 69, 92, 132,
+export const manageFreezeInstructionDiscriminator = [
+  163, 151, 84, 239, 6, 113, 250, 208,
 ]
 
 /**
- * Creates a _SlashDeposits_ instruction.
+ * Creates a _ManageFreeze_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SlashDeposits
+ * @category ManageFreeze
  * @category generated
  */
-export function createSlashDepositsInstruction(
-  accounts: SlashDepositsInstructionAccounts,
-  args: SlashDepositsInstructionArgs,
+export function createManageFreezeInstruction(
+  accounts: ManageFreezeInstructionAccounts,
+  args: ManageFreezeInstructionArgs,
   programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
 ) {
-  const [data] = slashDepositsStruct.serialize({
-    instructionDiscriminator: slashDepositsInstructionDiscriminator,
+  const [data] = manageFreezeStruct.serialize({
+    instructionDiscriminator: manageFreezeInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -90,26 +82,6 @@ export function createSlashDepositsInstruction(
     },
     {
       pubkey: accounts.settings,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.lockup,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.slash,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.assetMint,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.assetLockup,
       isWritable: true,
       isSigner: false,
     },

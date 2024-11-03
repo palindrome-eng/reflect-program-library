@@ -86,6 +86,44 @@ describe("insurance-fund", () => {
         expect(frozen).eq(false);
     });
 
+    it('Freezes/unfreezes protocol', async () => {
+        await program
+            .methods
+            .manageFreeze({
+                freeze: true
+            })
+            .accounts({
+                superadmin: provider.publicKey,
+                settings
+            })
+            .rpc()
+
+        let settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
+        expect(settingsData.frozen).eq(true);
+
+        await program
+            .methods
+            .manageFreeze({
+                freeze: false
+            })
+            .accounts({
+                superadmin: provider.publicKey,
+                settings
+            })
+            .rpc();
+
+        settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
+        expect(settingsData.frozen).eq(false);
+    });
+
     it("Mints and adds assets to insurance pool.", async () => {
         const assets: PublicKey[] = [];
 
@@ -192,7 +230,7 @@ describe("insurance-fund", () => {
                         settings,
                         lockup,
                         assetMint: mint,
-                        assetLockup,
+                        lockupAssetVault: assetLockup,
                         tokenProgram: TOKEN_PROGRAM_ID,
                         systemProgram: SystemProgram.programId,
                         asset,
@@ -234,7 +272,7 @@ describe("insurance-fund", () => {
         }
     });
 
-    it("Lock-ups tokens.", async () => {
+    it("Locks-up tokens.", async () => {
         const lockupId = new BN(0);
 
         const [lockup] = PublicKey.findProgramAddressSync(
@@ -326,6 +364,7 @@ describe("insurance-fund", () => {
                 coldWalletVault,
                 assetMint: lockupData.asset,
                 userAssetAta,
+                oracle: new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG"),
                 lockupAssetVault,
                 clock: SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -383,8 +422,6 @@ describe("insurance-fund", () => {
             provider.connection,
             deposit
         );
-
-        console.log({ amount: depositedAmount.toString() });
 
         expect(userPointer.toString()).eq(user.publicKey.toString());
         expect(lockupPointer.toString()).eq(lockup.toString());
@@ -493,8 +530,9 @@ describe("insurance-fund", () => {
             depositsToSlash.push(deposit);
         }
 
+
         // Slash individual deposits
-        await program
+        const tx = await program
             .methods
             .slashDeposits({
                 lockupId,
@@ -517,6 +555,17 @@ describe("insurance-fund", () => {
                 }
             }))
             .rpc();
+
+        // await sleep(10);
+        //
+        // const {
+        //     meta: {
+        //         logMessages
+        //     }
+        // } = await program
+        //     .provider
+        //     .connection
+        //     .getParsedTransaction(tx, "confirmed");
 
         const {
             slashedAccounts: slashedDeposits,
@@ -548,6 +597,16 @@ describe("insurance-fund", () => {
             lockupAssetVault
         );
 
+        const {
+            slashedAccounts,
+            targetAccounts,
+            slashedAmount,
+            targetAmount
+        } = await Slash.fromAccountAddress(
+            provider.connection,
+            slash
+        );
+
         // Slash entire pool
         await program
             .methods
@@ -573,11 +632,6 @@ describe("insurance-fund", () => {
             provider.connection,
             lockupAssetVault
         );
-
-        console.log({
-            lockupAssetVaultBalancePost: lockupAssetVaultBalancePost.toString(),
-            lockupAssetVaultBalancePre: lockupAssetVaultBalancePre.toString(),
-        })
     });
 
     it("Withdraws & claims rewards.", async () => {
@@ -614,8 +668,6 @@ describe("insurance-fund", () => {
             provider.connection,
             lockupAssetVault
         );
-
-        console.log({ lockupAssetVaultBalance: lockupAssetVaultBalance.toString() })
 
         const [deposit] = PublicKey.findProgramAddressSync(
             [
@@ -654,7 +706,7 @@ describe("insurance-fund", () => {
                 lockupId,
                 depositId,
                 rewardBoostId: null,
-                amount: new BN(800 * LAMPORTS_PER_SOL)
+                amount: new BN(5 * LAMPORTS_PER_SOL)
             })
             .accounts({
                 user: user.publicKey,
@@ -670,6 +722,90 @@ describe("insurance-fund", () => {
                 systemProgram: SystemProgram.programId,
                 assetRewardPool,
                 rewardBoost: program.programId
+            })
+            .signers([user])
+            .rpc()
+    });
+
+    it("Creates withdrawal intent for >30% of the insurance fund.", async () => {
+        const lockupId = new BN(0);
+        const depositId = new BN(0);
+
+        const [lockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lockup"),
+                lockupId.toArrayLike(Buffer, "le", 8)
+            ],
+            PROGRAM_ID
+        );
+
+        const [deposit] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("deposit"),
+                lockup.toBuffer(),
+                depositId.toArrayLike(Buffer, "le", 8)
+            ],
+            PROGRAM_ID
+        );
+
+        const depositData = await Deposit.fromAccountAddress(
+            provider.connection,
+            deposit
+        );
+
+        const {
+            amount: leftToWithdraw
+        } = depositData;
+
+        const {
+            asset: assetMint
+        } = await Lockup.fromAccountAddress(
+            provider.connection,
+            lockup
+        );
+
+        const userAssetAta = getAssociatedTokenAddressSync(
+            assetMint,
+            user.publicKey,
+            false
+        );
+
+        const [lockupAssetVault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                lockup.toBuffer(),
+                assetMint.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const [intent] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("intent"),
+                deposit.toBuffer()
+            ],
+            PROGRAM_ID
+        );
+
+        await program
+            .methods
+            .createIntent({
+                amount: new BN(leftToWithdraw),
+                lockupId,
+                depositId,
+            })
+            .accounts({
+                user: user.publicKey,
+                settings,
+                lockup,
+                deposit,
+                assetMint,
+                userAssetAta,
+                lockupAssetVault,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                clock: SYSVAR_CLOCK_PUBKEY,
+                intent
             })
             .signers([user])
             .rpc()

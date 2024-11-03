@@ -55,4 +55,10 @@ pub enum InsuranceFundError {
 
     #[msg("BoostNotApplied")]
     BoostNotApplied,
+
+    #[msg("InvalidSigners")]
+    InvalidSigners,
+
+    #[msg("TransferSignatureRequired")]
+    TransferSignatureRequired,
 }

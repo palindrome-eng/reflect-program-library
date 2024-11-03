@@ -10,50 +10,52 @@ import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 
 /**
- * Arguments used to create {@link RewardBoost}
+ * Arguments used to create {@link Intent}
  * @category Accounts
  * @category generated
  */
-export type RewardBoostArgs = {
-  minUsdValue: beet.bignum
-  boostBps: beet.bignum
+export type IntentArgs = {
+  amount: beet.bignum
+  totalDeposit: beet.bignum
+  lockup: web3.PublicKey
 }
 
-export const rewardBoostDiscriminator = [242, 10, 119, 47, 141, 5, 66, 151]
+export const intentDiscriminator = [247, 162, 35, 165, 254, 111, 129, 109]
 /**
- * Holds the data for the {@link RewardBoost} Account and provides de/serialization
+ * Holds the data for the {@link Intent} Account and provides de/serialization
  * functionality for that data
  *
  * @category Accounts
  * @category generated
  */
-export class RewardBoost implements RewardBoostArgs {
+export class Intent implements IntentArgs {
   private constructor(
-    readonly minUsdValue: beet.bignum,
-    readonly boostBps: beet.bignum
+    readonly amount: beet.bignum,
+    readonly totalDeposit: beet.bignum,
+    readonly lockup: web3.PublicKey
   ) {}
 
   /**
-   * Creates a {@link RewardBoost} instance from the provided args.
+   * Creates a {@link Intent} instance from the provided args.
    */
-  static fromArgs(args: RewardBoostArgs) {
-    return new RewardBoost(args.minUsdValue, args.boostBps)
+  static fromArgs(args: IntentArgs) {
+    return new Intent(args.amount, args.totalDeposit, args.lockup)
   }
 
   /**
-   * Deserializes the {@link RewardBoost} from the data of the provided {@link web3.AccountInfo}.
+   * Deserializes the {@link Intent} from the data of the provided {@link web3.AccountInfo}.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static fromAccountInfo(
     accountInfo: web3.AccountInfo<Buffer>,
     offset = 0
-  ): [RewardBoost, number] {
-    return RewardBoost.deserialize(accountInfo.data, offset)
+  ): [Intent, number] {
+    return Intent.deserialize(accountInfo.data, offset)
   }
 
   /**
    * Retrieves the account info from the provided address and deserializes
-   * the {@link RewardBoost} from its data.
+   * the {@link Intent} from its data.
    *
    * @throws Error if no account info is found at the address or if deserialization fails
    */
@@ -61,15 +63,15 @@ export class RewardBoost implements RewardBoostArgs {
     connection: web3.Connection,
     address: web3.PublicKey,
     commitmentOrConfig?: web3.Commitment | web3.GetAccountInfoConfig
-  ): Promise<RewardBoost> {
+  ): Promise<Intent> {
     const accountInfo = await connection.getAccountInfo(
       address,
       commitmentOrConfig
     )
     if (accountInfo == null) {
-      throw new Error(`Unable to find RewardBoost account at ${address}`)
+      throw new Error(`Unable to find Intent account at ${address}`)
     }
-    return RewardBoost.fromAccountInfo(accountInfo, 0)[0]
+    return Intent.fromAccountInfo(accountInfo, 0)[0]
   }
 
   /**
@@ -83,39 +85,39 @@ export class RewardBoost implements RewardBoostArgs {
       'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
     )
   ) {
-    return beetSolana.GpaBuilder.fromStruct(programId, rewardBoostBeet)
+    return beetSolana.GpaBuilder.fromStruct(programId, intentBeet)
   }
 
   /**
-   * Deserializes the {@link RewardBoost} from the provided data Buffer.
+   * Deserializes the {@link Intent} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
-  static deserialize(buf: Buffer, offset = 0): [RewardBoost, number] {
-    return rewardBoostBeet.deserialize(buf, offset)
+  static deserialize(buf: Buffer, offset = 0): [Intent, number] {
+    return intentBeet.deserialize(buf, offset)
   }
 
   /**
-   * Serializes the {@link RewardBoost} into a Buffer.
+   * Serializes the {@link Intent} into a Buffer.
    * @returns a tuple of the created Buffer and the offset up to which the buffer was written to store it.
    */
   serialize(): [Buffer, number] {
-    return rewardBoostBeet.serialize({
-      accountDiscriminator: rewardBoostDiscriminator,
+    return intentBeet.serialize({
+      accountDiscriminator: intentDiscriminator,
       ...this,
     })
   }
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link RewardBoost}
+   * {@link Intent}
    */
   static get byteSize() {
-    return rewardBoostBeet.byteSize
+    return intentBeet.byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
-   * {@link RewardBoost} data from rent
+   * {@link Intent} data from rent
    *
    * @param connection used to retrieve the rent exemption information
    */
@@ -124,27 +126,27 @@ export class RewardBoost implements RewardBoostArgs {
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      RewardBoost.byteSize,
+      Intent.byteSize,
       commitment
     )
   }
 
   /**
    * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link RewardBoost} data.
+   * hold {@link Intent} data.
    */
   static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === RewardBoost.byteSize
+    return buf.byteLength - offset === Intent.byteSize
   }
 
   /**
-   * Returns a readable version of {@link RewardBoost} properties
+   * Returns a readable version of {@link Intent} properties
    * and can be used to convert to JSON and/or logging
    */
   pretty() {
     return {
-      minUsdValue: (() => {
-        const x = <{ toNumber: () => number }>this.minUsdValue
+      amount: (() => {
+        const x = <{ toNumber: () => number }>this.amount
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -154,8 +156,8 @@ export class RewardBoost implements RewardBoostArgs {
         }
         return x
       })(),
-      boostBps: (() => {
-        const x = <{ toNumber: () => number }>this.boostBps
+      totalDeposit: (() => {
+        const x = <{ toNumber: () => number }>this.totalDeposit
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -165,6 +167,7 @@ export class RewardBoost implements RewardBoostArgs {
         }
         return x
       })(),
+      lockup: this.lockup.toBase58(),
     }
   }
 }
@@ -173,17 +176,18 @@ export class RewardBoost implements RewardBoostArgs {
  * @category Accounts
  * @category generated
  */
-export const rewardBoostBeet = new beet.BeetStruct<
-  RewardBoost,
-  RewardBoostArgs & {
+export const intentBeet = new beet.BeetStruct<
+  Intent,
+  IntentArgs & {
     accountDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['minUsdValue', beet.u64],
-    ['boostBps', beet.u64],
+    ['amount', beet.u64],
+    ['totalDeposit', beet.u64],
+    ['lockup', beetSolana.publicKey],
   ],
-  RewardBoost.fromArgs,
-  'RewardBoost'
+  Intent.fromArgs,
+  'Intent'
 )

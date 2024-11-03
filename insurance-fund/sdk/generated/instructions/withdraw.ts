@@ -47,6 +47,8 @@ export const withdrawStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] userAssetAta
  * @property [_writable_] lockupAssetVault
  * @property [_writable_] assetRewardPool
+ * @property [_writable_] coldWallet
+ * @property [_writable_] coldWalletVault
  * @property [] clock
  * @category Instructions
  * @category Withdraw
@@ -63,6 +65,8 @@ export type WithdrawInstructionAccounts = {
   userAssetAta: web3.PublicKey
   lockupAssetVault: web3.PublicKey
   assetRewardPool: web3.PublicKey
+  coldWallet: web3.PublicKey
+  coldWalletVault: web3.PublicKey
   clock: web3.PublicKey
   tokenProgram?: web3.PublicKey
   systemProgram?: web3.PublicKey
@@ -89,7 +93,7 @@ export const withdrawInstructionDiscriminator = [
 export function createWithdrawInstruction(
   accounts: WithdrawInstructionAccounts,
   args: WithdrawInstructionArgs,
-  programId = new web3.PublicKey('CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB')
+  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
 ) {
   const [data] = withdrawStruct.serialize({
     instructionDiscriminator: withdrawInstructionDiscriminator,
@@ -143,6 +147,16 @@ export function createWithdrawInstruction(
     },
     {
       pubkey: accounts.assetRewardPool,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.coldWallet,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.coldWalletVault,
       isWritable: true,
       isSigner: false,
     },

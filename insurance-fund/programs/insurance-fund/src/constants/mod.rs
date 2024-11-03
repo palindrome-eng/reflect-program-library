@@ -26,3 +26,6 @@ pub const REWARD_POOL_SEED: &str = "reward_pool";
 
 #[constant]
 pub const PRICE_PRECISION: i32 = 9;
+
+#[constant]
+pub const INTENT_SEED: &str = "intent";

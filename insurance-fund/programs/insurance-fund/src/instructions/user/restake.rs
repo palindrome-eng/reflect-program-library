@@ -1,10 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::errors::InsuranceFundError;
 use crate::events::RestakeEvent;
-use crate::helpers::{
-    get_price_from_pyth,
-    get_price_from_switchboard
-};
 use crate::states::*;
 use crate::constants::*;
 use anchor_spl::token::{
@@ -180,7 +176,8 @@ pub struct Restake<'info> {
             asset_mint.key().as_ref(),
         ],
         bump,
-        constraint = lockup_asset_vault.amount + args.amount <= lockup.deposit_cap @ InsuranceFundError::DepositCapOverflow
+        // Unwrap is safe here since in case of `None` value, only the first statement will be checked
+        constraint = lockup.deposit_cap.is_none() || lockup_asset_vault.amount + args.amount <= lockup.deposit_cap.unwrap() @ InsuranceFundError::DepositCapOverflow
     )]
     pub lockup_asset_vault: Account<'info, TokenAccount>,
 
