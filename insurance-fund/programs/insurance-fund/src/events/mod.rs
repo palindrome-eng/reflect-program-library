@@ -45,3 +45,20 @@ pub struct FinalizeSlash {
     pub id: u64,
     pub amount: u64,
 }
+
+#[event]
+pub struct CreateIntent {
+    pub deposit: Pubkey,
+    pub amount: u64,
+}
+
+// Since processing intent closes the account,
+// this event will be fat for indexing purposes as we don't have easy 
+// access to this state anymore.
+
+#[event]
+pub struct ProcessIntent {
+    pub amount: u64,
+    pub deposit: Pubkey,
+    pub processed_by: Pubkey,
+}

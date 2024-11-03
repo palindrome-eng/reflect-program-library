@@ -42,7 +42,7 @@ pub fn withdraw(
     let asset_mint = &ctx.accounts.asset_mint;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
-
+    let asset = &mut ctx.accounts.asset;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
 
     let total_rewards = asset_reward_pool.amount;
@@ -104,6 +104,7 @@ pub fn withdraw(
     )?;
 
     deposit.amount -= amount;
+    asset.decrease_tvl(amount)?;
 
     emit!(WithdrawEvent {
         asset: asset_mint.key(),

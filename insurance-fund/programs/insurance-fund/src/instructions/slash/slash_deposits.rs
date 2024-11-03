@@ -66,7 +66,10 @@ pub fn slash_deposits(
 
         msg!("deposit: {:?}", deposit.amount);
 
-        let slashed = deposit.amount * settings.shares_config.hot_wallet_share_bps / 10_000 * slashed_share_bps / 10_000;
+        // We only slash 30% (hot_wallet_share_bps)
+        // 70% of the slash will be taken from the cold wallet
+        // to make sure that the ratio is preserved.
+        let slashed = deposit.amount * hot_wallet_share_bps / 10_000 * slashed_share_bps / 10_000;
         msg!("slashed: {:?}", slashed);
 
         deposit.slash(slashed, slash_id)?;
@@ -126,6 +129,7 @@ pub struct SlashDeposits<'info> {
         ],
         bump,
         constraint = slash.index == args.slash_id @ InsuranceFundError::InvalidInput,
+        constraint = slash.index == lockup.slash_state.index @ InsuranceFundError::InvalidInput,
         constraint = slash.slashed_accounts <= lockup.deposits @ InsuranceFundError::AllDepositsSlashed
     )]
     pub slash: Account<'info, Slash>,

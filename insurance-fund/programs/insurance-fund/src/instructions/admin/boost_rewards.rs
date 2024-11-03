@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::states::*;
+use crate::errors::InsuranceFundError;
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
 pub struct BoostRewardsArgs {
@@ -44,7 +45,8 @@ pub struct BoostRewards<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin
+        has_one = superadmin,
+        constraint = settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 

@@ -68,7 +68,8 @@ pub struct InitializeLockup<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin
+        has_one = superadmin,
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 

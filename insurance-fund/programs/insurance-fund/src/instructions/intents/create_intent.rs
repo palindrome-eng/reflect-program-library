@@ -9,10 +9,7 @@ use anchor_spl::token::{
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
-
-// TODO: Intent should be created no matter how big the deposit size is, but how big the requested withdrawal is.
-// If the deposit is larger than entire hot wallet share of the insurance fund, but single withdrawal is smaller,
-// the withdrawal should be processed as normal.
+use crate::events::CreateIntent as CreateIntentEvent;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateIntentArgs {
@@ -30,9 +27,6 @@ pub fn create_intent(
         deposit_id: _,
         lockup_id
     } = args;
-
-    // TODO: Cover case when single withdrawal is >hot wallet && >cold wallet, i.e 70% of the insurance fund
-    // Transfer entire hot wallet & create intent for the difference.
 
     let user = &ctx.accounts.user;
     let deposit = &mut ctx.accounts.deposit;
@@ -52,8 +46,9 @@ pub fn create_intent(
     let total_cold_wallet_lockup = (total_estimated_lockup as f64 * cold_wallet_share_bps as f64 / 10_000_f64) as u64;
     let total_hot_wallet_lockup = lockup_asset_vault.amount;
 
-    // TODO: Update `asset` TVL stat.
-
+    // If amount is bigger than cold wallet (70% of total insurance)
+    // we have to use both hot and cold wallet.
+    // First we'll send entire hot wallet, and the difference will be covered by the intent.
     if (amount > total_cold_wallet_lockup) {
         // Difference between hot wallet deposit and user's deposit
         let difference = amount - total_hot_wallet_lockup;
@@ -68,6 +63,7 @@ pub fn create_intent(
         msg!("lockup_asset_vault: {:?}", lockup_asset_vault.amount);
 
         // Transfer ENTIRE hot wallet share of the insurance fund.
+        // Needs to be rebalanced later.
         transfer(
             CpiContext::new_with_signer(
                 token_program.to_account_info(), 
@@ -87,14 +83,25 @@ pub fn create_intent(
             .ok_or(InsuranceFundError::MathOverflow)?;
 
         // Create intent to transfer the difference via company multisig
-        intent.amount = amount;
-        intent.total_deposit = deposit.amount;
+        intent.amount = difference;
         intent.lockup = lockup.key();
+        intent.deposit = deposit.key();
+
+        return Ok(());
     }
 
+    // If withdrawal does not need coverage from both hot and cold wallet,
+    // just initialize the account & set fields.
     intent.amount = amount;
-    intent.total_deposit = deposit.amount;
     intent.lockup = lockup.key();
+    intent.deposit = deposit.key();
+
+    emit!(
+        CreateIntentEvent {
+            amount: intent.amount,
+            deposit: deposit.key(),
+        }
+    );
 
     Ok(())
 }
@@ -115,6 +122,7 @@ pub struct CreateIntent<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 

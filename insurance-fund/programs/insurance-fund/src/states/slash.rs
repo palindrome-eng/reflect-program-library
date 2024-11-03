@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::InsuranceFundError, program::InsuranceFund};
+use crate::{errors::InsuranceFundError};
 
 #[account]
 pub struct Slash {
@@ -8,11 +8,13 @@ pub struct Slash {
     pub target_accounts: u64,
     pub slashed_accounts: u64,
     pub target_amount: u64,
-    pub slashed_amount: u64
+    pub slashed_amount: u64,
+    pub transfer_sig: Option<String>,
 }
 
 impl Slash {
-    pub const LEN: usize = 8 + 5 * 8;
+    pub const LEN: usize = 8 + 5 * 8 + (1 + 4 + 64);
+    // signature requires 64 bytes
 
     pub fn slash_account(
         &mut self,

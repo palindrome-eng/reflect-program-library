@@ -38,6 +38,13 @@ pub mod insurance_fund {
         instructions::initialize_lockup(ctx, args)
     }
 
+    pub fn manage_lockup_lock(
+        ctx: Context<ManageLockupLock>,
+        args: ManageLockupLockArgs
+    ) -> Result<()> {
+        instructions::manage_lockup_lock(ctx, args)
+    }
+
     pub fn add_asset(
         ctx: Context<AddAsset>,
     ) -> Result<()> {
@@ -82,6 +89,13 @@ pub mod insurance_fund {
         instructions::slash_pool(ctx, args)
     }
 
+    pub fn slash_cold_wallet(
+        ctx: Context<SlashColdWallet>,
+        args: SlashColdWalletArgs
+    ) -> Result<()> {
+        instructions::slash_cold_wallet(ctx, args)
+    }
+
     pub fn deposit_rewards(
         ctx: Context<DepositRewards>,
         args: DepositRewardsArgs
@@ -94,5 +108,12 @@ pub mod insurance_fund {
         args: CreateIntentArgs
     ) -> Result<()> {
         instructions::create_intent(ctx, args)
+    }
+
+    pub fn process_intent(
+        ctx: Context<ProcessIntent>,
+        args: ProcessIntentArgs
+    ) -> Result<()> {
+        instructions::process_intent(ctx, args)
     }
 }

@@ -10,5 +10,11 @@ pub use initialize_lockup::*;
 pub mod boost_rewards;
 pub use boost_rewards::*;
 
-pub mod freeze_insurance_fund;
-pub use freeze_insurance_fund::*;
+pub mod manage_freeze;
+pub use manage_freeze::*;
+
+pub mod rebalance_insurance_fund;
+pub use rebalance_insurance_fund::*;
+
+pub mod manage_lockup_lock;
+pub use manage_lockup_lock::*;

@@ -34,4 +34,12 @@ pub struct Lockup {
 
 impl Lockup {
     pub const SIZE: usize = 8 + 1 + 1 + 6 * 8 + 1 + 32 + 17 + 16 + 8;
+
+    pub fn lock(&mut self) {
+        self.locked = true;
+    } 
+
+    pub fn unlock(&mut self) {
+        self.locked = false;
+    } 
 }
