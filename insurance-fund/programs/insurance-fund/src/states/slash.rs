@@ -10,10 +10,11 @@ pub struct Slash {
     pub target_amount: u64,
     pub slashed_amount: u64,
     pub transfer_sig: Option<String>,
+    pub slashed_cold_wallet: bool,
 }
 
 impl Slash {
-    pub const LEN: usize = 8 + 5 * 8 + (1 + 4 + 64);
+    pub const LEN: usize = 8 + 5 * 8 + (1 + 4 + 64) + 1;
     // signature requires 64 bytes
 
     pub fn slash_account(

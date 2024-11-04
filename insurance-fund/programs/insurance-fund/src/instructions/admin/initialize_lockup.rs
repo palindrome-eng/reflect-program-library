@@ -58,7 +58,7 @@ pub fn initialize_lockup(
 pub struct InitializeLockup<'info> {
     #[account(
         mut,
-        constraint = settings.superadmin == superadmin.key() @ InsuranceFundError::InvalidSigner
+        address = settings.superadmin @ InsuranceFundError::InvalidSigner
     )]
     pub superadmin: Signer<'info>,
 

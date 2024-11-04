@@ -101,6 +101,7 @@ pub struct Restake<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 

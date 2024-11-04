@@ -7,10 +7,12 @@ pub struct RewardBoost {
     pub min_usd_value: u64,
     // % of the $R rewards in basepoints
     pub boost_bps: u64,
+    // Which lockup does this boost apply to.
+    pub lockup: u64,
 }
 
 impl RewardBoost {
-    pub const SIZE: usize = 2 * 8;
+    pub const SIZE: usize = 8 + 3 * 8;
 
     pub fn validate(
         &self,

@@ -87,7 +87,8 @@ pub struct SlashPool<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin
+        has_one = superadmin,
+        constraint = settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -111,7 +112,10 @@ pub struct SlashPool<'info> {
         bump,
         // All deposits have to be slashed before slashing the pool.
         constraint = slash.target_accounts == slash.slashed_accounts @ InsuranceFundError::DepositsNotSlashed,
-        constraint = slash.index == lockup.slash_state.index @ InsuranceFundError::InvalidInput
+        // Cold wallet has to be slashed before slashing the pool
+        constraint = slash.slashed_cold_wallet @ InsuranceFundError::ColdWalletNotSlashed,
+        // Enforce using latest `slash` account.
+        constraint = slash.index == lockup.slash_state.index @ InsuranceFundError::InvalidInput,
     )]
     pub slash: Account<'info, Slash>,
 
@@ -139,7 +143,7 @@ pub struct SlashPool<'info> {
             asset_mint.key().as_ref()
         ],
         bump,
-        constraint = destination.amount >= slash.slashed_amount @ InsuranceFundError::NotEnoughFundsToSlash
+        constraint = asset_lockup.amount >= slash.slashed_amount @ InsuranceFundError::NotEnoughFundsToSlash
     )]
     pub asset_lockup: Account<'info, TokenAccount>,
 

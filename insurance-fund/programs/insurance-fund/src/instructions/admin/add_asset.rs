@@ -1,5 +1,9 @@
 use anchor_lang::prelude::*;
+use switchboard_solana::ID as SWITCHBOARD_PROGRAM_ID;
+use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
 use crate::errors::InsuranceFundError;
+use crate::helpers::get_price_from_pyth;
+use crate::helpers::get_price_from_switchboard;
 use crate::states::*;
 use crate::constants::*;
 use anchor_spl::token::Mint;
@@ -7,41 +11,32 @@ use anchor_spl::token::Mint;
 pub fn add_asset(
     ctx: Context<AddAsset>
 ) -> Result<()> {
-    let settings = &mut ctx.accounts.settings;
     let asset = &mut ctx.accounts.asset;
     let asset_mint = &ctx.accounts.asset_mint;
     let oracle = &ctx.accounts.oracle;
 
-    asset.mint = asset_mint.key();
+    asset.mint = asset_mint.key();  
 
-    let pyth = pyth_solana_receiver_sdk::id(); 
-    let switchboard = switchboard_solana::id();   
-    
-    let oracle: Result<Oracle> = match oracle.owner {
-        switchboard => {
-            Ok(Oracle::Switchboard(oracle.key()))
-        },
-        pyth => {
-            Ok(Oracle::Pyth(oracle.key()))
-        }
-        _ => {
-            Err(InsuranceFundError::InvalidOracle.into())
-        }
-    };
+    if oracle.owner.eq(&PYTH_PROGRAM_ID) {
+        get_price_from_pyth(oracle)?;
+        asset.oracle = Oracle::Pyth(oracle.key());
 
-    match oracle {
-        Ok(oracle) => {
-            asset.oracle = oracle;
-            Ok(())
-        },
-        Err(err) => Err(err)
+        Ok(())
+    } else if oracle.owner.eq(&SWITCHBOARD_PROGRAM_ID) {
+        get_price_from_switchboard(oracle)?;
+        asset.oracle = Oracle::Switchboard(oracle.key());
+        
+        Ok(())
+    } else {
+        Err(InsuranceFundError::InvalidOracle.into())
     }
 }
 
 #[derive(Accounts)]
 pub struct AddAsset<'info> {
     #[account(
-        mut
+        mut,
+        address = settings.superadmin @ InsuranceFundError::InvalidSigner
     )]
     pub superadmin: Signer<'info>,
 
@@ -51,6 +46,7 @@ pub struct AddAsset<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
+        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
@@ -72,7 +68,7 @@ pub struct AddAsset<'info> {
     )]
     pub asset_mint: Account<'info, Mint>,
 
-    /// CHECK: Admin only function, trust devs to not fuck this up.
+    /// CHECK: We're checking owner of this account later
     #[account(
         mut
     )]

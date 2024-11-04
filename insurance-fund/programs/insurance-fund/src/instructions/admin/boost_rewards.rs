@@ -18,12 +18,13 @@ pub fn boost_rewards(
     let reward_boost = &mut ctx.accounts.reward_boost;
     let BoostRewardsArgs {
         boost_bps,
-        lockup_id: _,
+        lockup_id,
         min_usd_value
     } = args;
 
     reward_boost.boost_bps = boost_bps;
     reward_boost.min_usd_value = min_usd_value;
+    reward_boost.lockup = lockup_id;
 
     Ok(())
 }

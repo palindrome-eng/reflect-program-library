@@ -61,4 +61,7 @@ pub enum InsuranceFundError {
 
     #[msg("TransferSignatureRequired")]
     TransferSignatureRequired,
+
+    #[msg("ColdWalletNotSlashed")]
+    ColdWalletNotSlashed,
 }

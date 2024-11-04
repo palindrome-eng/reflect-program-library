@@ -132,6 +132,7 @@ pub struct Withdraw<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -172,7 +173,12 @@ pub struct Withdraw<'info> {
             &args.reward_boost_id.unwrap().to_le_bytes()
         ],
         bump,
-        constraint = reward_boost.min_usd_value <= deposit.initial_usd_value @ InsuranceFundError::BoostNotApplied
+
+        constraint = reward_boost
+            .validate(deposit.initial_usd_value)
+            .is_ok() @ InsuranceFundError::BoostNotApplied,
+
+        constraint = reward_boost.lockup == args.lockup_id
     )]
     pub reward_boost: Option<Account<'info, RewardBoost>>,
 
@@ -208,6 +214,7 @@ pub struct Withdraw<'info> {
             asset_mint.key().as_ref(),
         ],
         bump,
+        // This should never happen
         constraint = lockup_asset_vault.amount >= args.amount @ InsuranceFundError::NotEnoughFunds,
         token::mint = asset_mint,
         token::authority = lockup
@@ -232,7 +239,7 @@ pub struct Withdraw<'info> {
         mut,
         address = settings.cold_wallet
     )]
-    pub cold_wallet: AccountInfo<'info>,
+    pub cold_wallet: UncheckedAccount<'info>,
 
     #[account(
         mut,

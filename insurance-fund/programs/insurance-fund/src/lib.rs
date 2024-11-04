@@ -24,6 +24,12 @@ pub mod insurance_fund {
         )
     }
 
+    pub fn add_asset(
+        ctx: Context<AddAsset>,
+    ) -> Result<()> {
+        instructions::add_asset(ctx)
+    }
+
     pub fn manage_freeze(
         ctx: Context<ManageFreeze>,
         args: ManageFreezeArgs
@@ -45,10 +51,11 @@ pub mod insurance_fund {
         instructions::manage_lockup_lock(ctx, args)
     }
 
-    pub fn add_asset(
-        ctx: Context<AddAsset>,
+    pub fn boost_rewards(
+        ctx: Context<BoostRewards>,
+        args: BoostRewardsArgs
     ) -> Result<()> {
-        instructions::add_asset(ctx)
+        instructions::boost_rewards(ctx, args)
     }
 
     pub fn restake(

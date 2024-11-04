@@ -33,8 +33,11 @@ pub fn initialize_insurance_fund(
     settings.bump = ctx.bumps.settings;
     settings.lockups = 0;
     settings.cold_wallet = cold_wallet;
-    settings.shares_config.cold_wallet_share_bps = cold_wallet_share_bps;
-    settings.shares_config.hot_wallet_share_bps = hot_wallet_share_bps;
+    settings.shares_config = SharesConfig {
+        cold_wallet_share_bps,
+        hot_wallet_share_bps
+    };
+    settings.frozen = false;
 
     Ok(())
 }
