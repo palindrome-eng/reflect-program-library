@@ -25,6 +25,10 @@ The main part of the protocol are `Lockup` accounts. Those accounts can only be 
 
 ## Deposit
 `Deposit` is an account keeping track of a singular deposit in the insurance fund. As mentioned earlier, even though all tokens deposited are pooled into a vault owned by `Lockup` PDA, every deposit has its own account. This design choice was made to prevent past slashes from influencing profitability of new deposits. Also you cannot increase existing deposit. It can only be slashed & withdrew.
+
+![Untitled Diagram drawio (3)](https://github.com/user-attachments/assets/bd1628f7-299d-4993-93d7-0809cf20e2c1)
+
+
 `Deposit` holds the following set of fields:
 - `user` - pointer to the account that deposited funds into the protocol.
 - `amount` - total deposited. During slashing, we'll subtract from this.
@@ -61,3 +65,7 @@ For this reason, this instruction might be just used to update fields (and invok
 superadmin hot wallet). 
 
 For transparency reasons, it is advised to provide signature of the transfer instruction that will be included in logs (if actual transfer happened in different transaction).
+
+![Untitled Diagram drawio (5)](https://github.com/user-attachments/assets/d742a2af-c00c-4959-9923-9d313ba9f283)
+
+
