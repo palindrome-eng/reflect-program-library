@@ -102,6 +102,12 @@ pub struct InitializeLockup<'info> {
     pub asset_mint: Account<'info, Mint>,
 
     #[account(
+        mut,
+        address = settings.reward_config.main
+    )]
+    pub reward_mint: Account<'info, Mint>,
+
+    #[account(
         init,
         payer = superadmin,
         seeds = [
@@ -121,10 +127,10 @@ pub struct InitializeLockup<'info> {
         seeds = [
             REWARD_POOL_SEED.as_bytes(),
             lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
+            reward_mint.key().as_ref(),
         ],
         bump,
-        token::mint = asset_mint,
+        token::mint = reward_mint,
         token::authority = lockup,
     )]
     pub asset_reward_pool: Account<'info, TokenAccount>,

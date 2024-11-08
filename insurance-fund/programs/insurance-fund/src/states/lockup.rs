@@ -3,8 +3,9 @@ use anchor_lang::prelude::*;
 // Arrays are holding rates at which users are rewarded per 1 unit per lockup duration.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub enum YieldMode {
-    Single([u64; 1]), // Only offers rUSD yield.
-    Dual([u64; 2]) // Offers both rUSD and $R yields
+    Single, // Only offers rUSD yield.
+    Dual(u64) // Offers both rUSD and $R yields. 
+    // The u64 stores rate at which $R should be minted per 1 unit of deposit per lockup duration.
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]

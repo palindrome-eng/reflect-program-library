@@ -41,33 +41,15 @@ pub fn withdraw(
     let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
     let asset_mint = &ctx.accounts.asset_mint;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
+    let user_reward_ata = &ctx.accounts.user_reward_ata;
     let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let asset = &mut ctx.accounts.asset;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
-
     let total_rewards = asset_reward_pool.amount;
-    msg!("total_rewards: {:?}", total_rewards); 
-
-    // Pretty sure this is fucked up
     let total_lockup = lockup_asset_vault.amount + cold_wallet_vault.amount;
-    msg!("total_lockup: {:?}", total_lockup);
-
     let user_lockup = deposit.amount;
-    msg!("user_lockup: {:?}", user_lockup);
-
     let user_share = user_lockup as f64 / total_lockup as f64;
     let user_rewards = (total_rewards as f64 * user_share) as u64;
-    msg!("user_rewards: {:?}", user_rewards);
-
-    msg!(
-        "deposit share: {:?}",
-        (user_lockup as f64) / (total_lockup as f64)
-    );
-
-    msg!(
-        "rewards share: {:?}",
-        (user_rewards as f64) / (total_rewards as f64)
-    );
 
     let seeds = &[
         LOCKUP_SEED.as_bytes(),
@@ -82,7 +64,7 @@ pub fn withdraw(
             Transfer {
                 authority: lockup.to_account_info(),
                 from: asset_reward_pool.to_account_info(),
-                to: user_asset_ata.to_account_info(),
+                to: user_reward_ata.to_account_info(),
             }, 
             &[seeds]
         ), 
@@ -201,10 +183,23 @@ pub struct Withdraw<'info> {
 
     #[account(
         mut,
+        address = settings.reward_config.main
+    )]
+    pub reward_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
         associated_token::authority = user,
         associated_token::mint = asset_mint
     )]
     pub user_asset_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::authority = user,
+        associated_token::mint = reward_mint
+    )]
+    pub user_reward_ata: Account<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -226,10 +221,10 @@ pub struct Withdraw<'info> {
         seeds = [
             REWARD_POOL_SEED.as_bytes(),
             lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
+            reward_mint.key().as_ref(),
         ],
         bump,
-        token::mint = asset_mint,
+        token::mint = reward_mint,
         token::authority = lockup,
     )]
     pub asset_reward_pool: Account<'info, TokenAccount>,

@@ -7,7 +7,8 @@ use crate::errors::InsuranceFundError;
 pub struct InitializeInsuranceFundArgs {
     pub cold_wallet: Pubkey,
     pub hot_wallet_share_bps: u64,
-    pub cold_wallet_share_bps: u64
+    pub cold_wallet_share_bps: u64,
+    pub reward_mint: Pubkey,
 }
 
 pub fn initialize_insurance_fund(
@@ -18,7 +19,8 @@ pub fn initialize_insurance_fund(
     let InitializeInsuranceFundArgs {
         cold_wallet,
         cold_wallet_share_bps,
-        hot_wallet_share_bps
+        hot_wallet_share_bps,
+        reward_mint
     } = args;
 
     require!(
@@ -36,6 +38,9 @@ pub fn initialize_insurance_fund(
     settings.shares_config = SharesConfig {
         cold_wallet_share_bps,
         hot_wallet_share_bps
+    };
+    settings.reward_config = RewardConfig {
+        main: reward_mint
     };
     settings.frozen = false;
 

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 use crate::constants::*;
+use crate::errors::InsuranceFundError;
 use crate::states::*;
 use crate::events::*;
 use anchor_spl::token::{
@@ -31,8 +32,8 @@ pub fn deposit_rewards(
     } = args;
 
     let caller = &ctx.accounts.caller;
-    let asset_mint = &ctx.accounts.asset_mint;
-    let caller_asset_ata = &ctx.accounts.caller_asset_ata;
+    let reward_mint = &ctx.accounts.reward_mint;
+    let caller_reward_ata = &ctx.accounts.caller_reward_ata;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
     let token_program = &ctx.accounts.token_program;
 
@@ -41,7 +42,7 @@ pub fn deposit_rewards(
             token_program.to_account_info(), 
             Transfer {
                 to: asset_reward_pool.to_account_info(),
-                from: caller_asset_ata.to_account_info(),
+                from: caller_reward_ata.to_account_info(),
                 authority: caller.to_account_info()
             }
         ),
@@ -50,7 +51,7 @@ pub fn deposit_rewards(
 
     emit!(DepositRewardEvent {
         from: caller.key(),
-        asset: asset_mint.key(),
+        asset: reward_mint.key(),
         amount: amount
     });
 
@@ -70,6 +71,16 @@ pub struct DepositRewards<'info> {
     #[account(
         mut,
         seeds = [
+            SETTINGS_SEED.as_bytes()
+        ],
+        bump,
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
+    )]
+    pub settings: Account<'info, Settings>,
+
+    #[account(
+        mut,
+        seeds = [
             LOCKUP_SEED.as_bytes(),
             &args.lockup_id.to_le_bytes()
         ],
@@ -79,26 +90,26 @@ pub struct DepositRewards<'info> {
 
     #[account(
         mut,
-        address = lockup.asset
+        address = settings.reward_config.main
     )]
-    pub asset_mint: Account<'info, Mint>,
+    pub reward_mint: Account<'info, Mint>,
 
     #[account(
         mut,
         associated_token::authority = caller,
-        associated_token::mint = asset_mint,
+        associated_token::mint = reward_mint,
     )]
-    pub caller_asset_ata: Account<'info, TokenAccount>,
+    pub caller_reward_ata: Account<'info, TokenAccount>,
 
     #[account(
         mut,
         seeds = [
             REWARD_POOL_SEED.as_bytes(),
             lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
+            reward_mint.key().as_ref(),
         ],
         bump,
-        token::mint = asset_mint,
+        token::mint = reward_mint,
         token::authority = lockup,
     )]
     pub asset_reward_pool: Account<'info, TokenAccount>,
