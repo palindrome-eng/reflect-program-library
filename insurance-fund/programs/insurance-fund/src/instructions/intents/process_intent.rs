@@ -28,7 +28,7 @@ pub fn process_intent(
 ) -> Result<()> {
 
     let token_program = &ctx.accounts.token_program;
-    let admin = &ctx.accounts.admin;
+    let admin = &ctx.accounts.superadmin;
     let admin_asset_ata = &ctx.accounts.admin_asset_ata;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let intent = &ctx.accounts.intent;
@@ -72,8 +72,9 @@ pub fn process_intent(
 pub struct ProcessIntent<'info> {
     #[account(
         mut,
+        address = settings.superadmin
     )]
-    pub admin: Signer<'info>,
+    pub superadmin: Signer<'info>,
 
     // Receiver
     #[account(
@@ -87,7 +88,8 @@ pub struct ProcessIntent<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        constraint = !settings.frozen @ InsuranceFundError::Frozen,
+        has_one = superadmin
     )]
     pub settings: Account<'info, Settings>,
 
@@ -113,7 +115,7 @@ pub struct ProcessIntent<'info> {
             &deposit.key().to_bytes(),
         ],
         bump,
-        close = admin,
+        close = superadmin,
     )]
     pub intent: Account<'info, Intent>,
 
@@ -141,7 +143,7 @@ pub struct ProcessIntent<'info> {
 
     #[account(
         mut,
-        token::authority = admin,
+        token::authority = superadmin,
         token::mint = asset_mint
     )]
     pub admin_asset_ata: Account<'info, TokenAccount>,

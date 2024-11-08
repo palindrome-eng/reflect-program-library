@@ -71,4 +71,11 @@ impl Asset {
         self.lockups += 1;
         Ok(())
     }
+
+    pub fn add_deposit(
+        &mut self,
+    ) -> Result<()> {
+        self.deposits += 1;
+        Ok(())
+    }
 }
