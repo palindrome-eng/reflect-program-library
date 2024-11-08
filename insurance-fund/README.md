@@ -17,7 +17,7 @@ The main part of the protocol are `Lockup` accounts. Those accounts can only be 
 - `min_deposit` - minimum acceptable deposit. Anything below will be rejected.
 - `duration` - lockup duration. During this period after deposit, user is not allowed to withdraw their funds from the protocol. They may decide to hold it locked for longer.
 - `yield_bps` - this is mostly cosmetical thing, it specifies APY (in basepoints) that the crank depositing rewards should try to keep up. It's not guaranteed though & is not used for any calculations in the program itself.
-- `yield_mode` - this holds an `YieldMode` enum & specifies whether the `Lockup` accrues rewards in single currency, or if additional Reflect Protocol governance token rewards should be applied.
+- `yield_mode` - this holds an `YieldMode` enum & specifies whether the `Lockup` accrues rewards in single currency, or if additional Reflect Protocol governance token rewards should be applied. In V1, all `Lockup`s are `YieldMode::Single` - only yielding USDR.
 - `deposit_cap` - optional field. If present, no deposits over this amount will be accepted.
 - `deposits` - counter used to keep track of deposits into this `Lockup`. This is required since every deposit is recorded separately.
 - `slash_state` - structure used to keep track of slashing processes. `SlashState` keeps two fields: `index` (How many times was this lockup slashed) and `amount` (Total amount slashed since creation of the pool).
@@ -38,7 +38,9 @@ The main part of the protocol are `Lockup` accounts. Those accounts can only be 
 - `unlock_ts` - timestamp when this particular deposit opens for withdrawals. It's simply `duration` from `Lockup` + timestamp of the deposit.
 - `last_slashed` - as mentioned previously, `Lockup` keeps track (by counter) of all slashes performed on particular lockup. This field corresponds to one of the past slashes. This exists to prevent slashing the same deposit twice during one slashing operation.
 
-## Reward Boosts
+## Rewards & Boosts
+In the V1 implementation of the protocol, all `Lockups` have singular reward mode, meaning they do not yield $R rewards. 
+
 `RewardBoost` is an account created on per-lockup basis to create on-demand incentives for deposits. Take into account that reward boost only applies to $R governance token rewards, and not USDR. USDR rewards are deposited by crank, and cannot be simply *boosted*. This account is very simple and holds 3 fields:
 - `min_usd_value` - minimum **initial** USD value of the deposit that user can apply this reward boost to.
 - `boost_bps` - reward boost in basepoints.
