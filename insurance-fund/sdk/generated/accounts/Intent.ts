@@ -16,8 +16,8 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  */
 export type IntentArgs = {
   amount: beet.bignum
-  totalDeposit: beet.bignum
   lockup: web3.PublicKey
+  deposit: web3.PublicKey
 }
 
 export const intentDiscriminator = [247, 162, 35, 165, 254, 111, 129, 109]
@@ -31,15 +31,15 @@ export const intentDiscriminator = [247, 162, 35, 165, 254, 111, 129, 109]
 export class Intent implements IntentArgs {
   private constructor(
     readonly amount: beet.bignum,
-    readonly totalDeposit: beet.bignum,
-    readonly lockup: web3.PublicKey
+    readonly lockup: web3.PublicKey,
+    readonly deposit: web3.PublicKey
   ) {}
 
   /**
    * Creates a {@link Intent} instance from the provided args.
    */
   static fromArgs(args: IntentArgs) {
-    return new Intent(args.amount, args.totalDeposit, args.lockup)
+    return new Intent(args.amount, args.lockup, args.deposit)
   }
 
   /**
@@ -82,7 +82,7 @@ export class Intent implements IntentArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
+      'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, intentBeet)
@@ -156,18 +156,8 @@ export class Intent implements IntentArgs {
         }
         return x
       })(),
-      totalDeposit: (() => {
-        const x = <{ toNumber: () => number }>this.totalDeposit
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
       lockup: this.lockup.toBase58(),
+      deposit: this.deposit.toBase58(),
     }
   }
 }
@@ -185,8 +175,8 @@ export const intentBeet = new beet.BeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['amount', beet.u64],
-    ['totalDeposit', beet.u64],
     ['lockup', beetSolana.publicKey],
+    ['deposit', beetSolana.publicKey],
   ],
   Intent.fromArgs,
   'Intent'

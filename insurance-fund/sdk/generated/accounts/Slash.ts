@@ -20,6 +20,8 @@ export type SlashArgs = {
   slashedAccounts: beet.bignum
   targetAmount: beet.bignum
   slashedAmount: beet.bignum
+  transferSig: beet.COption<string>
+  slashedColdWallet: boolean
 }
 
 export const slashDiscriminator = [15, 12, 113, 200, 185, 50, 58, 32]
@@ -36,7 +38,9 @@ export class Slash implements SlashArgs {
     readonly targetAccounts: beet.bignum,
     readonly slashedAccounts: beet.bignum,
     readonly targetAmount: beet.bignum,
-    readonly slashedAmount: beet.bignum
+    readonly slashedAmount: beet.bignum,
+    readonly transferSig: beet.COption<string>,
+    readonly slashedColdWallet: boolean
   ) {}
 
   /**
@@ -48,7 +52,9 @@ export class Slash implements SlashArgs {
       args.targetAccounts,
       args.slashedAccounts,
       args.targetAmount,
-      args.slashedAmount
+      args.slashedAmount,
+      args.transferSig,
+      args.slashedColdWallet
     )
   }
 
@@ -92,7 +98,7 @@ export class Slash implements SlashArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
+      'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, slashBeet)
@@ -119,34 +125,36 @@ export class Slash implements SlashArgs {
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Slash}
+   * {@link Slash} for the provided args.
+   *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    */
-  static get byteSize() {
-    return slashBeet.byteSize
+  static byteSize(args: SlashArgs) {
+    const instance = Slash.fromArgs(args)
+    return slashBeet.toFixedFromValue({
+      accountDiscriminator: slashDiscriminator,
+      ...instance,
+    }).byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
    * {@link Slash} data from rent
    *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
+    args: SlashArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Slash.byteSize,
+      Slash.byteSize(args),
       commitment
     )
-  }
-
-  /**
-   * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link Slash} data.
-   */
-  static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === Slash.byteSize
   }
 
   /**
@@ -210,6 +218,8 @@ export class Slash implements SlashArgs {
         }
         return x
       })(),
+      transferSig: this.transferSig,
+      slashedColdWallet: this.slashedColdWallet,
     }
   }
 }
@@ -218,7 +228,7 @@ export class Slash implements SlashArgs {
  * @category Accounts
  * @category generated
  */
-export const slashBeet = new beet.BeetStruct<
+export const slashBeet = new beet.FixableBeetStruct<
   Slash,
   SlashArgs & {
     accountDiscriminator: number[] /* size: 8 */
@@ -231,6 +241,8 @@ export const slashBeet = new beet.BeetStruct<
     ['slashedAccounts', beet.u64],
     ['targetAmount', beet.u64],
     ['slashedAmount', beet.u64],
+    ['transferSig', beet.coption(beet.utf8String)],
+    ['slashedColdWallet', beet.bool],
   ],
   Slash.fromArgs,
   'Slash'

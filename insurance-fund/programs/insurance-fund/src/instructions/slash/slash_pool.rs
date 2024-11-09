@@ -29,6 +29,7 @@ pub fn slash_pool(
     let slash = &ctx.accounts.slash;
     let token_program = &ctx.accounts.token_program;
     let asset = &mut ctx.accounts.asset;
+    let asset_lockup = &mut ctx.accounts.asset_lockup;
 
     let lockup = &mut ctx.accounts.lockup;
     let signer_seeds = &[
@@ -39,9 +40,6 @@ pub fn slash_pool(
 
     let destination = &ctx.accounts.destination;
     let asset_lockup = &ctx.accounts.asset_lockup;
-
-    msg!("asset_lockup: {:?}", asset_lockup.amount);
-    msg!("slashed_amount: {:?}", slash.slashed_amount);
 
     transfer(
         CpiContext::new_with_signer(
@@ -88,7 +86,7 @@ pub struct SlashPool<'info> {
         ],
         bump,
         has_one = superadmin,
-        constraint = settings.frozen @ InsuranceFundError::Frozen
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 

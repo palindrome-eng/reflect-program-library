@@ -9,116 +9,102 @@ import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  CreateIntentArgs,
-  createIntentArgsBeet,
-} from '../types/CreateIntentArgs'
+  ProcessIntentArgs,
+  processIntentArgsBeet,
+} from '../types/ProcessIntentArgs'
 
 /**
  * @category Instructions
- * @category CreateIntent
+ * @category ProcessIntent
  * @category generated
  */
-export type CreateIntentInstructionArgs = {
-  args: CreateIntentArgs
+export type ProcessIntentInstructionArgs = {
+  args: ProcessIntentArgs
 }
 /**
  * @category Instructions
- * @category CreateIntent
+ * @category ProcessIntent
  * @category generated
  */
-export const createIntentStruct = new beet.BeetArgsStruct<
-  CreateIntentInstructionArgs & {
+export const processIntentStruct = new beet.BeetArgsStruct<
+  ProcessIntentInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', createIntentArgsBeet],
+    ['args', processIntentArgsBeet],
   ],
-  'CreateIntentInstructionArgs'
+  'ProcessIntentInstructionArgs'
 )
 /**
- * Accounts required by the _createIntent_ instruction
+ * Accounts required by the _processIntent_ instruction
  *
- * @property [_writable_, **signer**] user
+ * @property [_writable_, **signer**] superadmin
+ * @property [_writable_] user
  * @property [_writable_] settings
- * @property [_writable_] lockup
- * @property [_writable_] assetMint
- * @property [_writable_] userAssetAta
- * @property [_writable_] lockupAssetVault
  * @property [_writable_] deposit
  * @property [_writable_] intent
- * @property [] clock
+ * @property [_writable_] lockup
+ * @property [_writable_] asset
+ * @property [_writable_] assetMint
+ * @property [_writable_] adminAssetAta
+ * @property [_writable_] userAssetAta
  * @category Instructions
- * @category CreateIntent
+ * @category ProcessIntent
  * @category generated
  */
-export type CreateIntentInstructionAccounts = {
+export type ProcessIntentInstructionAccounts = {
+  superadmin: web3.PublicKey
   user: web3.PublicKey
   settings: web3.PublicKey
-  lockup: web3.PublicKey
-  assetMint: web3.PublicKey
-  userAssetAta: web3.PublicKey
-  lockupAssetVault: web3.PublicKey
   deposit: web3.PublicKey
   intent: web3.PublicKey
-  systemProgram?: web3.PublicKey
+  lockup: web3.PublicKey
+  asset: web3.PublicKey
+  assetMint: web3.PublicKey
+  adminAssetAta: web3.PublicKey
+  userAssetAta: web3.PublicKey
   tokenProgram?: web3.PublicKey
-  clock: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const createIntentInstructionDiscriminator = [
-  216, 214, 79, 121, 23, 194, 96, 104,
+export const processIntentInstructionDiscriminator = [
+  205, 26, 207, 143, 70, 246, 24, 206,
 ]
 
 /**
- * Creates a _CreateIntent_ instruction.
+ * Creates a _ProcessIntent_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category CreateIntent
+ * @category ProcessIntent
  * @category generated
  */
-export function createCreateIntentInstruction(
-  accounts: CreateIntentInstructionAccounts,
-  args: CreateIntentInstructionArgs,
+export function createProcessIntentInstruction(
+  accounts: ProcessIntentInstructionAccounts,
+  args: ProcessIntentInstructionArgs,
   programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
-  const [data] = createIntentStruct.serialize({
-    instructionDiscriminator: createIntentInstructionDiscriminator,
+  const [data] = processIntentStruct.serialize({
+    instructionDiscriminator: processIntentInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.user,
+      pubkey: accounts.superadmin,
       isWritable: true,
       isSigner: true,
     },
     {
+      pubkey: accounts.user,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.settings,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.lockup,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.assetMint,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.userAssetAta,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.lockupAssetVault,
       isWritable: true,
       isSigner: false,
     },
@@ -133,17 +119,32 @@ export function createCreateIntentInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
-      isWritable: false,
+      pubkey: accounts.lockup,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.asset,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.assetMint,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.adminAssetAta,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.userAssetAta,
+      isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.clock,
       isWritable: false,
       isSigner: false,
     },

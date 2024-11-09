@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use switchboard_solana::oracle_program;
 use crate::errors::InsuranceFundError;
 use crate::events::RestakeEvent;
 use crate::states::*;
@@ -30,11 +31,13 @@ pub fn restake(
     let user = &ctx.accounts.user;
     let settings = &mut ctx.accounts.settings;
     let asset = &mut ctx.accounts.asset;
+    let asset_mint = &ctx.accounts.asset_mint;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
     let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let lockup = &mut ctx.accounts.lockup;
     let deposit = &mut ctx.accounts.deposit;
+    let oracle = &ctx.accounts.oracle;
 
     let clock = Clock::get()?;
     let unix_ts = clock.unix_timestamp as u64;
@@ -45,6 +48,22 @@ pub fn restake(
     deposit.unlock_ts = unix_ts + lockup.duration;
     deposit.last_slashed = None;
     deposit.amount_slashed = 0;
+    
+    let oracle_price = asset.get_price(oracle)?;
+
+    // Multiply oracle price by amount of tokens, 
+    // then divide by token decimals to get value of 1 full token instead of `lamports`.
+    let usd_value = oracle_price
+        .mul(amount)?
+        .checked_div(
+            10_u64
+            .checked_pow(asset_mint.decimals as u32)
+            .ok_or(InsuranceFundError::MathOverflow)?
+        )
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    deposit.initial_usd_value = usd_value;
+    msg!("initial_usd_value: {:?}", deposit.initial_usd_value);
 
     // Transfer to multisig
     transfer(
@@ -73,7 +92,9 @@ pub fn restake(
     )?;
 
     lockup.deposits += 1;
+
     asset.increase_tvl(amount)?;
+    asset.add_deposit()?;
 
     emit!(RestakeEvent {
         from: user.key(),

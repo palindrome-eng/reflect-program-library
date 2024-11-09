@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import {AnchorError, Program} from "@coral-xyz/anchor";
 import { InsuranceFund } from "../target/types/insurance_fund";
 import {
     PublicKey,
@@ -10,7 +10,7 @@ import {
     TransactionMessage
 } from "@solana/web3.js";
 import {before} from "mocha";
-import {Asset, Deposit, Lockup, PROGRAM_ID, Settings, Slash} from "../sdk/generated";
+import {Asset, createDepositRewardsInstruction, Deposit, Lockup, PROGRAM_ID, Settings, Slash} from "../sdk/generated";
 import {expect} from "chai";
 import createToken from "./helpers/createToken";
 import BN from "bn.js";
@@ -19,9 +19,9 @@ import {
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import sleep from "./helpers/sleep";
 import mintTokens from "./helpers/mintTokens";
 import signAndSendTransaction from "./helpers/signAndSendTransaction";
+import getOraclePrice from "./helpers/getOraclePrice";
 
 describe("insurance-fund", () => {
     const provider = anchor.AnchorProvider.local();
@@ -31,6 +31,9 @@ describe("insurance-fund", () => {
     let coldWallet: PublicKey;
     let settings: PublicKey;
     let user: Keypair;
+    let rewardToken: PublicKey;
+    let price: BN;
+    let pricePrecision: BN;
 
     const lsts: PublicKey[] = [];
 
@@ -47,9 +50,14 @@ describe("insurance-fund", () => {
 
         await provider.connection.requestAirdrop(
             user.publicKey,
-            LAMPORTS_PER_SOL * 10
+            LAMPORTS_PER_SOL * 1000
         );
-    })
+
+        rewardToken = await createToken(
+            provider.connection,
+            provider
+        );
+    });
 
     it("Initializes insurance fund.", async () => {
         await program
@@ -57,7 +65,8 @@ describe("insurance-fund", () => {
             .initializeInsuranceFund({
                 coldWallet,
                 coldWalletShareBps: new BN(0.7 * 10_000),
-                hotWalletShareBps: new BN(0.3 * 10_000)
+                hotWalletShareBps: new BN(0.3 * 10_000),
+                rewardMint: rewardToken
             })
             .accounts({
                 superadmin: provider.publicKey,
@@ -72,7 +81,8 @@ describe("insurance-fund", () => {
             bump,
             lockups,
             frozen,
-            sharesConfig
+            sharesConfig,
+            rewardConfig
         } = await Settings.fromAccountAddress(
             provider.connection,
             settings
@@ -84,9 +94,10 @@ describe("insurance-fund", () => {
         expect(sharesConfig.coldWalletShareBps.toString()).eq(`${7_000}`);
         expect(sharesConfig.hotWalletShareBps.toString()).eq(`${3_000}`);
         expect(frozen).eq(false);
+        expect(rewardConfig.main.toString()).eq(rewardToken.toString());
     });
 
-    it('Freezes/unfreezes protocol', async () => {
+    it('Freezes protocol.', async () => {
         await program
             .methods
             .manageFreeze({
@@ -104,7 +115,37 @@ describe("insurance-fund", () => {
         );
 
         expect(settingsData.frozen).eq(true);
+    });
 
+    it("Tries to interact with frozen protocol. Succeeds on errors", async () => {
+        let error: AnchorError;
+
+        const wrappedSol = new PublicKey("So11111111111111111111111111111111111111112");
+        const [asset] = PublicKey.findProgramAddressSync(
+            [Buffer.from("asset"), wrappedSol.toBuffer()],
+            PROGRAM_ID
+        );
+
+        await program
+            .methods
+            .addAsset()
+            .accounts({
+                assetMint: wrappedSol,
+                asset,
+                systemProgram: SystemProgram.programId,
+                settings,
+                superadmin: provider.publicKey,
+                // Just to pass the test
+                oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
+            })
+            .rpc()
+            .catch((err: AnchorError) => error = err);
+
+        expect(error.error.errorCode.code).eq("Frozen");
+        expect(error.error.origin).eq("settings");
+    });
+
+    it("Unfreezes protocol", async () => {
         await program
             .methods
             .manageFreeze({
@@ -116,13 +157,13 @@ describe("insurance-fund", () => {
             })
             .rpc();
 
-        settingsData = await Settings.fromAccountAddress(
+        let settingsData = await Settings.fromAccountAddress(
             provider.connection,
             settings
         );
 
         expect(settingsData.frozen).eq(false);
-    });
+    })
 
     it("Mints and adds assets to insurance pool.", async () => {
         const assets: PublicKey[] = [];
@@ -155,19 +196,24 @@ describe("insurance-fund", () => {
                     settings,
                     superadmin: provider.publicKey,
                     // Just to pass the test
-                    oracle: new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG")
+                    oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
                 })
-                .rpc()
+                .rpc();
         }
 
-        for (let asset of assets) {
+        for (let i = 0; i < assets.length; i++) {
+            const asset = assets[i];
             const assetData = await Asset.fromAccountAddress(
                 provider.connection,
                 asset,
             );
 
-            expect(lsts.map(l => l.toString())).include(assetData.mint.toString());
+            expect(lsts[i].toString()).eq(assetData.mint.toString());
             expect(assetData.tvl.toString()).eq("0");
+            expect(assetData.oracle.__kind).eq("Pyth");
+            expect(assetData.oracle.fields[0].toString()).eq("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE");
+            expect(assetData.deposits.toString()).eq("0");
+            expect(assetData.lockups.toString()).eq("0");
         }
     });
 
@@ -176,6 +222,8 @@ describe("insurance-fund", () => {
             const MONTH = 30 * 24 * 60 * 60;
 
             for (let i = 0; i < 4; i ++) {
+                // the first one is just 10s for testing purposes
+                // the rest is 6, 9, 12 months
                 const duration = new BN(i == 0 ? 10 : ((i + 1) * 3 * MONTH));
 
                 const lockupId = j * 4 + i;
@@ -199,7 +247,7 @@ describe("insurance-fund", () => {
                     [
                         Buffer.from("reward_pool"),
                         lockup.toBuffer(),
-                        mint.toBuffer(),
+                        rewardToken.toBuffer(),
                     ],
                     program.programId
                 );
@@ -216,14 +264,14 @@ describe("insurance-fund", () => {
                 await program
                     .methods
                     .initializeLockup({
-                        asset: mint,
                         minDeposit: new BN(1), // 1 token for now
                         duration,
                         yieldBps: new BN(i * 3 * 100),
                         yieldMode: {
-                            single: { 0: [new BN(1)] } // 1 rUSD per 1 unit of deposit [lamport] per one lockup period
+                            single: {} // No $R rewards
                         },
-                        depositCap: new BN(LAMPORTS_PER_SOL * 100_000)
+                        depositCap: new BN(LAMPORTS_PER_SOL * 100_000),
+
                     })
                     .accounts({
                         superadmin: provider.publicKey,
@@ -234,7 +282,8 @@ describe("insurance-fund", () => {
                         tokenProgram: TOKEN_PROGRAM_ID,
                         systemProgram: SystemProgram.programId,
                         asset,
-                        assetRewardPool
+                        assetRewardPool,
+                        rewardMint: rewardToken
                     })
                     .rpc();
 
@@ -249,7 +298,8 @@ describe("insurance-fund", () => {
                     deposits,
                     depositCap,
                     rewardBoosts,
-                    slashState
+                    slashState,
+                    locked
                 } = await Lockup.fromAccountAddress(
                     provider.connection,
                     lockup
@@ -260,14 +310,13 @@ describe("insurance-fund", () => {
                 expect(yieldBps.toString()).eq(`${ i * 3 * 100 }`);
                 expect(minDeposit.toString()).eq("1");
                 expect(yieldMode.__kind).eq("Single");
-                expect(yieldMode.fields.length).eq(1);
-                expect(yieldMode.fields[0].toString()).eq("1");
                 expect(index.toString()).eq(lockupId.toString());
                 expect(deposits.toString()).eq("0");
                 expect(depositCap.toString()).eq(`${ LAMPORTS_PER_SOL * 100_000 }`);
                 expect(rewardBoosts.toString()).eq("0");
                 expect(slashState.index.toString()).eq("0");
                 expect(slashState.amount.toString()).eq("0");
+                expect(locked).eq(false);
             }
         }
     });
@@ -349,6 +398,14 @@ describe("insurance-fund", () => {
             lockupData.asset
         );
 
+        const {
+            price: assetPrice,
+            precision
+        } = await getOraclePrice();
+
+        price = assetPrice;
+        pricePrecision = precision;
+
         const ix = await program
             .methods
             .restake({
@@ -364,7 +421,7 @@ describe("insurance-fund", () => {
                 coldWalletVault,
                 assetMint: lockupData.asset,
                 userAssetAta,
-                oracle: new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG"),
+                oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
                 lockupAssetVault,
                 clock: SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -398,16 +455,41 @@ describe("insurance-fund", () => {
             coldWalletVault
         );
 
+        const settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
+        const assetData = await Asset.fromAccountAddress(
+            provider.connection,
+            asset
+        );
+
+        expect(assetData.tvl.toString()).eq(amount.toString());
+
+        // Make sure deposit has been divided correctly
+        // into hot and cold wallet shares.
+
         expect(parseInt(lockupVaultData.amount.toString()))
             .approximately(
-                Math.floor(0.3 * amount.toNumber()),
-                1000
+                Math.floor(
+                    new BN(settingsData.sharesConfig.hotWalletShareBps)
+                        .mul(amount)
+                        .divn(10_000) // bps
+                        .toNumber()
+                ),
+                100 // delta of 100 * 10^-9, not sure if necessary
             );
 
         expect(parseInt(coldWalletVaultData.amount.toString()))
             .approximately(
-                Math.floor(0.7 * amount.toNumber()),
-                1000
+                Math.floor(
+                    new BN(settingsData.sharesConfig.coldWalletShareBps)
+                        .mul(amount)
+                        .divn(10_000)
+                        .toNumber()
+                ),
+                100
             );
 
         const {
@@ -426,7 +508,6 @@ describe("insurance-fund", () => {
         expect(userPointer.toString()).eq(user.publicKey.toString());
         expect(lockupPointer.toString()).eq(lockup.toString());
         expect(depositedAmount.toString()).eq(amount.toString());
-        // expect(initialUsdValue).eq("");
         expect(lastSlashed).eq(null);
         expect(amountSlashed.toString()).eq("0");
         expect(parseInt(unlockTs.toString()))
@@ -434,6 +515,74 @@ describe("insurance-fund", () => {
                 transactionTimestamp + parseInt(lockupData.duration.toString()),
                 10 // 10 seconds delta
             );
+
+        const hermesInitialUsdValue = price
+            .mul(new BN(depositedAmount))
+            .div(
+                new BN(10)
+                    .pow(pricePrecision)
+            )
+            .div(
+                new BN(10)
+                    .pow(new BN(9)) // decimals
+            );
+
+        expect(new BN(initialUsdValue).toNumber())
+            .approximately(
+                hermesInitialUsdValue.toNumber(),
+                250 // 250 usd delta
+            )
+    });
+
+    it("Deposits rewards", async () => {
+        const lockupId = new BN(0);
+        const amount = new BN(100_000 * LAMPORTS_PER_SOL);
+
+        const [lockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lockup"),
+                lockupId.toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const [assetRewardPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("reward_pool"),
+                lockup.toBuffer(),
+                rewardToken.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const callerRewardAta = getAssociatedTokenAddressSync(
+            rewardToken,
+            provider.publicKey
+        );
+
+        await mintTokens(
+            rewardToken,
+            provider,
+            100_000 * LAMPORTS_PER_SOL,
+            provider.publicKey
+        );
+
+        await program
+            .methods
+            .depositRewards({
+                lockupId,
+                amount
+            })
+            .accounts({
+                caller: provider.publicKey,
+                callerRewardAta,
+                lockup,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                rewardMint: rewardToken,
+                assetRewardPool,
+                settings
+            })
+            .rpc()
     });
 
     it("Slashes lockup", async () => {
@@ -463,14 +612,6 @@ describe("insurance-fund", () => {
 
         const slashId = new BN(lockupData.slashState.index);
         const slashAmount = new BN(LAMPORTS_PER_SOL * 200);
-
-        const assetLockupData = await getAccount(
-            provider.connection,
-            assetLockup
-        );
-
-        expect(parseInt(assetLockupData.amount.toString()))
-            .gte(slashAmount.toNumber());
 
         const [slash] = PublicKey.findProgramAddressSync(
             [
@@ -530,6 +671,11 @@ describe("insurance-fund", () => {
             depositsToSlash.push(deposit);
         }
 
+        const coldWalletVault = getAssociatedTokenAddressSync(
+            lockupData.asset,
+            coldWallet,
+            true
+        );
 
         // Slash individual deposits
         const tx = await program
@@ -546,6 +692,8 @@ describe("insurance-fund", () => {
                 assetMint: lockupData.asset,
                 assetLockup,
                 slash,
+                coldWallet,
+                coldWalletVault
             })
             .remainingAccounts(depositsToSlash.map((deposit) => {
                 return {
@@ -556,29 +704,12 @@ describe("insurance-fund", () => {
             }))
             .rpc();
 
-        // await sleep(10);
-        //
-        // const {
-        //     meta: {
-        //         logMessages
-        //     }
-        // } = await program
-        //     .provider
-        //     .connection
-        //     .getParsedTransaction(tx, "confirmed");
-
         const {
             slashedAccounts: slashedDeposits,
             slashedAmount: slashedAmountFromDeposits,
         } = await Slash.fromAccountAddress(
             provider.connection,
             slash
-        );
-
-        const coldWalletVault = getAssociatedTokenAddressSync(
-            lockupData.asset,
-            coldWallet,
-            true
         );
 
         const [lockupAssetVault] = PublicKey.findProgramAddressSync(
@@ -607,6 +738,45 @@ describe("insurance-fund", () => {
             slash
         );
 
+        // Slash cold wallet by supplying test-signature into account
+        await program
+            .methods
+            .slashColdWallet({
+                lockupId,
+                slashId,
+                transferFunds: false,
+                transferSig: "test-signature"
+            })
+            .accounts({
+                tokenProgram: TOKEN_PROGRAM_ID,
+                superadmin: provider.publicKey,
+                source: null,
+                destination: null,
+                assetMint: lockupData.asset,
+                slash,
+                lockup,
+                coldWallet,
+                settings,
+            })
+            .rpc();
+
+        const [asset] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("asset"),
+                lockupData.asset.toBuffer()
+            ],
+            PROGRAM_ID
+        );
+
+        const assetLockupData = await getAccount(
+            provider.connection,
+            assetLockup
+        );
+
+        // Make sure there's enough funds in the hot wallet to slash.
+        expect(parseInt(assetLockupData.amount.toString()))
+            .gte(slashAmount.toNumber());
+
         // Slash entire pool
         await program
             .methods
@@ -618,7 +788,8 @@ describe("insurance-fund", () => {
                 settings,
                 superadmin: provider.publicKey,
                 lockup,
-                asset: lockupData.asset,
+                asset,
+                assetMint: lockupData.asset,
                 assetLockup,
                 slash,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -635,8 +806,6 @@ describe("insurance-fund", () => {
     });
 
     it("Withdraws & claims rewards.", async () => {
-        await sleep(10);
-
         const lockupId = new BN(0);
         const depositId = new BN(0);
 
@@ -690,7 +859,7 @@ describe("insurance-fund", () => {
             [
                 Buffer.from("reward_pool"),
                 lockup.toBuffer(),
-                lockupData.asset.toBuffer(),
+                rewardToken.toBuffer(),
             ],
             program.programId
         );
@@ -698,6 +867,17 @@ describe("insurance-fund", () => {
         const userAssetAta = getAssociatedTokenAddressSync(
             lockupData.asset,
             user.publicKey
+        );
+
+        const userRewardAta = getAssociatedTokenAddressSync(
+            rewardToken,
+            user.publicKey
+        );
+
+        const coldWalletVault = getAssociatedTokenAddressSync(
+            lockupData.asset,
+            coldWallet,
+            true
         );
 
         await program
@@ -721,8 +901,20 @@ describe("insurance-fund", () => {
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
                 assetRewardPool,
-                rewardBoost: program.programId
+                rewardBoost: program.programId,
+                rewardMint: rewardToken,
+                userRewardAta,
+                coldWallet,
+                coldWalletVault
             })
+            .preInstructions([
+                createAssociatedTokenAccountInstruction(
+                    user.publicKey,
+                    userRewardAta,
+                    user.publicKey,
+                    rewardToken
+                )
+            ])
             .signers([user])
             .rpc()
     });

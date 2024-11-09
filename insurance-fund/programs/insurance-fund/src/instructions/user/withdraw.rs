@@ -11,9 +11,6 @@ use anchor_spl::token::{
     Transfer,
 };
 
-// Not sure if there isn't some retarded shit happening on withdrawal, resulting in unfair distribution
-// of funds. TODO: Fix
-
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
 pub struct WithdrawArgs {
     pub lockup_id: u64,
@@ -45,6 +42,9 @@ pub fn withdraw(
     let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let asset = &mut ctx.accounts.asset;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
+
+    msg!("essa 1");
+
     let total_rewards = asset_reward_pool.amount;
     let total_lockup = lockup_asset_vault.amount + cold_wallet_vault.amount;
     let user_lockup = deposit.amount;
@@ -70,6 +70,8 @@ pub fn withdraw(
         ), 
         user_rewards
     )?;
+
+    msg!("essa 2");
 
     // Transfer base amount
     transfer(
@@ -179,27 +181,27 @@ pub struct Withdraw<'info> {
         mut,
         address = lockup.asset,
     )]
-    pub asset_mint: Account<'info, Mint>,
+    pub asset_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         address = settings.reward_config.main
     )]
-    pub reward_mint: Account<'info, Mint>,
+    pub reward_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::authority = user,
         associated_token::mint = asset_mint
     )]
-    pub user_asset_ata: Account<'info, TokenAccount>,
+    pub user_asset_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         associated_token::authority = user,
         associated_token::mint = reward_mint
     )]
-    pub user_reward_ata: Account<'info, TokenAccount>,
+    pub user_reward_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -214,7 +216,7 @@ pub struct Withdraw<'info> {
         token::mint = asset_mint,
         token::authority = lockup
     )]
-    pub lockup_asset_vault: Account<'info, TokenAccount>,
+    pub lockup_asset_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -227,7 +229,7 @@ pub struct Withdraw<'info> {
         token::mint = reward_mint,
         token::authority = lockup,
     )]
-    pub asset_reward_pool: Account<'info, TokenAccount>,
+    pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: Directly checking address against field in settings
     #[account(
@@ -241,7 +243,7 @@ pub struct Withdraw<'info> {
         associated_token::mint = asset_mint,
         associated_token::authority = cold_wallet
     )]
-    pub cold_wallet_vault: Account<'info, TokenAccount>,
+    pub cold_wallet_vault: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub clock: Sysvar<'info, Clock>,

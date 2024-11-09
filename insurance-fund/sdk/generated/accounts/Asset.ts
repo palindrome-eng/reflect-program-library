@@ -19,6 +19,8 @@ export type AssetArgs = {
   mint: web3.PublicKey
   oracle: Oracle
   tvl: beet.bignum
+  lockups: beet.bignum
+  deposits: beet.bignum
 }
 
 export const assetDiscriminator = [234, 180, 241, 252, 139, 224, 160, 8]
@@ -33,14 +35,22 @@ export class Asset implements AssetArgs {
   private constructor(
     readonly mint: web3.PublicKey,
     readonly oracle: Oracle,
-    readonly tvl: beet.bignum
+    readonly tvl: beet.bignum,
+    readonly lockups: beet.bignum,
+    readonly deposits: beet.bignum
   ) {}
 
   /**
    * Creates a {@link Asset} instance from the provided args.
    */
   static fromArgs(args: AssetArgs) {
-    return new Asset(args.mint, args.oracle, args.tvl)
+    return new Asset(
+      args.mint,
+      args.oracle,
+      args.tvl,
+      args.lockups,
+      args.deposits
+    )
   }
 
   /**
@@ -83,7 +93,7 @@ export class Asset implements AssetArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
+      'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, assetBeet)
@@ -161,6 +171,28 @@ export class Asset implements AssetArgs {
         }
         return x
       })(),
+      lockups: (() => {
+        const x = <{ toNumber: () => number }>this.lockups
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
+      deposits: (() => {
+        const x = <{ toNumber: () => number }>this.deposits
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -180,6 +212,8 @@ export const assetBeet = new beet.FixableBeetStruct<
     ['mint', beetSolana.publicKey],
     ['oracle', oracleBeet],
     ['tvl', beet.u64],
+    ['lockups', beet.u64],
+    ['deposits', beet.u64],
   ],
   Asset.fromArgs,
   'Asset'

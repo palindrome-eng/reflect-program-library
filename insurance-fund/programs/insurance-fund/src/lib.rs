@@ -8,7 +8,7 @@ pub mod events;
 pub mod helpers;
 use crate::instructions::*;
 
-declare_id!("BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e");
+declare_id!("EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV");
 
 #[program]
 pub mod insurance_fund {

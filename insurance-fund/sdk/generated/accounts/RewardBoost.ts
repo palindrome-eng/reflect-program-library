@@ -17,6 +17,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
 export type RewardBoostArgs = {
   minUsdValue: beet.bignum
   boostBps: beet.bignum
+  lockup: beet.bignum
 }
 
 export const rewardBoostDiscriminator = [242, 10, 119, 47, 141, 5, 66, 151]
@@ -30,14 +31,15 @@ export const rewardBoostDiscriminator = [242, 10, 119, 47, 141, 5, 66, 151]
 export class RewardBoost implements RewardBoostArgs {
   private constructor(
     readonly minUsdValue: beet.bignum,
-    readonly boostBps: beet.bignum
+    readonly boostBps: beet.bignum,
+    readonly lockup: beet.bignum
   ) {}
 
   /**
    * Creates a {@link RewardBoost} instance from the provided args.
    */
   static fromArgs(args: RewardBoostArgs) {
-    return new RewardBoost(args.minUsdValue, args.boostBps)
+    return new RewardBoost(args.minUsdValue, args.boostBps, args.lockup)
   }
 
   /**
@@ -80,7 +82,7 @@ export class RewardBoost implements RewardBoostArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
+      'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, rewardBoostBeet)
@@ -165,6 +167,17 @@ export class RewardBoost implements RewardBoostArgs {
         }
         return x
       })(),
+      lockup: (() => {
+        const x = <{ toNumber: () => number }>this.lockup
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -183,6 +196,7 @@ export const rewardBoostBeet = new beet.BeetStruct<
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['minUsdValue', beet.u64],
     ['boostBps', beet.u64],
+    ['lockup', beet.u64],
   ],
   RewardBoost.fromArgs,
   'RewardBoost'

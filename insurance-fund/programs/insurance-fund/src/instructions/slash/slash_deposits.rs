@@ -30,14 +30,15 @@ pub fn slash_deposits(
     let settings = &ctx.accounts.settings;
     let lockup = &ctx.accounts.lockup;
     let asset_lockup = &ctx.accounts.asset_lockup;
+    let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
+    let slash = &ctx.accounts.slash;
 
     let deposits = ctx.remaining_accounts;
-    let slash = &ctx.accounts.slash;
 
     // Number of already slashed accounts.
     let starting_index = slash.slashed_accounts;
 
-    let total_deposit = asset_lockup.amount;
+    let total_deposit = asset_lockup.amount + cold_wallet_vault.amount;
     let slashed_share_bps = 10_000 * slash_amount / total_deposit;
 
     msg!("total_deposit: {:?}", total_deposit);
@@ -153,6 +154,20 @@ pub struct SlashDeposits<'info> {
         token::authority = lockup,
     )]
     pub asset_lockup: Account<'info, TokenAccount>,
+
+    /// CHECK: Directly checking address against field in settings
+    #[account(
+        mut,
+        address = settings.cold_wallet
+    )]
+    pub cold_wallet: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = cold_wallet
+    )]
+    pub cold_wallet_vault: Account<'info, TokenAccount>,
 }
 
 impl SlashDeposits<'_> {

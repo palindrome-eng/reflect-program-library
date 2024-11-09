@@ -5,13 +5,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-insurance_fund = "CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB"
+insurance_fund = "EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "http://127.0.0.1:8899"
+cluster = "Localnet"
 wallet = "/Users/kubaplata/.config/solana/id.json"
 
 [scripts]
@@ -20,3 +20,10 @@ test-no-slash = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/scenarios
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
+
+[[test.validator.clone]]
+address = "H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG"
+[[test.validator.clone]]
+address = "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"
+[[test.validator.clone]]
+address = "rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ"

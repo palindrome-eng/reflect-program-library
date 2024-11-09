@@ -5,86 +5,78 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  InitializeSlashArgs,
-  initializeSlashArgsBeet,
-} from '../types/InitializeSlashArgs'
+  BoostRewardsArgs,
+  boostRewardsArgsBeet,
+} from '../types/BoostRewardsArgs'
 
 /**
  * @category Instructions
- * @category InitializeSlash
+ * @category BoostRewards
  * @category generated
  */
-export type InitializeSlashInstructionArgs = {
-  args: InitializeSlashArgs
+export type BoostRewardsInstructionArgs = {
+  args: BoostRewardsArgs
 }
 /**
  * @category Instructions
- * @category InitializeSlash
+ * @category BoostRewards
  * @category generated
  */
-export const initializeSlashStruct = new beet.BeetArgsStruct<
-  InitializeSlashInstructionArgs & {
+export const boostRewardsStruct = new beet.BeetArgsStruct<
+  BoostRewardsInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', initializeSlashArgsBeet],
+    ['args', boostRewardsArgsBeet],
   ],
-  'InitializeSlashInstructionArgs'
+  'BoostRewardsInstructionArgs'
 )
 /**
- * Accounts required by the _initializeSlash_ instruction
+ * Accounts required by the _boostRewards_ instruction
  *
  * @property [_writable_, **signer**] superadmin
  * @property [_writable_] settings
  * @property [_writable_] lockup
- * @property [_writable_] assetMint
- * @property [_writable_] assetLockup
- * @property [_writable_] slash
- * @property [] clock
+ * @property [_writable_] rewardBoost
  * @category Instructions
- * @category InitializeSlash
+ * @category BoostRewards
  * @category generated
  */
-export type InitializeSlashInstructionAccounts = {
+export type BoostRewardsInstructionAccounts = {
   superadmin: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
-  assetMint: web3.PublicKey
-  assetLockup: web3.PublicKey
-  slash: web3.PublicKey
-  tokenProgram?: web3.PublicKey
-  clock: web3.PublicKey
+  rewardBoost: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const initializeSlashInstructionDiscriminator = [
-  130, 26, 93, 222, 84, 233, 156, 7,
+export const boostRewardsInstructionDiscriminator = [
+  198, 166, 33, 151, 29, 82, 245, 51,
 ]
 
 /**
- * Creates a _InitializeSlash_ instruction.
+ * Creates a _BoostRewards_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category InitializeSlash
+ * @category BoostRewards
  * @category generated
  */
-export function createInitializeSlashInstruction(
-  accounts: InitializeSlashInstructionAccounts,
-  args: InitializeSlashInstructionArgs,
+export function createBoostRewardsInstruction(
+  accounts: BoostRewardsInstructionAccounts,
+  args: BoostRewardsInstructionArgs,
   programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
-  const [data] = initializeSlashStruct.serialize({
-    instructionDiscriminator: initializeSlashInstructionDiscriminator,
+  const [data] = boostRewardsStruct.serialize({
+    instructionDiscriminator: boostRewardsInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -104,28 +96,8 @@ export function createInitializeSlashInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.assetMint,
+      pubkey: accounts.rewardBoost,
       isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.assetLockup,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.slash,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.clock,
-      isWritable: false,
       isSigner: false,
     },
     {

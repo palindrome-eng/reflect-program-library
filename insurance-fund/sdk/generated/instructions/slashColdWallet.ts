@@ -9,91 +9,91 @@ import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  CreateIntentArgs,
-  createIntentArgsBeet,
-} from '../types/CreateIntentArgs'
+  SlashColdWalletArgs,
+  slashColdWalletArgsBeet,
+} from '../types/SlashColdWalletArgs'
 
 /**
  * @category Instructions
- * @category CreateIntent
+ * @category SlashColdWallet
  * @category generated
  */
-export type CreateIntentInstructionArgs = {
-  args: CreateIntentArgs
+export type SlashColdWalletInstructionArgs = {
+  args: SlashColdWalletArgs
 }
 /**
  * @category Instructions
- * @category CreateIntent
+ * @category SlashColdWallet
  * @category generated
  */
-export const createIntentStruct = new beet.BeetArgsStruct<
-  CreateIntentInstructionArgs & {
+export const slashColdWalletStruct = new beet.FixableBeetArgsStruct<
+  SlashColdWalletInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', createIntentArgsBeet],
+    ['args', slashColdWalletArgsBeet],
   ],
-  'CreateIntentInstructionArgs'
+  'SlashColdWalletInstructionArgs'
 )
 /**
- * Accounts required by the _createIntent_ instruction
+ * Accounts required by the _slashColdWallet_ instruction
  *
- * @property [_writable_, **signer**] user
+ * @property [_writable_, **signer**] superadmin
  * @property [_writable_] settings
+ * @property [_writable_] coldWallet
  * @property [_writable_] lockup
- * @property [_writable_] assetMint
- * @property [_writable_] userAssetAta
- * @property [_writable_] lockupAssetVault
- * @property [_writable_] deposit
- * @property [_writable_] intent
- * @property [] clock
+ * @property [_writable_] slash
+ * @property [_writable_] assetMint (optional)
+ * @property [_writable_] source (optional)
+ * @property [_writable_] destination (optional)
  * @category Instructions
- * @category CreateIntent
+ * @category SlashColdWallet
  * @category generated
  */
-export type CreateIntentInstructionAccounts = {
-  user: web3.PublicKey
+export type SlashColdWalletInstructionAccounts = {
+  superadmin: web3.PublicKey
   settings: web3.PublicKey
+  coldWallet: web3.PublicKey
   lockup: web3.PublicKey
-  assetMint: web3.PublicKey
-  userAssetAta: web3.PublicKey
-  lockupAssetVault: web3.PublicKey
-  deposit: web3.PublicKey
-  intent: web3.PublicKey
-  systemProgram?: web3.PublicKey
+  slash: web3.PublicKey
+  assetMint?: web3.PublicKey
+  source?: web3.PublicKey
+  destination?: web3.PublicKey
   tokenProgram?: web3.PublicKey
-  clock: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const createIntentInstructionDiscriminator = [
-  216, 214, 79, 121, 23, 194, 96, 104,
+export const slashColdWalletInstructionDiscriminator = [
+  9, 62, 9, 165, 4, 209, 107, 9,
 ]
 
 /**
- * Creates a _CreateIntent_ instruction.
+ * Creates a _SlashColdWallet_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category CreateIntent
+ * @category SlashColdWallet
  * @category generated
  */
-export function createCreateIntentInstruction(
-  accounts: CreateIntentInstructionAccounts,
-  args: CreateIntentInstructionArgs,
+export function createSlashColdWalletInstruction(
+  accounts: SlashColdWalletInstructionAccounts,
+  args: SlashColdWalletInstructionArgs,
   programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
-  const [data] = createIntentStruct.serialize({
-    instructionDiscriminator: createIntentInstructionDiscriminator,
+  const [data] = slashColdWalletStruct.serialize({
+    instructionDiscriminator: slashColdWalletInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.user,
+      pubkey: accounts.superadmin,
       isWritable: true,
       isSigner: true,
     },
@@ -103,47 +103,37 @@ export function createCreateIntentInstruction(
       isSigner: false,
     },
     {
+      pubkey: accounts.coldWallet,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.lockup,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.assetMint,
+      pubkey: accounts.slash,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.userAssetAta,
-      isWritable: true,
+      pubkey: accounts.assetMint ?? programId,
+      isWritable: accounts.assetMint != null,
       isSigner: false,
     },
     {
-      pubkey: accounts.lockupAssetVault,
-      isWritable: true,
+      pubkey: accounts.source ?? programId,
+      isWritable: accounts.source != null,
       isSigner: false,
     },
     {
-      pubkey: accounts.deposit,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.intent,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
-      isWritable: false,
+      pubkey: accounts.destination ?? programId,
+      isWritable: accounts.destination != null,
       isSigner: false,
     },
     {
       pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.clock,
       isWritable: false,
       isSigner: false,
     },

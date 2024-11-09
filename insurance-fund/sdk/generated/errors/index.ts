@@ -396,6 +396,75 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * InvalidSigners: 'InvalidSigners'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSignersError extends Error {
+  readonly code: number = 0x1782
+  readonly name: string = 'InvalidSigners'
+  constructor() {
+    super('InvalidSigners')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSignersError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1782, () => new InvalidSignersError())
+createErrorFromNameLookup.set('InvalidSigners', () => new InvalidSignersError())
+
+/**
+ * TransferSignatureRequired: 'TransferSignatureRequired'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class TransferSignatureRequiredError extends Error {
+  readonly code: number = 0x1783
+  readonly name: string = 'TransferSignatureRequired'
+  constructor() {
+    super('TransferSignatureRequired')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, TransferSignatureRequiredError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1783,
+  () => new TransferSignatureRequiredError()
+)
+createErrorFromNameLookup.set(
+  'TransferSignatureRequired',
+  () => new TransferSignatureRequiredError()
+)
+
+/**
+ * ColdWalletNotSlashed: 'ColdWalletNotSlashed'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ColdWalletNotSlashedError extends Error {
+  readonly code: number = 0x1784
+  readonly name: string = 'ColdWalletNotSlashed'
+  constructor() {
+    super('ColdWalletNotSlashed')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ColdWalletNotSlashedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1784, () => new ColdWalletNotSlashedError())
+createErrorFromNameLookup.set(
+  'ColdWalletNotSlashed',
+  () => new ColdWalletNotSlashedError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

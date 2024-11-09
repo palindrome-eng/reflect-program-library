@@ -76,11 +76,12 @@ pub struct ProcessIntent<'info> {
     )]
     pub superadmin: Signer<'info>,
 
-    // Receiver
+    /// CHECK: Receiver, directly checking if the addresses match
     #[account(
-        mut
+        mut,
+        address = deposit.user
     )]
-    pub user: AccountInfo<'info>,
+    pub user: UncheckedAccount<'info>,
 
     #[account(
         mut,

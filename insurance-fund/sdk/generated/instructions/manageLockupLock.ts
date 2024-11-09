@@ -7,58 +7,74 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import {
+  ManageLockupLockArgs,
+  manageLockupLockArgsBeet,
+} from '../types/ManageLockupLockArgs'
 
 /**
  * @category Instructions
- * @category AddAsset
+ * @category ManageLockupLock
  * @category generated
  */
-export const addAssetStruct = new beet.BeetArgsStruct<{
-  instructionDiscriminator: number[] /* size: 8 */
-}>(
-  [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
-  'AddAssetInstructionArgs'
+export type ManageLockupLockInstructionArgs = {
+  args: ManageLockupLockArgs
+}
+/**
+ * @category Instructions
+ * @category ManageLockupLock
+ * @category generated
+ */
+export const manageLockupLockStruct = new beet.BeetArgsStruct<
+  ManageLockupLockInstructionArgs & {
+    instructionDiscriminator: number[] /* size: 8 */
+  }
+>(
+  [
+    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['args', manageLockupLockArgsBeet],
+  ],
+  'ManageLockupLockInstructionArgs'
 )
 /**
- * Accounts required by the _addAsset_ instruction
+ * Accounts required by the _manageLockupLock_ instruction
  *
  * @property [_writable_, **signer**] superadmin
  * @property [_writable_] settings
- * @property [_writable_] asset
- * @property [_writable_] assetMint
- * @property [_writable_] oracle
+ * @property [_writable_] lockup
  * @category Instructions
- * @category AddAsset
+ * @category ManageLockupLock
  * @category generated
  */
-export type AddAssetInstructionAccounts = {
+export type ManageLockupLockInstructionAccounts = {
   superadmin: web3.PublicKey
   settings: web3.PublicKey
-  asset: web3.PublicKey
-  assetMint: web3.PublicKey
-  oracle: web3.PublicKey
-  systemProgram?: web3.PublicKey
+  lockup: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const addAssetInstructionDiscriminator = [
-  81, 53, 134, 142, 243, 73, 42, 179,
+export const manageLockupLockInstructionDiscriminator = [
+  236, 72, 44, 71, 110, 190, 135, 139,
 ]
 
 /**
- * Creates a _AddAsset_ instruction.
+ * Creates a _ManageLockupLock_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
+ * @param args to provide as instruction data to the program
+ *
  * @category Instructions
- * @category AddAsset
+ * @category ManageLockupLock
  * @category generated
  */
-export function createAddAssetInstruction(
-  accounts: AddAssetInstructionAccounts,
+export function createManageLockupLockInstruction(
+  accounts: ManageLockupLockInstructionAccounts,
+  args: ManageLockupLockInstructionArgs,
   programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
-  const [data] = addAssetStruct.serialize({
-    instructionDiscriminator: addAssetInstructionDiscriminator,
+  const [data] = manageLockupLockStruct.serialize({
+    instructionDiscriminator: manageLockupLockInstructionDiscriminator,
+    ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
@@ -72,23 +88,8 @@ export function createAddAssetInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.asset,
+      pubkey: accounts.lockup,
       isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.assetMint,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.oracle,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
-      isWritable: false,
       isSigner: false,
     },
   ]

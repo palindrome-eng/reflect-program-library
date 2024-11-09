@@ -83,6 +83,42 @@
       ]
     },
     {
+      "name": "addAsset",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracle",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "manageFreeze",
       "accounts": [
         {
@@ -134,6 +170,11 @@
           "isSigner": false
         },
         {
+          "name": "rewardMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "lockupAssetVault",
           "isMut": true,
           "isSigner": false
@@ -164,7 +205,7 @@
       ]
     },
     {
-      "name": "addAsset",
+      "name": "manageLockupLock",
       "accounts": [
         {
           "name": "superadmin",
@@ -177,17 +218,40 @@
           "isSigner": false
         },
         {
-          "name": "asset",
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ManageLockupLockArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "boostRewards",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "assetMint",
+          "name": "lockup",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "oracle",
+          "name": "rewardBoost",
           "isMut": true,
           "isSigner": false
         },
@@ -197,7 +261,14 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "BoostRewardsArgs"
+          }
+        }
+      ]
     },
     {
       "name": "restake",
@@ -322,7 +393,17 @@
           "isSigner": false
         },
         {
+          "name": "rewardMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "userAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userRewardAta",
           "isMut": true,
           "isSigner": false
         },
@@ -496,6 +577,11 @@
           "isSigner": false
         },
         {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "asset",
           "isMut": true,
           "isSigner": false
@@ -526,6 +612,67 @@
       ]
     },
     {
+      "name": "slashColdWallet",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "coldWallet",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "slash",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "source",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "destination",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SlashColdWalletArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "depositRewards",
       "accounts": [
         {
@@ -534,17 +681,22 @@
           "isSigner": true
         },
         {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "lockup",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "assetMint",
+          "name": "rewardMint",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "callerAssetAta",
+          "name": "callerRewardAta",
           "isMut": true,
           "isSigner": false
         },
@@ -635,6 +787,74 @@
           }
         }
       ]
+    },
+    {
+      "name": "processIntent",
+      "accounts": [
+        {
+          "name": "superadmin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deposit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "intent",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "adminAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProcessIntentArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -655,6 +875,14 @@
           },
           {
             "name": "tvl",
+            "type": "u64"
+          },
+          {
+            "name": "lockups",
+            "type": "u64"
+          },
+          {
+            "name": "deposits",
             "type": "u64"
           }
         ]
@@ -708,11 +936,11 @@
             "type": "u64"
           },
           {
-            "name": "totalDeposit",
-            "type": "u64"
+            "name": "lockup",
+            "type": "publicKey"
           },
           {
-            "name": "lockup",
+            "name": "deposit",
             "type": "publicKey"
           }
         ]
@@ -792,6 +1020,10 @@
           {
             "name": "boostBps",
             "type": "u64"
+          },
+          {
+            "name": "lockup",
+            "type": "u64"
           }
         ]
       }
@@ -821,6 +1053,12 @@
             "name": "sharesConfig",
             "type": {
               "defined": "SharesConfig"
+            }
+          },
+          {
+            "name": "rewardConfig",
+            "type": {
+              "defined": "RewardConfig"
             }
           },
           {
@@ -854,6 +1092,16 @@
           {
             "name": "slashedAmount",
             "type": "u64"
+          },
+          {
+            "name": "transferSig",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "slashedColdWallet",
+            "type": "bool"
           }
         ]
       }
@@ -881,18 +1129,6 @@
       }
     },
     {
-      "name": "ManageFreezeArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "freeze",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
       "name": "InitializeInsuranceFundArgs",
       "type": {
         "kind": "struct",
@@ -908,6 +1144,10 @@
           {
             "name": "coldWalletShareBps",
             "type": "u64"
+          },
+          {
+            "name": "rewardMint",
+            "type": "publicKey"
           }
         ]
       }
@@ -947,6 +1187,34 @@
       }
     },
     {
+      "name": "ManageFreezeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "freeze",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManageLockupLockArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "lock",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
       "name": "DepositRewardsArgs",
       "type": {
         "kind": "struct",
@@ -957,6 +1225,38 @@
           },
           {
             "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateIntentArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "depositId",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProcessIntentArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "depositId",
             "type": "u64"
           }
         ]
@@ -974,6 +1274,32 @@
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlashColdWalletArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "slashId",
+            "type": "u64"
+          },
+          {
+            "name": "transferFunds",
+            "type": "bool"
+          },
+          {
+            "name": "transferSig",
+            "type": {
+              "option": "string"
+            }
           }
         ]
       }
@@ -1009,26 +1335,6 @@
           },
           {
             "name": "slashId",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CreateIntentArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "lockupId",
-            "type": "u64"
-          },
-          {
-            "name": "depositId",
             "type": "u64"
           }
         ]
@@ -1109,6 +1415,18 @@
       }
     },
     {
+      "name": "RewardConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "main",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
       "name": "Oracle",
       "type": {
         "kind": "enum",
@@ -1134,25 +1452,12 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "Single",
-            "fields": [
-              {
-                "array": [
-                  "u64",
-                  1
-                ]
-              }
-            ]
+            "name": "Single"
           },
           {
             "name": "Dual",
             "fields": [
-              {
-                "array": [
-                  "u64",
-                  2
-                ]
-              }
+              "u64"
             ]
           }
         ]
@@ -1299,6 +1604,41 @@
           "index": false
         }
       ]
+    },
+    {
+      "name": "CreateIntent",
+      "fields": [
+        {
+          "name": "deposit",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "ProcessIntent",
+      "fields": [
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "deposit",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "processedBy",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -1391,10 +1731,25 @@
       "code": 6017,
       "name": "BoostNotApplied",
       "msg": "BoostNotApplied"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidSigners",
+      "msg": "InvalidSigners"
+    },
+    {
+      "code": 6019,
+      "name": "TransferSignatureRequired",
+      "msg": "TransferSignatureRequired"
+    },
+    {
+      "code": 6020,
+      "name": "ColdWalletNotSlashed",
+      "msg": "ColdWalletNotSlashed"
     }
   ],
   "metadata": {
-    "address": "BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e",
+    "address": "EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV",
     "origin": "anchor",
     "binaryVersion": "0.29.0",
     "libVersion": "0.29.0"

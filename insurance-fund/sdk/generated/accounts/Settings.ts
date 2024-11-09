@@ -9,6 +9,7 @@ import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { SharesConfig, sharesConfigBeet } from '../types/SharesConfig'
+import { RewardConfig, rewardConfigBeet } from '../types/RewardConfig'
 
 /**
  * Arguments used to create {@link Settings}
@@ -21,6 +22,7 @@ export type SettingsArgs = {
   coldWallet: web3.PublicKey
   lockups: beet.bignum
   sharesConfig: SharesConfig
+  rewardConfig: RewardConfig
   frozen: boolean
 }
 
@@ -39,6 +41,7 @@ export class Settings implements SettingsArgs {
     readonly coldWallet: web3.PublicKey,
     readonly lockups: beet.bignum,
     readonly sharesConfig: SharesConfig,
+    readonly rewardConfig: RewardConfig,
     readonly frozen: boolean
   ) {}
 
@@ -52,6 +55,7 @@ export class Settings implements SettingsArgs {
       args.coldWallet,
       args.lockups,
       args.sharesConfig,
+      args.rewardConfig,
       args.frozen
     )
   }
@@ -96,7 +100,7 @@ export class Settings implements SettingsArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e'
+      'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, settingsBeet)
@@ -174,6 +178,7 @@ export class Settings implements SettingsArgs {
         return x
       })(),
       sharesConfig: this.sharesConfig,
+      rewardConfig: this.rewardConfig,
       frozen: this.frozen,
     }
   }
@@ -196,6 +201,7 @@ export const settingsBeet = new beet.BeetStruct<
     ['coldWallet', beetSolana.publicKey],
     ['lockups', beet.u64],
     ['sharesConfig', sharesConfigBeet],
+    ['rewardConfig', rewardConfigBeet],
     ['frozen', beet.bool],
   ],
   Settings.fromArgs,

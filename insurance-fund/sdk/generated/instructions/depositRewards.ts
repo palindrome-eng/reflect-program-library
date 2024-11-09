@@ -41,9 +41,10 @@ export const depositRewardsStruct = new beet.BeetArgsStruct<
  * Accounts required by the _depositRewards_ instruction
  *
  * @property [_writable_, **signer**] caller
+ * @property [_writable_] settings
  * @property [_writable_] lockup
- * @property [_writable_] assetMint
- * @property [_writable_] callerAssetAta
+ * @property [_writable_] rewardMint
+ * @property [_writable_] callerRewardAta
  * @property [_writable_] assetRewardPool
  * @category Instructions
  * @category DepositRewards
@@ -51,9 +52,10 @@ export const depositRewardsStruct = new beet.BeetArgsStruct<
  */
 export type DepositRewardsInstructionAccounts = {
   caller: web3.PublicKey
+  settings: web3.PublicKey
   lockup: web3.PublicKey
-  assetMint: web3.PublicKey
-  callerAssetAta: web3.PublicKey
+  rewardMint: web3.PublicKey
+  callerRewardAta: web3.PublicKey
   assetRewardPool: web3.PublicKey
   tokenProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -76,7 +78,7 @@ export const depositRewardsInstructionDiscriminator = [
 export function createDepositRewardsInstruction(
   accounts: DepositRewardsInstructionAccounts,
   args: DepositRewardsInstructionArgs,
-  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
+  programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
   const [data] = depositRewardsStruct.serialize({
     instructionDiscriminator: depositRewardsInstructionDiscriminator,
@@ -89,17 +91,22 @@ export function createDepositRewardsInstruction(
       isSigner: true,
     },
     {
+      pubkey: accounts.settings,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.lockup,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.assetMint,
+      pubkey: accounts.rewardMint,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.callerAssetAta,
+      pubkey: accounts.callerRewardAta,
       isWritable: true,
       isSigner: false,
     },

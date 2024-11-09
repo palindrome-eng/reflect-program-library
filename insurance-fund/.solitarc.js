@@ -7,7 +7,7 @@ const binaryInstallDir = path.join(__dirname, '.crates');
 module.exports = {
     idlGenerator: 'anchor',
     programName: 'insurance_fund',
-    programId: 'BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e',
+    programId: 'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV',
     idlDir,
     sdkDir,
     binaryInstallDir,

@@ -8,7 +8,6 @@ use crate::errors::InsuranceFundError;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct InitializeLockupArgs {
-    pub asset: Pubkey,
     pub min_deposit: u64,
     pub deposit_cap: u64,
     pub duration: u64,
@@ -22,9 +21,10 @@ pub fn initialize_lockup(
 ) -> Result<()> {
     let settings = &mut ctx.accounts.settings;
     let lockup = &mut ctx.accounts.lockup;
+    let asset_mint = &ctx.accounts.asset_mint;
+    let asset = &mut ctx.accounts.asset;
 
     let InitializeLockupArgs {
-        asset,
         duration,
         min_deposit,
         yield_bps,
@@ -34,7 +34,7 @@ pub fn initialize_lockup(
 
     lockup.bump = ctx.bumps.lockup;
     lockup.index = settings.lockups;
-    lockup.asset = asset;
+    lockup.asset = asset_mint.key();
     lockup.duration = duration;
     lockup.min_deposit = min_deposit;
     lockup.yield_bps = yield_bps;
@@ -47,6 +47,7 @@ pub fn initialize_lockup(
     lockup.reward_boosts = 0;
 
     settings.lockups += 1;
+    asset.add_lockup()?;
 
     Ok(())
 }
@@ -97,7 +98,7 @@ pub struct InitializeLockup<'info> {
 
     #[account(
         mut,
-        address = asset.mint,
+        address = asset.mint
     )]
     pub asset_mint: Account<'info, Mint>,
 

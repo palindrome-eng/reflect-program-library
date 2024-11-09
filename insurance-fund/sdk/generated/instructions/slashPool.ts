@@ -41,6 +41,7 @@ export const slashPoolStruct = new beet.BeetArgsStruct<
  * @property [_writable_] settings
  * @property [_writable_] lockup
  * @property [_writable_] slash
+ * @property [_writable_] assetMint
  * @property [_writable_] asset
  * @property [_writable_] assetLockup
  * @property [_writable_] destination
@@ -53,6 +54,7 @@ export type SlashPoolInstructionAccounts = {
   settings: web3.PublicKey
   lockup: web3.PublicKey
   slash: web3.PublicKey
+  assetMint: web3.PublicKey
   asset: web3.PublicKey
   assetLockup: web3.PublicKey
   destination: web3.PublicKey
@@ -77,7 +79,7 @@ export const slashPoolInstructionDiscriminator = [
 export function createSlashPoolInstruction(
   accounts: SlashPoolInstructionAccounts,
   args: SlashPoolInstructionArgs,
-  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
+  programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
   const [data] = slashPoolStruct.serialize({
     instructionDiscriminator: slashPoolInstructionDiscriminator,
@@ -101,6 +103,11 @@ export function createSlashPoolInstruction(
     },
     {
       pubkey: accounts.slash,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.assetMint,
       isWritable: true,
       isSigner: false,
     },

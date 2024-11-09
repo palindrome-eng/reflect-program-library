@@ -88,7 +88,7 @@ export const restakeInstructionDiscriminator = [
 export function createRestakeInstruction(
   accounts: RestakeInstructionAccounts,
   args: RestakeInstructionArgs,
-  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
+  programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
   const [data] = restakeStruct.serialize({
     instructionDiscriminator: restakeInstructionDiscriminator,

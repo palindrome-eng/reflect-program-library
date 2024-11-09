@@ -16,8 +16,8 @@ import * as beet from '@metaplex-foundation/beet'
  * @private
  */
 export type YieldModeRecord = {
-  Single: { fields: [beet.bignum[] /* size: 1 */] }
-  Dual: { fields: [beet.bignum[] /* size: 2 */] }
+  Single: void /* scalar variant */
+  Dual: { fields: [beet.bignum] }
 }
 
 /**
@@ -45,27 +45,11 @@ export const isYieldModeDual = (
  * @category generated
  */
 export const yieldModeBeet = beet.dataEnum<YieldModeRecord>([
-  [
-    'Single',
-    new beet.BeetArgsStruct<YieldModeRecord['Single']>(
-      [
-        [
-          'fields',
-          beet.fixedSizeTuple([beet.uniformFixedSizeArray(beet.u64, 1)]),
-        ],
-      ],
-      'YieldModeRecord["Single"]'
-    ),
-  ],
+  ['Single', beet.unit],
   [
     'Dual',
     new beet.BeetArgsStruct<YieldModeRecord['Dual']>(
-      [
-        [
-          'fields',
-          beet.fixedSizeTuple([beet.uniformFixedSizeArray(beet.u64, 2)]),
-        ],
-      ],
+      [['fields', beet.fixedSizeTuple([beet.u64])]],
       'YieldModeRecord["Dual"]'
     ),
   ],

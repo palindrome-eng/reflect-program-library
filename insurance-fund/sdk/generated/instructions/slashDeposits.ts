@@ -76,7 +76,7 @@ export const slashDepositsInstructionDiscriminator = [
 export function createSlashDepositsInstruction(
   accounts: SlashDepositsInstructionAccounts,
   args: SlashDepositsInstructionArgs,
-  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
+  programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
   const [data] = slashDepositsStruct.serialize({
     instructionDiscriminator: slashDepositsInstructionDiscriminator,

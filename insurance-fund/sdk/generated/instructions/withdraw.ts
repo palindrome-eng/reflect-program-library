@@ -44,7 +44,9 @@ export const withdrawStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] rewardBoost (optional)
  * @property [_writable_] asset
  * @property [_writable_] assetMint
+ * @property [_writable_] rewardMint
  * @property [_writable_] userAssetAta
+ * @property [_writable_] userRewardAta
  * @property [_writable_] lockupAssetVault
  * @property [_writable_] assetRewardPool
  * @property [_writable_] coldWallet
@@ -62,7 +64,9 @@ export type WithdrawInstructionAccounts = {
   rewardBoost?: web3.PublicKey
   asset: web3.PublicKey
   assetMint: web3.PublicKey
+  rewardMint: web3.PublicKey
   userAssetAta: web3.PublicKey
+  userRewardAta: web3.PublicKey
   lockupAssetVault: web3.PublicKey
   assetRewardPool: web3.PublicKey
   coldWallet: web3.PublicKey
@@ -93,7 +97,7 @@ export const withdrawInstructionDiscriminator = [
 export function createWithdrawInstruction(
   accounts: WithdrawInstructionAccounts,
   args: WithdrawInstructionArgs,
-  programId = new web3.PublicKey('BXopfEhtpSHLxK66tAcxY7zYEUyHL6h91NJtP2nWx54e')
+  programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
   const [data] = withdrawStruct.serialize({
     instructionDiscriminator: withdrawInstructionDiscriminator,
@@ -136,7 +140,17 @@ export function createWithdrawInstruction(
       isSigner: false,
     },
     {
+      pubkey: accounts.rewardMint,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.userAssetAta,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.userRewardAta,
       isWritable: true,
       isSigner: false,
     },

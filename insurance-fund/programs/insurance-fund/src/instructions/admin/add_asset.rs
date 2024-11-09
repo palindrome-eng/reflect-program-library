@@ -16,6 +16,9 @@ pub fn add_asset(
     let oracle = &ctx.accounts.oracle;
 
     asset.mint = asset_mint.key();  
+    asset.tvl = 0;
+    asset.deposits = 0;
+    asset.lockups = 0;
 
     if oracle.owner.eq(&PYTH_PROGRAM_ID) {
         get_price_from_pyth(oracle)?;

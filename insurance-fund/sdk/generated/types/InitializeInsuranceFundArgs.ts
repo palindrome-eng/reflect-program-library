@@ -12,6 +12,7 @@ export type InitializeInsuranceFundArgs = {
   coldWallet: web3.PublicKey
   hotWalletShareBps: beet.bignum
   coldWalletShareBps: beet.bignum
+  rewardMint: web3.PublicKey
 }
 
 /**
@@ -24,6 +25,7 @@ export const initializeInsuranceFundArgsBeet =
       ['coldWallet', beetSolana.publicKey],
       ['hotWalletShareBps', beet.u64],
       ['coldWalletShareBps', beet.u64],
+      ['rewardMint', beetSolana.publicKey],
     ],
     'InitializeInsuranceFundArgs'
   )

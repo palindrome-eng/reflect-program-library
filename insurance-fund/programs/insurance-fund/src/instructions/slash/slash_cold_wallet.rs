@@ -85,6 +85,7 @@ pub fn slash_cold_wallet(
     }
 
     slash.slashed_amount += amount;
+    slash.slashed_cold_wallet = true;
 
     Ok(())
 }
@@ -110,6 +111,7 @@ pub struct SlashColdWallet<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
+    /// CHECK: Directly checking the address
     #[account(
         mut,
         address = settings.cold_wallet
@@ -123,8 +125,8 @@ pub struct SlashColdWallet<'info> {
             &args.lockup_id.to_le_bytes()
         ],
         bump,
-        // Make sure that previous slash was finalized
-        constraint = !lockup.locked
+        // Make sure that previous steps are done
+        constraint = lockup.locked
     )]
     pub lockup: Account<'info, Lockup>,
 
@@ -136,7 +138,7 @@ pub struct SlashColdWallet<'info> {
             &args.slash_id.to_le_bytes()
         ],
         bump,
-        // All deposits have to be slashed before slashing the pool.
+        // All deposits have to be slashed before slashing the cold wallet.
         constraint = slash.target_accounts == slash.slashed_accounts @ InsuranceFundError::DepositsNotSlashed,
         constraint = slash.index == lockup.slash_state.index @ InsuranceFundError::InvalidInput
     )]
@@ -151,7 +153,7 @@ pub struct SlashColdWallet<'info> {
     #[account(
         mut,
         token::mint = asset_mint,
-        token::authority = cold_wallet
+        token::authority = cold_wallet 
     )]
     pub source: Option<Account<'info, TokenAccount>>,
 
