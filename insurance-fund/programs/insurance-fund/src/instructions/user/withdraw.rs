@@ -34,28 +34,33 @@ pub fn withdraw(
     let token_program = &ctx.accounts.token_program;
     let deposit = &mut ctx.accounts.deposit;
     let user = &mut ctx.accounts.user;
-    let lockup = &ctx.accounts.lockup;
+    let lockup = &mut ctx.accounts.lockup;
     let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
     let asset_mint = &ctx.accounts.asset_mint;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let user_reward_ata = &ctx.accounts.user_reward_ata;
-    let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let asset = &mut ctx.accounts.asset;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
 
-    msg!("essa 1");
-
     let total_rewards = asset_reward_pool.amount;
-    let total_lockup = lockup_asset_vault.amount + cold_wallet_vault.amount;
+
+    msg!("Total rewards: {:?}", total_rewards);
+
+    let total_lockup = lockup.total_deposits;
+    msg!("Total lockup: {:?}", total_lockup);
     let user_lockup = deposit.amount;
+    msg!("User lockup: {:?}", user_lockup);
     let user_share = user_lockup as f64 / total_lockup as f64;
+    msg!("User share: {:?}", user_share);
     let user_rewards = (total_rewards as f64 * user_share) as u64;
+    msg!("user_rewards: {:?}", user_rewards);
 
     let seeds = &[
         LOCKUP_SEED.as_bytes(),
         &lockup_id.to_le_bytes(),
         &[ctx.bumps.lockup]
     ];
+
 
     // Transfer rewards
     transfer(
@@ -71,7 +76,7 @@ pub fn withdraw(
         user_rewards
     )?;
 
-    msg!("essa 2");
+    msg!("Transferred rewards. Transferring base deposit.");
 
     // Transfer base amount
     transfer(
@@ -89,6 +94,8 @@ pub fn withdraw(
 
     deposit.amount -= amount;
     asset.decrease_tvl(amount)?;
+
+    lockup.decrease_deposits(amount)?;
 
     emit!(WithdrawEvent {
         asset: asset_mint.key(),
@@ -230,20 +237,6 @@ pub struct Withdraw<'info> {
         token::authority = lockup,
     )]
     pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
-
-    /// CHECK: Directly checking address against field in settings
-    #[account(
-        mut,
-        address = settings.cold_wallet
-    )]
-    pub cold_wallet: UncheckedAccount<'info>,
-
-    #[account(
-        mut,
-        associated_token::mint = asset_mint,
-        associated_token::authority = cold_wallet
-    )]
-    pub cold_wallet_vault: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub clock: Sysvar<'info, Clock>,

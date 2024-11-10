@@ -26,6 +26,7 @@ pub fn slash_pool(
         slash_id
     } = args;
 
+    let settings = &ctx.accounts.settings;
     let slash = &ctx.accounts.slash;
     let token_program = &ctx.accounts.token_program;
     let asset = &mut ctx.accounts.asset;
@@ -41,6 +42,12 @@ pub fn slash_pool(
     let destination = &ctx.accounts.destination;
     let asset_lockup = &ctx.accounts.asset_lockup;
 
+    let hot_wallet_withdrawal = slash.slashed_amount
+        .checked_mul(settings.shares_config.hot_wallet_share_bps)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
     transfer(
         CpiContext::new_with_signer(
             token_program.to_account_info(), 
@@ -50,13 +57,15 @@ pub fn slash_pool(
                 from: asset_lockup.to_account_info()
             },
             &[signer_seeds]
-        ), 
-        slash.slashed_amount
+        ),
+        hot_wallet_withdrawal
     )?;
 
     lockup.slash_state.amount += slash.slashed_amount;
     lockup.slash_state.index += 1;
     lockup.unlock();
+    msg!("slashed_amount: {:?}", slash.slashed_amount);
+    lockup.decrease_deposits(slash.slashed_amount)?;
 
     asset.decrease_tvl(slash.slashed_amount)?;
 
@@ -141,7 +150,7 @@ pub struct SlashPool<'info> {
             asset_mint.key().as_ref()
         ],
         bump,
-        constraint = asset_lockup.amount >= slash.slashed_amount @ InsuranceFundError::NotEnoughFundsToSlash
+        constraint = asset_lockup.amount >= slash.slashed_amount * settings.shares_config.hot_wallet_share_bps / 10_000 @ InsuranceFundError::NotEnoughFundsToSlash
     )]
     pub asset_lockup: Account<'info, TokenAccount>,
 

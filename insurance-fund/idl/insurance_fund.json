@@ -418,16 +418,6 @@
           "isSigner": false
         },
         {
-          "name": "coldWallet",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "coldWalletVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "clock",
           "isMut": false,
           "isSigner": false
@@ -972,6 +962,10 @@
             "type": "u64"
           },
           {
+            "name": "totalDeposits",
+            "type": "u64"
+          },
+          {
             "name": "duration",
             "type": "u64"
           },
@@ -1157,10 +1151,6 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "asset",
-            "type": "publicKey"
-          },
           {
             "name": "minDeposit",
             "type": "u64"

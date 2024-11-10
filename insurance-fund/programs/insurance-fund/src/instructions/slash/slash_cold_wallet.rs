@@ -83,8 +83,7 @@ pub fn slash_cold_wallet(
         
         slash.transfer_sig = transfer_sig;
     }
-
-    slash.slashed_amount += amount;
+    
     slash.slashed_cold_wallet = true;
 
     Ok(())

@@ -22,6 +22,7 @@ export type LockupArgs = {
   index: beet.bignum
   asset: web3.PublicKey
   minDeposit: beet.bignum
+  totalDeposits: beet.bignum
   duration: beet.bignum
   yieldBps: beet.bignum
   yieldMode: YieldMode
@@ -46,6 +47,7 @@ export class Lockup implements LockupArgs {
     readonly index: beet.bignum,
     readonly asset: web3.PublicKey,
     readonly minDeposit: beet.bignum,
+    readonly totalDeposits: beet.bignum,
     readonly duration: beet.bignum,
     readonly yieldBps: beet.bignum,
     readonly yieldMode: YieldMode,
@@ -65,6 +67,7 @@ export class Lockup implements LockupArgs {
       args.index,
       args.asset,
       args.minDeposit,
+      args.totalDeposits,
       args.duration,
       args.yieldBps,
       args.yieldMode,
@@ -205,6 +208,17 @@ export class Lockup implements LockupArgs {
         }
         return x
       })(),
+      totalDeposits: (() => {
+        const x = <{ toNumber: () => number }>this.totalDeposits
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       duration: (() => {
         const x = <{ toNumber: () => number }>this.duration
         if (typeof x.toNumber === 'function') {
@@ -273,6 +287,7 @@ export const lockupBeet = new beet.FixableBeetStruct<
     ['index', beet.u64],
     ['asset', beetSolana.publicKey],
     ['minDeposit', beet.u64],
+    ['totalDeposits', beet.u64],
     ['duration', beet.u64],
     ['yieldBps', beet.u64],
     ['yieldMode', yieldModeBeet],

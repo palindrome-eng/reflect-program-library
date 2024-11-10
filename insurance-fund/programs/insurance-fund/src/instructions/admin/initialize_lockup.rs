@@ -36,10 +36,14 @@ pub fn initialize_lockup(
     lockup.index = settings.lockups;
     lockup.asset = asset_mint.key();
     lockup.duration = duration;
-    lockup.min_deposit = min_deposit;
     lockup.yield_bps = yield_bps;
     lockup.yield_mode = yield_mode;
+
+    lockup.deposits = 0;
+    lockup.total_deposits = 0;
+    lockup.min_deposit = min_deposit;
     lockup.deposit_cap = if deposit_cap > 0 { Some(deposit_cap) } else { None };
+    
     lockup.slash_state = SlashState {
         index: 0,
         amount: 0

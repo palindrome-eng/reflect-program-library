@@ -29,8 +29,6 @@ pub fn slash_deposits(
 
     let settings = &ctx.accounts.settings;
     let lockup = &ctx.accounts.lockup;
-    let asset_lockup = &ctx.accounts.asset_lockup;
-    let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let slash = &ctx.accounts.slash;
 
     let deposits = ctx.remaining_accounts;
@@ -38,12 +36,8 @@ pub fn slash_deposits(
     // Number of already slashed accounts.
     let starting_index = slash.slashed_accounts;
 
-    let total_deposit = asset_lockup.amount + cold_wallet_vault.amount;
+    let total_deposit = lockup.total_deposits;
     let slashed_share_bps = 10_000 * slash_amount / total_deposit;
-
-    msg!("total_deposit: {:?}", total_deposit);
-    msg!("to slash: {:?}", slash_amount);
-    msg!("slashed_share_bps: {:?}", slashed_share_bps);
 
     require!(
         slash_amount == slash.target_amount,
@@ -62,18 +56,14 @@ pub fn slash_deposits(
             ctx.program_id
         )?;
 
-        let deposit_data = deposit_account_info.try_borrow_mut_data()?;
+        let mut deposit_data = deposit_account_info.try_borrow_mut_data()?;
         let mut deposit = Deposit::try_deserialize(&mut deposit_data.as_ref())?;
 
-        msg!("deposit: {:?}", deposit.amount);
-
-        // We only slash 30% (hot_wallet_share_bps)
-        // 70% of the slash will be taken from the cold wallet
-        // to make sure that the ratio is preserved.
-        let slashed = deposit.amount * hot_wallet_share_bps / 10_000 * slashed_share_bps / 10_000;
-        msg!("slashed: {:?}", slashed);
+        let slashed = deposit.amount * slashed_share_bps / 10_000;
 
         deposit.slash(slashed, slash_id)?;
+        deposit.try_serialize(&mut deposit_data.as_mut())?;
+
         {
             let slash = &mut ctx.accounts.slash;
             slash.slash_account(slashed)?;
@@ -154,20 +144,6 @@ pub struct SlashDeposits<'info> {
         token::authority = lockup,
     )]
     pub asset_lockup: Account<'info, TokenAccount>,
-
-    /// CHECK: Directly checking address against field in settings
-    #[account(
-        mut,
-        address = settings.cold_wallet
-    )]
-    pub cold_wallet: UncheckedAccount<'info>,
-
-    #[account(
-        mut,
-        associated_token::mint = asset_mint,
-        associated_token::authority = cold_wallet
-    )]
-    pub cold_wallet_vault: Account<'info, TokenAccount>,
 }
 
 impl SlashDeposits<'_> {

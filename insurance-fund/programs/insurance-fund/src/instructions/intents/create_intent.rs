@@ -42,8 +42,13 @@ pub fn create_intent(
         cold_wallet_share_bps 
     } = settings.shares_config;
 
-    let total_estimated_lockup = lockup_asset_vault.amount as f64 / (hot_wallet_share_bps as f64 / 10_000_f64);
-    let total_cold_wallet_lockup = (total_estimated_lockup as f64 * cold_wallet_share_bps as f64 / 10_000_f64) as u64;
+    let total_lockup = lockup.total_deposits;
+    let total_cold_wallet_lockup = total_lockup
+        .checked_mul(cold_wallet_share_bps)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+    
     let total_hot_wallet_lockup = lockup_asset_vault.amount;
 
     // If amount is bigger than cold wallet (70% of total insurance)

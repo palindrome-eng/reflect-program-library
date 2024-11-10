@@ -5,12 +5,9 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
-import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { YieldMode, yieldModeBeet } from './YieldMode'
 export type InitializeLockupArgs = {
-  asset: web3.PublicKey
   minDeposit: beet.bignum
   depositCap: beet.bignum
   duration: beet.bignum
@@ -25,7 +22,6 @@ export type InitializeLockupArgs = {
 export const initializeLockupArgsBeet =
   new beet.FixableBeetArgsStruct<InitializeLockupArgs>(
     [
-      ['asset', beetSolana.publicKey],
       ['minDeposit', beet.u64],
       ['depositCap', beet.u64],
       ['duration', beet.u64],

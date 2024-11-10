@@ -49,8 +49,6 @@ export const withdrawStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] userRewardAta
  * @property [_writable_] lockupAssetVault
  * @property [_writable_] assetRewardPool
- * @property [_writable_] coldWallet
- * @property [_writable_] coldWalletVault
  * @property [] clock
  * @category Instructions
  * @category Withdraw
@@ -69,8 +67,6 @@ export type WithdrawInstructionAccounts = {
   userRewardAta: web3.PublicKey
   lockupAssetVault: web3.PublicKey
   assetRewardPool: web3.PublicKey
-  coldWallet: web3.PublicKey
-  coldWalletVault: web3.PublicKey
   clock: web3.PublicKey
   tokenProgram?: web3.PublicKey
   systemProgram?: web3.PublicKey
@@ -161,16 +157,6 @@ export function createWithdrawInstruction(
     },
     {
       pubkey: accounts.assetRewardPool,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.coldWallet,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.coldWalletVault,
       isWritable: true,
       isSigner: false,
     },

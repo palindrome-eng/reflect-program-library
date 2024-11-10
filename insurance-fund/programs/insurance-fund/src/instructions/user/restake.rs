@@ -92,6 +92,7 @@ pub fn restake(
     )?;
 
     lockup.deposits += 1;
+    lockup.increase_deposits(amount)?;
 
     asset.increase_tvl(amount)?;
     asset.add_deposit()?;

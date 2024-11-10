@@ -14,19 +14,27 @@ pub struct Deposit {
 }
 
 impl Deposit {
-    pub const LEN: usize = 8 + 2 * 32 + 3 * 8 + (1 + 8);
+    pub const LEN: usize = 8
+        + 32
+        + 8
+        + 8
+        + 8
+        + 32
+        + 8
+        + 1 + 8
+        + 10;
 
     pub fn slash(
         &mut self,
         amount: u64,
         slash_id: u64
     ) -> Result<()> {
-        self
+        self.amount = self
             .amount
             .checked_sub(amount)
             .ok_or(InsuranceFundError::MathOverflow)?;
 
-        self
+        self.amount_slashed = self
             .amount_slashed
             .checked_add(amount)
             .ok_or(InsuranceFundError::MathOverflow)?;
