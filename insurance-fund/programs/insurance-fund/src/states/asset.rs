@@ -68,14 +68,20 @@ impl Asset {
     pub fn add_lockup(
         &mut self,
     ) -> Result<()> {
-        self.lockups += 1;
+        self.lockups = self.lockups
+            .checked_add(1)
+            .ok_or(InsuranceFundError::MathOverflow)?;
+
         Ok(())
     }
 
     pub fn add_deposit(
         &mut self,
     ) -> Result<()> {
-        self.deposits += 1;
+        self.deposits = self.lockups
+            .checked_add(1)
+            .ok_or(InsuranceFundError::MathOverflow)?;
+        
         Ok(())
     }
 }

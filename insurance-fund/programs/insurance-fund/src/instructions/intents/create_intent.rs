@@ -48,7 +48,7 @@ pub fn create_intent(
         .ok_or(InsuranceFundError::MathOverflow)?
         .checked_div(10_000)
         .ok_or(InsuranceFundError::MathOverflow)?;
-    
+
     let total_hot_wallet_lockup = lockup_asset_vault.amount;
 
     // If amount is bigger than cold wallet (70% of total insurance)
@@ -63,9 +63,6 @@ pub fn create_intent(
             &lockup_id.to_le_bytes(),
             &[ctx.bumps.lockup]
         ];
-
-        msg!("total_hot_wallet_lockup: {:?}", total_hot_wallet_lockup);
-        msg!("lockup_asset_vault: {:?}", lockup_asset_vault.amount);
 
         // Transfer ENTIRE hot wallet share of the insurance fund.
         // Needs to be rebalanced later.

@@ -4,6 +4,8 @@ use anchor_spl::token::{
     transfer
 };
 
+use crate::errors::InsuranceFundError;
+
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, PartialEq)]
 pub struct SharesConfig {
     pub hot_wallet_share_bps: u64,
@@ -48,14 +50,26 @@ impl Settings {
     pub fn calculate_cold_wallet_deposit(
         &self,
         amount: u64
-    ) -> u64 {
-        amount * self.shares_config.cold_wallet_share_bps / 10_000
+    ) -> Result<u64> {
+        let result = amount
+            .checked_mul(self.shares_config.cold_wallet_share_bps)
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .checked_div(10_000)
+            .ok_or(InsuranceFundError::MathOverflow)?;
+
+        Ok(result)
     }
 
     pub fn calculate_hot_wallet_deposit(
         &self,
         amount: u64
-    ) -> u64 {
-        amount * self.shares_config.hot_wallet_share_bps / 10_000
+    ) -> Result<u64> {
+        let result = amount
+            .checked_mul(self.shares_config.hot_wallet_share_bps)
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .checked_div(10_000)
+            .ok_or(InsuranceFundError::MathOverflow)?;
+
+        Ok(result)
     }
 }

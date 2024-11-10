@@ -21,9 +21,8 @@ impl Deposit {
         + 8
         + 32
         + 8
-        + 1 + 8
-        + 10;
-
+        + 1 + 8;
+        
     pub fn slash(
         &mut self,
         amount: u64,

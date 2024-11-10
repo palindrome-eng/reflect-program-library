@@ -64,7 +64,6 @@ pub fn slash_pool(
     lockup.slash_state.amount += slash.slashed_amount;
     lockup.slash_state.index += 1;
     lockup.unlock();
-    msg!("slashed_amount: {:?}", slash.slashed_amount);
     lockup.decrease_deposits(slash.slashed_amount)?;
 
     asset.decrease_tvl(slash.slashed_amount)?;

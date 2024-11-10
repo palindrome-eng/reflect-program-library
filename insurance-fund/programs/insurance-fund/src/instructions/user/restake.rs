@@ -49,7 +49,8 @@ pub fn restake(
     deposit.last_slashed = None;
     deposit.amount_slashed = 0;
     
-    let oracle_price = asset.get_price(oracle)?;
+    let oracle_price = asset
+        .get_price(oracle)?;
 
     // Multiply oracle price by amount of tokens, 
     // then divide by token decimals to get value of 1 full token instead of `lamports`.
@@ -63,7 +64,6 @@ pub fn restake(
         .ok_or(InsuranceFundError::MathOverflow)?;
 
     deposit.initial_usd_value = usd_value;
-    msg!("initial_usd_value: {:?}", deposit.initial_usd_value);
 
     // Transfer to multisig
     transfer(
@@ -75,7 +75,8 @@ pub fn restake(
                 to: cold_wallet_vault.to_account_info()
             }
         ),
-        settings.calculate_cold_wallet_deposit(amount)
+        settings
+            .calculate_cold_wallet_deposit(amount)?
     )?;
 
     // Transfer to hot wallet
@@ -88,7 +89,8 @@ pub fn restake(
                 authority: user.to_account_info()
             }
         ), 
-        settings.calculate_hot_wallet_deposit(amount)
+        settings
+            .calculate_hot_wallet_deposit(amount)?
     )?;
 
     lockup.deposits += 1;

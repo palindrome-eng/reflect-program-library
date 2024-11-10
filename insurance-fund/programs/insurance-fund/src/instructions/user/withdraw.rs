@@ -44,23 +44,16 @@ pub fn withdraw(
 
     let total_rewards = asset_reward_pool.amount;
 
-    msg!("Total rewards: {:?}", total_rewards);
-
     let total_lockup = lockup.total_deposits;
-    msg!("Total lockup: {:?}", total_lockup);
     let user_lockup = deposit.amount;
-    msg!("User lockup: {:?}", user_lockup);
     let user_share = user_lockup as f64 / total_lockup as f64;
-    msg!("User share: {:?}", user_share);
     let user_rewards = (total_rewards as f64 * user_share) as u64;
-    msg!("user_rewards: {:?}", user_rewards);
 
     let seeds = &[
         LOCKUP_SEED.as_bytes(),
         &lockup_id.to_le_bytes(),
         &[ctx.bumps.lockup]
     ];
-
 
     // Transfer rewards
     transfer(
@@ -75,8 +68,6 @@ pub fn withdraw(
         ), 
         user_rewards
     )?;
-
-    msg!("Transferred rewards. Transferring base deposit.");
 
     // Transfer base amount
     transfer(
