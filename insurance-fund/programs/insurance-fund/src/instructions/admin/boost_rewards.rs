@@ -47,7 +47,7 @@ pub struct BoostRewards<'info> {
         ],
         bump,
         has_one = superadmin,
-        constraint = settings.frozen @ InsuranceFundError::Frozen
+        constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
