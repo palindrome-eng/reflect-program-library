@@ -48,7 +48,11 @@ pub fn slash_cold_wallet(
         hot_wallet_share_bps,
     } = settings.shares_config;
 
-    let amount = slash.target_amount * cold_wallet_share_bps / 10_000;
+    let amount = slash.target_amount
+        .checked_mul(cold_wallet_share_bps)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
     if (transfer_funds) {
         let source = &ctx.accounts.source;
