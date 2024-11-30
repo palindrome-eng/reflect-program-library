@@ -38,10 +38,15 @@ pub fn add_asset(
 #[derive(Accounts)]
 pub struct AddAsset<'info> {
     #[account(
-        mut,
-        address = settings.superadmin @ InsuranceFundError::InvalidSigner
+        mut
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -49,14 +54,13 @@ pub struct AddAsset<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
     #[account(
         init,
-        payer = superadmin,
+        payer = signer,
         seeds = [
             ASSET_SEED.as_bytes(),
             &asset_mint.key().to_bytes()

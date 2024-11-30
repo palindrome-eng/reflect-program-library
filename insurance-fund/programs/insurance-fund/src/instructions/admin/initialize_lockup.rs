@@ -63,9 +63,15 @@ pub fn initialize_lockup(
 pub struct InitializeLockup<'info> {
     #[account(
         mut,
-        address = settings.superadmin @ InsuranceFundError::InvalidSigner
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key(),
+        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::InvalidSigner,
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -73,7 +79,6 @@ pub struct InitializeLockup<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
@@ -85,7 +90,7 @@ pub struct InitializeLockup<'info> {
             &settings.lockups.to_le_bytes()
         ],
         bump,
-        payer = superadmin,
+        payer = signer,
         space = Lockup::SIZE,
     )]
     pub lockup: Account<'info, Lockup>,
@@ -114,7 +119,7 @@ pub struct InitializeLockup<'info> {
 
     #[account(
         init,
-        payer = superadmin,
+        payer = signer,
         seeds = [
             VAULT_SEED.as_bytes(),
             lockup.key().as_ref(),
@@ -128,7 +133,7 @@ pub struct InitializeLockup<'info> {
 
     #[account(
         init,
-        payer = superadmin,
+        payer = signer,
         seeds = [
             REWARD_POOL_SEED.as_bytes(),
             lockup.key().as_ref(),

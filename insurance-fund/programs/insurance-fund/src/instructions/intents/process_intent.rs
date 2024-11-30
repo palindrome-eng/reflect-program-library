@@ -1,11 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::states::{
-    Deposit, 
-    Intent, 
-    Lockup,
-    Settings,
-    Asset
-};
+use crate::states::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 use anchor_spl::token::{
@@ -28,7 +22,7 @@ pub fn process_intent(
 ) -> Result<()> {
 
     let token_program = &ctx.accounts.token_program;
-    let admin = &ctx.accounts.superadmin;
+    let signer = &ctx.accounts.signer;
     let admin_asset_ata = &ctx.accounts.admin_asset_ata;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let intent = &ctx.accounts.intent;
@@ -39,7 +33,7 @@ pub fn process_intent(
         CpiContext::new(
             token_program.to_account_info(), 
             Transfer {
-                authority: admin.to_account_info(),
+                authority: signer.to_account_info(),
                 from: admin_asset_ata.to_account_info(),
                 to: user_asset_ata.to_account_info()
             }
@@ -58,7 +52,7 @@ pub fn process_intent(
         ProcessIntentEvent {
             amount: intent.amount,
             deposit: deposit.key(),
-            processed_by: admin.key(),
+            processed_by: signer.key(),
         }
     );
 
@@ -71,10 +65,16 @@ pub fn process_intent(
 )]
 pub struct ProcessIntent<'info> {
     #[account(
-        mut,
-        address = settings.superadmin
+        mut
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::PermissionsTooLow
+    )]
+    pub admin: Account<'info, Admin>,
 
     /// CHECK: Receiver, directly checking if the addresses match
     #[account(
@@ -90,7 +90,6 @@ pub struct ProcessIntent<'info> {
         ],
         bump,
         constraint = !settings.frozen @ InsuranceFundError::Frozen,
-        has_one = superadmin
     )]
     pub settings: Account<'info, Settings>,
 
@@ -116,7 +115,7 @@ pub struct ProcessIntent<'info> {
             &deposit.key().to_bytes(),
         ],
         bump,
-        close = superadmin,
+        close = signer,
     )]
     pub intent: Account<'info, Intent>,
 
@@ -144,7 +143,7 @@ pub struct ProcessIntent<'info> {
 
     #[account(
         mut,
-        token::authority = superadmin,
+        token::authority = signer,
         token::mint = asset_mint
     )]
     pub admin_asset_ata: Account<'info, TokenAccount>,

@@ -95,9 +95,16 @@ pub fn slash_cold_wallet(
 )]
 pub struct SlashColdWallet<'info> {
     #[account(
-        mut
+        mut,
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::PermissionsTooLow,
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -105,7 +112,6 @@ pub struct SlashColdWallet<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,

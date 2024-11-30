@@ -55,9 +55,15 @@ pub fn initialize_slash(
 pub struct InitializeSlash<'info> {
     #[account(
         mut,
-        address = settings.superadmin
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::PermissionsTooLow,
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -65,7 +71,6 @@ pub struct InitializeSlash<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
@@ -110,7 +115,7 @@ pub struct InitializeSlash<'info> {
             &lockup.slash_state.index.to_le_bytes()
         ],
         bump,
-        payer = superadmin,
+        payer = signer,
         space = Slash::LEN
     )]
     pub slash: Account<'info, Slash>,

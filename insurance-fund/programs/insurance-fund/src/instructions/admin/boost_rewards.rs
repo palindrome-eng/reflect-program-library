@@ -35,10 +35,16 @@ pub fn boost_rewards(
 )]
 pub struct BoostRewards<'info> {
     #[account(
-        mut,
-        address = settings.superadmin
+        mut
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+        constraint = admin.has_permissions(Permissions::Superadmin)
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -46,7 +52,6 @@ pub struct BoostRewards<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
@@ -63,7 +68,7 @@ pub struct BoostRewards<'info> {
 
     #[account(
         init,
-        payer = superadmin,
+        payer = signer,
         seeds = [
             REWARD_BOOST_SEED.as_bytes(),
             &lockup.key().to_bytes(),

@@ -29,9 +29,16 @@ pub fn manage_lockup_lock(
 )]
 pub struct ManageLockupLock<'info> {
     #[account(
-        mut
+        mut,
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key(),
+        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::InvalidSigner,
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -39,7 +46,6 @@ pub struct ManageLockupLock<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,

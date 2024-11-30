@@ -64,4 +64,7 @@ pub enum InsuranceFundError {
 
     #[msg("ColdWalletNotSlashed")]
     ColdWalletNotSlashed,
+
+    #[msg("PermissionsTooLow")]
+    PermissionsTooLow,
 }
