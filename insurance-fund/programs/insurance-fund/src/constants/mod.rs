@@ -35,3 +35,6 @@ pub const COOLDOWN_SEED: &str = "cooldown";
 
 #[constant]
 pub const ADMIN_SEED: &str = "admin";
+
+#[constant]
+pub const ORACLE_MAXIMUM_AGE: u64 = 60;
