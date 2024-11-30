@@ -31,6 +31,7 @@ pub struct Settings {
     pub superadmin: Pubkey,
     pub cold_wallet: Pubkey,
     pub lockups: u64,
+    pub cooldown_duration: u64,
     pub shares_config: SharesConfig,
     pub reward_config: RewardConfig,
     pub frozen: bool,

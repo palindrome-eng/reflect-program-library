@@ -29,3 +29,6 @@ pub const PRICE_PRECISION: i32 = 9;
 
 #[constant]
 pub const INTENT_SEED: &str = "intent";
+
+#[constant]
+pub const COOLDOWN_SEED: &str = "cooldown";

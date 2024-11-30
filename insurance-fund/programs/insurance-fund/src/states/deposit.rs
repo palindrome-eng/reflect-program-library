@@ -11,6 +11,7 @@ pub struct Deposit {
     pub lockup: Pubkey, // Pointer to the lockup
     pub unlock_ts: u64, // Unlock timestamp
     pub last_slashed: Option<u64>, // Index of the last slash
+
 }
 
 impl Deposit {

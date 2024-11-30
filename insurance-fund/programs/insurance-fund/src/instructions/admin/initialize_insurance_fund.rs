@@ -9,6 +9,7 @@ pub struct InitializeInsuranceFundArgs {
     pub hot_wallet_share_bps: u64,
     pub cold_wallet_share_bps: u64,
     pub reward_mint: Pubkey,
+    pub cooldown_duration: u64,
 }
 
 pub fn initialize_insurance_fund(
@@ -20,7 +21,8 @@ pub fn initialize_insurance_fund(
         cold_wallet,
         cold_wallet_share_bps,
         hot_wallet_share_bps,
-        reward_mint
+        reward_mint,
+        cooldown_duration
     } = args;
 
     require!(
@@ -34,6 +36,7 @@ pub fn initialize_insurance_fund(
     settings.superadmin = superadmin.key();
     settings.bump = ctx.bumps.settings;
     settings.lockups = 0;
+    settings.cooldown_duration = cooldown_duration;
     settings.cold_wallet = cold_wallet;
     settings.shares_config = SharesConfig {
         cold_wallet_share_bps,
