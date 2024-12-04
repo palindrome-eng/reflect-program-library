@@ -19,5 +19,6 @@ pub fn withdraw(
     args: WithdrawArgs
 )]
 pub struct Withdraw<'info> {
-
+    #[account(mut)]
+    pub signer: Signer<'info>
 }

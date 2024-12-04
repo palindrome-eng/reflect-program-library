@@ -40,7 +40,8 @@ export const processIntentStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _processIntent_ instruction
  *
- * @property [_writable_, **signer**] superadmin
+ * @property [_writable_, **signer**] signer
+ * @property [_writable_] admin
  * @property [_writable_] user
  * @property [_writable_] settings
  * @property [_writable_] deposit
@@ -55,7 +56,8 @@ export const processIntentStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type ProcessIntentInstructionAccounts = {
-  superadmin: web3.PublicKey
+  signer: web3.PublicKey
+  admin: web3.PublicKey
   user: web3.PublicKey
   settings: web3.PublicKey
   deposit: web3.PublicKey
@@ -94,9 +96,14 @@ export function createProcessIntentInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.superadmin,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.admin,
+      isWritable: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.user,

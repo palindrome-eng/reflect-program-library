@@ -50,7 +50,7 @@ pub fn restake(
     deposit.amount_slashed = 0;
     
     let oracle_price = asset
-        .get_price(oracle)?;
+        .get_price(oracle, &clock)?;
 
     // Multiply oracle price by amount of tokens, 
     // then divide by token decimals to get value of 1 full token instead of `lamports`.

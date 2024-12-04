@@ -18,9 +18,10 @@ import { RewardConfig, rewardConfigBeet } from '../types/RewardConfig'
  */
 export type SettingsArgs = {
   bump: number
-  superadmin: web3.PublicKey
+  admins: number
   coldWallet: web3.PublicKey
   lockups: beet.bignum
+  cooldownDuration: beet.bignum
   sharesConfig: SharesConfig
   rewardConfig: RewardConfig
   frozen: boolean
@@ -37,9 +38,10 @@ export const settingsDiscriminator = [223, 179, 163, 190, 177, 224, 67, 173]
 export class Settings implements SettingsArgs {
   private constructor(
     readonly bump: number,
-    readonly superadmin: web3.PublicKey,
+    readonly admins: number,
     readonly coldWallet: web3.PublicKey,
     readonly lockups: beet.bignum,
+    readonly cooldownDuration: beet.bignum,
     readonly sharesConfig: SharesConfig,
     readonly rewardConfig: RewardConfig,
     readonly frozen: boolean
@@ -51,9 +53,10 @@ export class Settings implements SettingsArgs {
   static fromArgs(args: SettingsArgs) {
     return new Settings(
       args.bump,
-      args.superadmin,
+      args.admins,
       args.coldWallet,
       args.lockups,
+      args.cooldownDuration,
       args.sharesConfig,
       args.rewardConfig,
       args.frozen
@@ -164,10 +167,21 @@ export class Settings implements SettingsArgs {
   pretty() {
     return {
       bump: this.bump,
-      superadmin: this.superadmin.toBase58(),
+      admins: this.admins,
       coldWallet: this.coldWallet.toBase58(),
       lockups: (() => {
         const x = <{ toNumber: () => number }>this.lockups
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
+      cooldownDuration: (() => {
+        const x = <{ toNumber: () => number }>this.cooldownDuration
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -197,9 +211,10 @@ export const settingsBeet = new beet.BeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['bump', beet.u8],
-    ['superadmin', beetSolana.publicKey],
+    ['admins', beet.u8],
     ['coldWallet', beetSolana.publicKey],
     ['lockups', beet.u64],
+    ['cooldownDuration', beet.u64],
     ['sharesConfig', sharesConfigBeet],
     ['rewardConfig', rewardConfigBeet],
     ['frozen', beet.bool],

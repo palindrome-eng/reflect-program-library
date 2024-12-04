@@ -20,13 +20,15 @@ pub fn add_asset(
     asset.deposits = 0;
     asset.lockups = 0;
 
+    let clock = Clock::get()?;
+
     if oracle.owner.eq(&PYTH_PROGRAM_ID) {
-        get_price_from_pyth(oracle)?;
+        get_price_from_pyth(oracle, &clock)?;
         asset.oracle = Oracle::Pyth(oracle.key());
 
         Ok(())
     } else if oracle.owner.eq(&SWITCHBOARD_PROGRAM_ID) {
-        get_price_from_switchboard(oracle)?;
+        get_price_from_switchboard(oracle, &clock)?;
         asset.oracle = Oracle::Switchboard(oracle.key());
         
         Ok(())
@@ -45,6 +47,7 @@ pub struct AddAsset<'info> {
     #[account(
         mut,
         constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+        constraint = admin.has_permissions(Permissions::AddAsset) @ InsuranceFundError::PermissionsTooLow
     )]
     pub admin: Account<'info, Admin>,
 

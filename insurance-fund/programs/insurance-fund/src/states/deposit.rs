@@ -4,6 +4,7 @@ use crate::errors::InsuranceFundError;
 
 #[account]
 pub struct Deposit {
+    pub index: u64,
     pub user: Pubkey,
     pub amount: u64, // Total deposited
     pub initial_usd_value: u64, // USD value at the moment of the deposit
@@ -16,6 +17,7 @@ pub struct Deposit {
 
 impl Deposit {
     pub const LEN: usize = 8
+        + 8
         + 32
         + 8
         + 8

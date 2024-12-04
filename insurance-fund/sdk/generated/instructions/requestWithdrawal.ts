@@ -8,39 +8,43 @@
 import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { WithdrawArgs, withdrawArgsBeet } from '../types/WithdrawArgs'
+import {
+  RequestWithdrawalArgs,
+  requestWithdrawalArgsBeet,
+} from '../types/RequestWithdrawalArgs'
 
 /**
  * @category Instructions
- * @category Withdraw
+ * @category RequestWithdrawal
  * @category generated
  */
-export type WithdrawInstructionArgs = {
-  args: WithdrawArgs
+export type RequestWithdrawalInstructionArgs = {
+  args: RequestWithdrawalArgs
 }
 /**
  * @category Instructions
- * @category Withdraw
+ * @category RequestWithdrawal
  * @category generated
  */
-export const withdrawStruct = new beet.FixableBeetArgsStruct<
-  WithdrawInstructionArgs & {
+export const requestWithdrawalStruct = new beet.FixableBeetArgsStruct<
+  RequestWithdrawalInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', withdrawArgsBeet],
+    ['args', requestWithdrawalArgsBeet],
   ],
-  'WithdrawInstructionArgs'
+  'RequestWithdrawalInstructionArgs'
 )
 /**
- * Accounts required by the _withdraw_ instruction
+ * Accounts required by the _requestWithdrawal_ instruction
  *
  * @property [_writable_, **signer**] user
  * @property [_writable_] settings
  * @property [_writable_] lockup
  * @property [_writable_] deposit
+ * @property [_writable_] cooldown
  * @property [_writable_] rewardBoost (optional)
  * @property [_writable_] asset
  * @property [_writable_] assetMint
@@ -51,14 +55,15 @@ export const withdrawStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] assetRewardPool
  * @property [] clock
  * @category Instructions
- * @category Withdraw
+ * @category RequestWithdrawal
  * @category generated
  */
-export type WithdrawInstructionAccounts = {
+export type RequestWithdrawalInstructionAccounts = {
   user: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
   deposit: web3.PublicKey
+  cooldown: web3.PublicKey
   rewardBoost?: web3.PublicKey
   asset: web3.PublicKey
   assetMint: web3.PublicKey
@@ -73,12 +78,12 @@ export type WithdrawInstructionAccounts = {
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const withdrawInstructionDiscriminator = [
-  183, 18, 70, 156, 148, 109, 161, 34,
+export const requestWithdrawalInstructionDiscriminator = [
+  251, 85, 121, 205, 56, 201, 12, 177,
 ]
 
 /**
- * Creates a _Withdraw_ instruction.
+ * Creates a _RequestWithdrawal_ instruction.
  *
  * Optional accounts that are not provided default to the program ID since
  * this was indicated in the IDL from which this instruction was generated.
@@ -87,16 +92,16 @@ export const withdrawInstructionDiscriminator = [
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category Withdraw
+ * @category RequestWithdrawal
  * @category generated
  */
-export function createWithdrawInstruction(
-  accounts: WithdrawInstructionAccounts,
-  args: WithdrawInstructionArgs,
+export function createRequestWithdrawalInstruction(
+  accounts: RequestWithdrawalInstructionAccounts,
+  args: RequestWithdrawalInstructionArgs,
   programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
-  const [data] = withdrawStruct.serialize({
-    instructionDiscriminator: withdrawInstructionDiscriminator,
+  const [data] = requestWithdrawalStruct.serialize({
+    instructionDiscriminator: requestWithdrawalInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -117,6 +122,11 @@ export function createWithdrawInstruction(
     },
     {
       pubkey: accounts.deposit,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.cooldown,
       isWritable: true,
       isSigner: false,
     },
