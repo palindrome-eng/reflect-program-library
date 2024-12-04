@@ -3,6 +3,7 @@ use crate::errors::InsuranceFundError;
 
 #[account]
 pub struct RewardBoost {
+    pub index: u64,
     // Minimum USD value of the deposit to be included in the tier.
     pub min_usd_value: u64,
     // % of the $R rewards in basepoints
@@ -12,7 +13,7 @@ pub struct RewardBoost {
 }
 
 impl RewardBoost {
-    pub const SIZE: usize = 8 + 3 * 8;
+    pub const SIZE: usize = 8 + 8 + 3 * 8;
 
     pub fn validate(
         &self,

@@ -39,14 +39,16 @@ export const manageFreezeStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _manageFreeze_ instruction
  *
- * @property [_writable_, **signer**] superadmin
+ * @property [_writable_, **signer**] signer
+ * @property [_writable_] admin
  * @property [_writable_] settings
  * @category Instructions
  * @category ManageFreeze
  * @category generated
  */
 export type ManageFreezeInstructionAccounts = {
-  superadmin: web3.PublicKey
+  signer: web3.PublicKey
+  admin: web3.PublicKey
   settings: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -76,9 +78,14 @@ export function createManageFreezeInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.superadmin,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.admin,
+      isWritable: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.settings,

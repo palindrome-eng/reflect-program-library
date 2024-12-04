@@ -465,6 +465,29 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * PermissionsTooLow: 'PermissionsTooLow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PermissionsTooLowError extends Error {
+  readonly code: number = 0x1785
+  readonly name: string = 'PermissionsTooLow'
+  constructor() {
+    super('PermissionsTooLow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PermissionsTooLowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1785, () => new PermissionsTooLowError())
+createErrorFromNameLookup.set(
+  'PermissionsTooLow',
+  () => new PermissionsTooLowError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

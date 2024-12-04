@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::states::*;
+use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct ManageFreezeArgs {
@@ -26,9 +27,15 @@ pub fn manage_freeze(
 pub struct ManageFreeze<'info> {
     #[account(
         mut,
-        address = settings.superadmin
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key(),
+        constraint = admin.has_permissions(Permissions::Freeze) @ InsuranceFundError::InvalidSigner,
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -36,7 +43,6 @@ pub struct ManageFreeze<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
     )]
     pub settings: Account<'info, Settings>,
 }

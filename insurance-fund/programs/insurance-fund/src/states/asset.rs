@@ -57,11 +57,12 @@ impl Asset {
 
     pub fn get_price(
         &self,
-        account: &AccountInfo
+        account: &AccountInfo,
+        clock: &Clock
     ) -> Result<OraclePrice> {
         match self.oracle {
-            Oracle::Pyth(_) => get_price_from_pyth(account),
-            Oracle::Switchboard(_) => get_price_from_switchboard(account)
+            Oracle::Pyth(_) => get_price_from_pyth(account, clock),
+            Oracle::Switchboard(_) => get_price_from_switchboard(account, clock)
         }
     }
     

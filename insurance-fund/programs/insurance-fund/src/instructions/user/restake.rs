@@ -50,7 +50,7 @@ pub fn restake(
     deposit.amount_slashed = 0;
     
     let oracle_price = asset
-        .get_price(oracle)?;
+        .get_price(oracle, &clock)?;
 
     // Multiply oracle price by amount of tokens, 
     // then divide by token decimals to get value of 1 full token instead of `lamports`.
@@ -65,6 +65,8 @@ pub fn restake(
 
     deposit.initial_usd_value = usd_value;
 
+    let hot_wallet_deposit = settings.calculate_hot_wallet_deposit(amount)?;
+
     // Transfer to multisig
     transfer(
         CpiContext::new(
@@ -75,8 +77,7 @@ pub fn restake(
                 to: cold_wallet_vault.to_account_info()
             }
         ),
-        settings
-            .calculate_cold_wallet_deposit(amount)?
+        amount - hot_wallet_deposit
     )?;
 
     // Transfer to hot wallet
@@ -89,8 +90,7 @@ pub fn restake(
                 authority: user.to_account_info()
             }
         ), 
-        settings
-            .calculate_hot_wallet_deposit(amount)?
+        hot_wallet_deposit
     )?;
 
     lockup.deposits += 1;

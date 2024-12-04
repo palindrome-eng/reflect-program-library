@@ -48,7 +48,11 @@ pub fn slash_cold_wallet(
         hot_wallet_share_bps,
     } = settings.shares_config;
 
-    let amount = slash.target_amount * cold_wallet_share_bps / 10_000;
+    let amount = slash.target_amount
+        .checked_mul(cold_wallet_share_bps)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
     if (transfer_funds) {
         let source = &ctx.accounts.source;
@@ -95,9 +99,16 @@ pub fn slash_cold_wallet(
 )]
 pub struct SlashColdWallet<'info> {
     #[account(
-        mut
+        mut,
     )]
-    pub superadmin: Signer<'info>,
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::PermissionsTooLow,
+    )]
+    pub admin: Account<'info, Admin>,
 
     #[account(
         mut,
@@ -105,7 +116,6 @@ pub struct SlashColdWallet<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        has_one = superadmin,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,

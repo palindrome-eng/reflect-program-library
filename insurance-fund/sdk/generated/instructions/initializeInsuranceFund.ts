@@ -39,14 +39,16 @@ export const initializeInsuranceFundStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _initializeInsuranceFund_ instruction
  *
- * @property [_writable_, **signer**] superadmin
+ * @property [_writable_, **signer**] signer
+ * @property [_writable_] admin
  * @property [_writable_] settings
  * @category Instructions
  * @category InitializeInsuranceFund
  * @category generated
  */
 export type InitializeInsuranceFundInstructionAccounts = {
-  superadmin: web3.PublicKey
+  signer: web3.PublicKey
+  admin: web3.PublicKey
   settings: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -77,9 +79,14 @@ export function createInitializeInsuranceFundInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.superadmin,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.admin,
+      isWritable: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.settings,

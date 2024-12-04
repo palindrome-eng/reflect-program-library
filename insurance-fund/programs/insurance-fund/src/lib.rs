@@ -68,11 +68,11 @@ pub mod insurance_fund {
         )
     }
 
-    pub fn withdraw(
-        ctx: Context<Withdraw>,
-        args: WithdrawArgs
+    pub fn request_withdrawal(
+        ctx: Context<RequestWithdrawal>,
+        args: RequestWithdrawalArgs
     ) -> Result<()> {
-        instructions::withdraw(ctx, args)
+        instructions::request_withdrawal(ctx, args)
     }
 
     pub fn initialize_slash(

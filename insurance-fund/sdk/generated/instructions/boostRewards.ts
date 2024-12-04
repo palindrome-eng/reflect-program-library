@@ -39,7 +39,8 @@ export const boostRewardsStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _boostRewards_ instruction
  *
- * @property [_writable_, **signer**] superadmin
+ * @property [_writable_, **signer**] signer
+ * @property [_writable_] admin
  * @property [_writable_] settings
  * @property [_writable_] lockup
  * @property [_writable_] rewardBoost
@@ -48,7 +49,8 @@ export const boostRewardsStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type BoostRewardsInstructionAccounts = {
-  superadmin: web3.PublicKey
+  signer: web3.PublicKey
+  admin: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
   rewardBoost: web3.PublicKey
@@ -81,9 +83,14 @@ export function createBoostRewardsInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.superadmin,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.admin,
+      isWritable: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.settings,

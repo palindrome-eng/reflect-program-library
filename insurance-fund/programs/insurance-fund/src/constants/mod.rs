@@ -29,3 +29,12 @@ pub const PRICE_PRECISION: i32 = 9;
 
 #[constant]
 pub const INTENT_SEED: &str = "intent";
+
+#[constant]
+pub const COOLDOWN_SEED: &str = "cooldown";
+
+#[constant]
+pub const ADMIN_SEED: &str = "admin";
+
+#[constant]
+pub const ORACLE_MAXIMUM_AGE: u64 = 60;

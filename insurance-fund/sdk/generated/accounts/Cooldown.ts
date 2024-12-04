@@ -5,76 +5,68 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { CooldownRewards, cooldownRewardsBeet } from '../types/CooldownRewards'
 
 /**
- * Arguments used to create {@link Deposit}
+ * Arguments used to create {@link Cooldown}
  * @category Accounts
  * @category generated
  */
-export type DepositArgs = {
-  index: beet.bignum
+export type CooldownArgs = {
   user: web3.PublicKey
-  amount: beet.bignum
-  initialUsdValue: beet.bignum
-  amountSlashed: beet.bignum
-  lockup: web3.PublicKey
+  depositId: beet.bignum
+  baseAmount: beet.bignum
   unlockTs: beet.bignum
-  lastSlashed: beet.COption<beet.bignum>
+  rewards: CooldownRewards
 }
 
-export const depositDiscriminator = [148, 146, 121, 66, 207, 173, 21, 227]
+export const cooldownDiscriminator = [50, 166, 94, 192, 234, 64, 152, 208]
 /**
- * Holds the data for the {@link Deposit} Account and provides de/serialization
+ * Holds the data for the {@link Cooldown} Account and provides de/serialization
  * functionality for that data
  *
  * @category Accounts
  * @category generated
  */
-export class Deposit implements DepositArgs {
+export class Cooldown implements CooldownArgs {
   private constructor(
-    readonly index: beet.bignum,
     readonly user: web3.PublicKey,
-    readonly amount: beet.bignum,
-    readonly initialUsdValue: beet.bignum,
-    readonly amountSlashed: beet.bignum,
-    readonly lockup: web3.PublicKey,
+    readonly depositId: beet.bignum,
+    readonly baseAmount: beet.bignum,
     readonly unlockTs: beet.bignum,
-    readonly lastSlashed: beet.COption<beet.bignum>
+    readonly rewards: CooldownRewards
   ) {}
 
   /**
-   * Creates a {@link Deposit} instance from the provided args.
+   * Creates a {@link Cooldown} instance from the provided args.
    */
-  static fromArgs(args: DepositArgs) {
-    return new Deposit(
-      args.index,
+  static fromArgs(args: CooldownArgs) {
+    return new Cooldown(
       args.user,
-      args.amount,
-      args.initialUsdValue,
-      args.amountSlashed,
-      args.lockup,
+      args.depositId,
+      args.baseAmount,
       args.unlockTs,
-      args.lastSlashed
+      args.rewards
     )
   }
 
   /**
-   * Deserializes the {@link Deposit} from the data of the provided {@link web3.AccountInfo}.
+   * Deserializes the {@link Cooldown} from the data of the provided {@link web3.AccountInfo}.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static fromAccountInfo(
     accountInfo: web3.AccountInfo<Buffer>,
     offset = 0
-  ): [Deposit, number] {
-    return Deposit.deserialize(accountInfo.data, offset)
+  ): [Cooldown, number] {
+    return Cooldown.deserialize(accountInfo.data, offset)
   }
 
   /**
    * Retrieves the account info from the provided address and deserializes
-   * the {@link Deposit} from its data.
+   * the {@link Cooldown} from its data.
    *
    * @throws Error if no account info is found at the address or if deserialization fails
    */
@@ -82,15 +74,15 @@ export class Deposit implements DepositArgs {
     connection: web3.Connection,
     address: web3.PublicKey,
     commitmentOrConfig?: web3.Commitment | web3.GetAccountInfoConfig
-  ): Promise<Deposit> {
+  ): Promise<Cooldown> {
     const accountInfo = await connection.getAccountInfo(
       address,
       commitmentOrConfig
     )
     if (accountInfo == null) {
-      throw new Error(`Unable to find Deposit account at ${address}`)
+      throw new Error(`Unable to find Cooldown account at ${address}`)
     }
-    return Deposit.fromAccountInfo(accountInfo, 0)[0]
+    return Cooldown.fromAccountInfo(accountInfo, 0)[0]
   }
 
   /**
@@ -104,82 +96,71 @@ export class Deposit implements DepositArgs {
       'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV'
     )
   ) {
-    return beetSolana.GpaBuilder.fromStruct(programId, depositBeet)
+    return beetSolana.GpaBuilder.fromStruct(programId, cooldownBeet)
   }
 
   /**
-   * Deserializes the {@link Deposit} from the provided data Buffer.
+   * Deserializes the {@link Cooldown} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
-  static deserialize(buf: Buffer, offset = 0): [Deposit, number] {
-    return depositBeet.deserialize(buf, offset)
+  static deserialize(buf: Buffer, offset = 0): [Cooldown, number] {
+    return cooldownBeet.deserialize(buf, offset)
   }
 
   /**
-   * Serializes the {@link Deposit} into a Buffer.
+   * Serializes the {@link Cooldown} into a Buffer.
    * @returns a tuple of the created Buffer and the offset up to which the buffer was written to store it.
    */
   serialize(): [Buffer, number] {
-    return depositBeet.serialize({
-      accountDiscriminator: depositDiscriminator,
+    return cooldownBeet.serialize({
+      accountDiscriminator: cooldownDiscriminator,
       ...this,
     })
   }
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Deposit} for the provided args.
+   * {@link Cooldown} for the provided args.
    *
    * @param args need to be provided since the byte size for this account
    * depends on them
    */
-  static byteSize(args: DepositArgs) {
-    const instance = Deposit.fromArgs(args)
-    return depositBeet.toFixedFromValue({
-      accountDiscriminator: depositDiscriminator,
+  static byteSize(args: CooldownArgs) {
+    const instance = Cooldown.fromArgs(args)
+    return cooldownBeet.toFixedFromValue({
+      accountDiscriminator: cooldownDiscriminator,
       ...instance,
     }).byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
-   * {@link Deposit} data from rent
+   * {@link Cooldown} data from rent
    *
    * @param args need to be provided since the byte size for this account
    * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
-    args: DepositArgs,
+    args: CooldownArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Deposit.byteSize(args),
+      Cooldown.byteSize(args),
       commitment
     )
   }
 
   /**
-   * Returns a readable version of {@link Deposit} properties
+   * Returns a readable version of {@link Cooldown} properties
    * and can be used to convert to JSON and/or logging
    */
   pretty() {
     return {
-      index: (() => {
-        const x = <{ toNumber: () => number }>this.index
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
       user: this.user.toBase58(),
-      amount: (() => {
-        const x = <{ toNumber: () => number }>this.amount
+      depositId: (() => {
+        const x = <{ toNumber: () => number }>this.depositId
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -189,8 +170,8 @@ export class Deposit implements DepositArgs {
         }
         return x
       })(),
-      initialUsdValue: (() => {
-        const x = <{ toNumber: () => number }>this.initialUsdValue
+      baseAmount: (() => {
+        const x = <{ toNumber: () => number }>this.baseAmount
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -200,18 +181,6 @@ export class Deposit implements DepositArgs {
         }
         return x
       })(),
-      amountSlashed: (() => {
-        const x = <{ toNumber: () => number }>this.amountSlashed
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
-      lockup: this.lockup.toBase58(),
       unlockTs: (() => {
         const x = <{ toNumber: () => number }>this.unlockTs
         if (typeof x.toNumber === 'function') {
@@ -223,7 +192,7 @@ export class Deposit implements DepositArgs {
         }
         return x
       })(),
-      lastSlashed: this.lastSlashed,
+      rewards: this.rewards.__kind,
     }
   }
 }
@@ -232,23 +201,20 @@ export class Deposit implements DepositArgs {
  * @category Accounts
  * @category generated
  */
-export const depositBeet = new beet.FixableBeetStruct<
-  Deposit,
-  DepositArgs & {
+export const cooldownBeet = new beet.FixableBeetStruct<
+  Cooldown,
+  CooldownArgs & {
     accountDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['index', beet.u64],
     ['user', beetSolana.publicKey],
-    ['amount', beet.u64],
-    ['initialUsdValue', beet.u64],
-    ['amountSlashed', beet.u64],
-    ['lockup', beetSolana.publicKey],
+    ['depositId', beet.u64],
+    ['baseAmount', beet.u64],
     ['unlockTs', beet.u64],
-    ['lastSlashed', beet.coption(beet.u64)],
+    ['rewards', cooldownRewardsBeet],
   ],
-  Deposit.fromArgs,
-  'Deposit'
+  Cooldown.fromArgs,
+  'Cooldown'
 )
