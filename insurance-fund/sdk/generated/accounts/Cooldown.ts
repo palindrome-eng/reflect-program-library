@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { CooldownRewards, cooldownRewardsBeet } from '../types/CooldownRewards'
 
@@ -16,6 +16,7 @@ import { CooldownRewards, cooldownRewardsBeet } from '../types/CooldownRewards'
  * @category generated
  */
 export type CooldownArgs = {
+  user: web3.PublicKey
   depositId: beet.bignum
   baseAmount: beet.bignum
   unlockTs: beet.bignum
@@ -32,6 +33,7 @@ export const cooldownDiscriminator = [50, 166, 94, 192, 234, 64, 152, 208]
  */
 export class Cooldown implements CooldownArgs {
   private constructor(
+    readonly user: web3.PublicKey,
     readonly depositId: beet.bignum,
     readonly baseAmount: beet.bignum,
     readonly unlockTs: beet.bignum,
@@ -43,6 +45,7 @@ export class Cooldown implements CooldownArgs {
    */
   static fromArgs(args: CooldownArgs) {
     return new Cooldown(
+      args.user,
       args.depositId,
       args.baseAmount,
       args.unlockTs,
@@ -155,6 +158,7 @@ export class Cooldown implements CooldownArgs {
    */
   pretty() {
     return {
+      user: this.user.toBase58(),
       depositId: (() => {
         const x = <{ toNumber: () => number }>this.depositId
         if (typeof x.toNumber === 'function') {
@@ -205,6 +209,7 @@ export const cooldownBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['user', beetSolana.publicKey],
     ['depositId', beet.u64],
     ['baseAmount', beet.u64],
     ['unlockTs', beet.u64],

@@ -15,6 +15,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type RewardBoostArgs = {
+  index: beet.bignum
   minUsdValue: beet.bignum
   boostBps: beet.bignum
   lockup: beet.bignum
@@ -30,6 +31,7 @@ export const rewardBoostDiscriminator = [242, 10, 119, 47, 141, 5, 66, 151]
  */
 export class RewardBoost implements RewardBoostArgs {
   private constructor(
+    readonly index: beet.bignum,
     readonly minUsdValue: beet.bignum,
     readonly boostBps: beet.bignum,
     readonly lockup: beet.bignum
@@ -39,7 +41,12 @@ export class RewardBoost implements RewardBoostArgs {
    * Creates a {@link RewardBoost} instance from the provided args.
    */
   static fromArgs(args: RewardBoostArgs) {
-    return new RewardBoost(args.minUsdValue, args.boostBps, args.lockup)
+    return new RewardBoost(
+      args.index,
+      args.minUsdValue,
+      args.boostBps,
+      args.lockup
+    )
   }
 
   /**
@@ -145,6 +152,17 @@ export class RewardBoost implements RewardBoostArgs {
    */
   pretty() {
     return {
+      index: (() => {
+        const x = <{ toNumber: () => number }>this.index
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       minUsdValue: (() => {
         const x = <{ toNumber: () => number }>this.minUsdValue
         if (typeof x.toNumber === 'function') {
@@ -194,6 +212,7 @@ export const rewardBoostBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['index', beet.u64],
     ['minUsdValue', beet.u64],
     ['boostBps', beet.u64],
     ['lockup', beet.u64],

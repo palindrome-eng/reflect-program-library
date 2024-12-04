@@ -13,6 +13,7 @@ impl CooldownRewards {
 
 #[account]
 pub struct Cooldown {
+    pub user: Pubkey,
     pub deposit_id: u64,
     pub base_amount: u64,
     pub unlock_ts: u64,
@@ -20,7 +21,7 @@ pub struct Cooldown {
 }
 
 impl Cooldown {
-    pub const SIZE: usize = 8 + (3 * 8) + CooldownRewards::SIZE;
+    pub const SIZE: usize = 8 + 32 + (3 * 8) + CooldownRewards::SIZE;
 
     pub fn is_cooled(&self) -> Result<bool> {
         let clock = Clock::get()?;

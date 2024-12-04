@@ -981,6 +981,10 @@
         "kind": "struct",
         "fields": [
           {
+            "name": "user",
+            "type": "publicKey"
+          },
+          {
             "name": "depositId",
             "type": "u64"
           },
@@ -1134,6 +1138,10 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "index",
+            "type": "u64"
+          },
           {
             "name": "minUsdValue",
             "type": "u64"

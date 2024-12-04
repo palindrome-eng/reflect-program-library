@@ -10,7 +10,7 @@ import {
     Admin,
     adminDiscriminator,
     Asset,
-    assetDiscriminator,
+    assetDiscriminator, Cooldown, cooldownDiscriminator,
     createAddAssetInstruction,
     createBoostRewardsInstruction,
     createCreateIntentInstruction,
@@ -19,7 +19,7 @@ import {
     createInitializeLockupInstruction,
     createInitializeSlashInstruction,
     createManageFreezeInstruction,
-    createProcessIntentInstruction,
+    createProcessIntentInstruction, createRequestWithdrawalInstruction,
     createRestakeInstruction,
     createSlashDepositsInstruction,
     createSlashPoolInstruction,
@@ -40,7 +40,7 @@ import BN from "bn.js";
 import {Account, getAccount, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
 import {use} from "chai";
 
-type InsuranceFundAccount = Asset | Admin | Deposit | Intent | Lockup | RewardBoost | Settings | Slash;
+type InsuranceFundAccount = Asset | Admin | Cooldown | Deposit | Intent | Lockup | RewardBoost | Settings | Slash;
 
 const DEPOSITS_PER_SLASH_INSTRUCTION = 10;
 
@@ -105,6 +105,35 @@ export class InsuranceFund {
             .run(this.connection);
 
         return deposits.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Deposit>(Deposit, account) }));
+    }
+
+    async getCooldowns() {
+        const cooldowns = await Cooldown
+            .gpaBuilder()
+            .addFilter("accountDiscriminator", cooldownDiscriminator)
+            .run(this.connection);
+
+        return cooldowns.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Cooldown>(Cooldown, account) }));
+    }
+
+    async getCooldownsByDeposit(depositId: BN | number) {
+        const cooldowns = await Cooldown
+            .gpaBuilder()
+            .addFilter("accountDiscriminator", cooldownDiscriminator)
+            .addFilter("depositId", depositId)
+            .run(this.connection);
+
+        return cooldowns.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Cooldown>(Cooldown, account) }));
+    }
+
+    async getCooldownsByUser(user: PublicKey) {
+        const cooldowns = await Cooldown
+            .gpaBuilder()
+            .addFilter("accountDiscriminator", cooldownDiscriminator)
+            .addFilter("user", user)
+            .run(this.connection);
+
+        return cooldowns.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Cooldown>(Cooldown, account) }));
     }
 
     async getRewardBoostsForLockup(lockup: PublicKey) {
@@ -830,6 +859,122 @@ export class InsuranceFund {
                     amount
                 }
             }
+        );
+    }
+
+    deriveCooldown(deposit: PublicKey) {
+        const [cooldown] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("cooldown"),
+                deposit.toBuffer()
+            ],
+            PROGRAM_ID
+        );
+
+        return cooldown;
+    }
+
+    async requestWithdrawal(
+        signer: PublicKey,
+        lockupId: BN | number,
+        depositId: BN | number,
+        amount: BN,
+        rewardBoostId?: BN | number
+    ) {
+        const lockup = this.deriveLockup(lockupId);
+        const {
+            asset: assetMint
+        } = await Lockup.fromAccountAddress(this.connection, lockup);
+
+        const {
+            rewardConfig: {
+                main: rewardAsset
+            }
+        } = await this.getSettingsData();
+        const asset = this.deriveAsset(assetMint);
+        const deposit = this.deriveDeposit(lockup, depositId);
+
+        const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, rewardAsset);
+        const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
+
+        const userAssetAta = getAssociatedTokenAddressSync(
+            assetMint,
+            signer
+        );
+
+        const userRewardAta = getAssociatedTokenAddressSync(
+            rewardAsset,
+            signer
+        );
+
+        return createRequestWithdrawalInstruction(
+            {
+                user: signer,
+                asset,
+                assetMint,
+                lockup,
+                deposit,
+                settings: this.deriveSettings(),
+                assetRewardPool,
+                clock: SYSVAR_CLOCK_PUBKEY,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
+                cooldown: this.deriveCooldown(deposit),
+                rewardMint: rewardAsset,
+                lockupAssetVault,
+                rewardBoost: rewardBoostId !== undefined
+                    ? this.deriveRewardBoost(lockup, rewardBoostId)
+                    : null,
+                userAssetAta,
+                userRewardAta
+            },
+            {
+                args: {
+                    lockupId,
+                    depositId,
+                    amount,
+                    rewardBoostId
+                }
+            }
+        );
+    }
+
+    async requestWithdrawalWithAutoBoostDetection(
+        signer: PublicKey,
+        depositId: BN | number,
+        lockupId: BN | number,
+        amount: BN
+    ) {
+        const lockup = this.deriveLockup(lockupId);
+        const deposit = this.deriveDeposit(lockup, depositId);
+        const {
+            initialUsdValue
+        } = await this.getDeposit(deposit);
+
+        const rewardBoosts = await this.getRewardBoostsForLockup(lockup);
+        let preferredRewardBoost: RewardBoost;
+
+        for (let i = 0; i < rewardBoosts.length; i++) {
+            let { account } = rewardBoosts[i];
+
+            if (
+                new BN(account.minUsdValue)
+                    .lte(new BN(initialUsdValue))
+                && (
+                    !preferredRewardBoost || new BN(preferredRewardBoost.boostBps)
+                        .lte(new BN(account.boostBps))
+                )
+            ) {
+                preferredRewardBoost = account;
+            }
+        }
+
+        return this.requestWithdrawal(
+            signer,
+            lockupId,
+            depositId,
+            amount,
+            preferredRewardBoost?.index
         );
     }
 }
