@@ -493,6 +493,89 @@
       ]
     },
     {
+      "name": "withdraw",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deposit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "cooldown",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userAssetAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userRewardAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupAssetVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetRewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "WithdrawArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "initializeSlash",
       "accounts": [
         {
@@ -1552,16 +1635,6 @@
           },
           {
             "name": "depositId",
-            "type": "u64"
-          },
-          {
-            "name": "rewardBoostId",
-            "type": {
-              "option": "u64"
-            }
-          },
-          {
-            "name": "amount",
             "type": "u64"
           }
         ]

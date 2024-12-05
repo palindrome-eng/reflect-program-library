@@ -20,9 +20,9 @@ import {
     createInitializeSlashInstruction,
     createManageFreezeInstruction,
     createProcessIntentInstruction, createRequestWithdrawalInstruction,
-    createRestakeInstruction,
+    createRestakeInstruction, createSlashColdWalletInstruction,
     createSlashDepositsInstruction,
-    createSlashPoolInstruction,
+    createSlashPoolInstruction, createWithdrawInstruction,
     Deposit,
     depositDiscriminator,
     InitializeInsuranceFundArgs,
@@ -975,6 +975,154 @@ export class InsuranceFund {
             depositId,
             amount,
             preferredRewardBoost?.index
+        );
+    }
+
+    async slashColdWalletAndTransferFunds(
+        signer: PublicKey,
+        lockupId: BN | number,
+        destination: PublicKey,
+    ) {
+        const { coldWallet } = await this.getSettingsData();
+        const lockup = this.deriveLockup(lockupId);
+        const {
+            slashState: { index: slashId },
+            asset: assetMint,
+        } = await this.getLockup(lockup);
+
+        const adminDatas = await this.getAdminFromPublicKey(signer);
+        const admin = adminDatas[0].pubkey;
+
+        const slash = this.deriveSlash(lockup, slashId);
+        const asset = this.deriveAsset(assetMint);
+
+        const source = getAssociatedTokenAddressSync(
+            assetMint,
+            coldWallet,
+            true
+        );
+
+        return createSlashColdWalletInstruction(
+            {
+                admin,
+                lockup,
+                signer,
+                slash,
+                assetMint,
+                settings: this.deriveSettings(),
+                destination,
+                coldWallet,
+                source,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            },
+            {
+                args: {
+                    lockupId,
+                    slashId,
+                    transferFunds: true,
+                    transferSig: ""
+                }
+            }
+        );
+    }
+
+    async slashColdWalletWithTransferSignature(
+        signer: PublicKey,
+        lockupId: BN | number,
+        transferSig: string
+    ) {
+        const { coldWallet } = await this.getSettingsData();
+        const lockup = this.deriveLockup(lockupId);
+        const {
+            slashState: { index: slashId },
+        } = await this.getLockup(lockup);
+
+        const adminDatas = await this.getAdminFromPublicKey(signer);
+        const admin = adminDatas[0].pubkey;
+
+        const slash = this.deriveSlash(lockup, slashId);
+
+        return createSlashColdWalletInstruction(
+            {
+                admin,
+                lockup,
+                signer,
+                slash,
+                settings: this.deriveSettings(),
+                coldWallet,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            },
+            {
+                args: {
+                    lockupId,
+                    slashId,
+                    transferFunds: false,
+                    transferSig
+                }
+            }
+        );
+    }
+
+    async withdrawCooldown(signer: PublicKey, lockupId: BN | number, depositId: BN | number) {
+        const {
+            rewardConfig: {
+                main: rewardMint
+            }
+        } = await this.getSettingsData();
+        const lockup = this.deriveLockup(lockupId);
+        const deposit = this.deriveDeposit(lockup, depositId);
+        const cooldown = this.deriveCooldown(deposit);
+        const cooldownDatas = await this.getCooldownsByDeposit(depositId);
+        const {
+            account: {
+                unlockTs
+            }
+        } = cooldownDatas[0];
+
+        if (!(new BN(Date.now()).gte(new BN(unlockTs)))) throw new Error("Funds still in cooldown.");
+
+        const {
+            asset: assetMint
+        } = await this.getLockup(lockup);
+
+        const asset = this.deriveAsset(assetMint);
+
+        const userAssetAta = getAssociatedTokenAddressSync(
+            assetMint,
+            signer,
+        );
+
+        const userRewardAta = getAssociatedTokenAddressSync(
+            rewardMint,
+            signer,
+        );
+
+        const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
+        const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, rewardMint);
+
+        return createWithdrawInstruction(
+            {
+                lockup,
+                deposit,
+                asset,
+                assetMint,
+                clock: SYSVAR_CLOCK_PUBKEY,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                settings: this.deriveSettings(),
+                cooldown,
+                user: signer,
+                userAssetAta,
+                lockupAssetVault,
+                assetRewardPool,
+                rewardMint,
+                userRewardAta
+            },
+            {
+                args: {
+                    lockupId,
+                    depositId
+                }
+            }
         );
     }
 }
