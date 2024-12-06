@@ -9,20 +9,16 @@ import * as beet from '@metaplex-foundation/beet'
 export type WithdrawArgs = {
   lockupId: beet.bignum
   depositId: beet.bignum
-  rewardBoostId: beet.COption<beet.bignum>
-  amount: beet.bignum
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const withdrawArgsBeet = new beet.FixableBeetArgsStruct<WithdrawArgs>(
+export const withdrawArgsBeet = new beet.BeetArgsStruct<WithdrawArgs>(
   [
     ['lockupId', beet.u64],
     ['depositId', beet.u64],
-    ['rewardBoostId', beet.coption(beet.u64)],
-    ['amount', beet.u64],
   ],
   'WithdrawArgs'
 )

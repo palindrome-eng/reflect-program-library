@@ -1,0 +1,26 @@
+{
+  "name": "@reflect/restaking",
+  "version": "1.0.0",
+  "author": "zkchakra @ Palindrome Engineering",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/palindrome-eng/reflect-program-library.git"
+  },
+  "dependencies": {
+    "@metaplex-foundation/beet": "0.7.2",
+    "@metaplex-foundation/beet-solana": "^0.4.1",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.91.8",
+    "bn.js": "5.2.1"
+  },
+  "devDependencies": {
+    "@types/bn.js": "5.1.6"
+  },
+  "license": "MIT",
+  "main": "./src/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "/dist"
+  ]
+}
