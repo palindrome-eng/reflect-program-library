@@ -1,7 +1,5 @@
 use anchor_lang::prelude::*;
 
-use crate::admin;
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, PartialOrd)]
 pub enum Permissions {
     // Only gives ability to freeze the protocol.

@@ -17,7 +17,7 @@ pub fn withdraw(
 ) -> Result<()> {
 
     let WithdrawArgs {
-        deposit_id,
+        deposit_id: _,
         lockup_id,
     } = args;
 
@@ -35,9 +35,9 @@ pub fn withdraw(
         &[ctx.bumps.lockup]
     ];
 
-    let reward = match (cooldown.rewards) {
+    let reward = match cooldown.rewards {
         CooldownRewards::Single(base) => base,
-        CooldownRewards::Dual([base, mintable]) => base
+        CooldownRewards::Dual([base, _]) => base
     };
 
     transfer(

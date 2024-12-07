@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
@@ -28,7 +27,7 @@ pub fn deposit_rewards(
 ) -> Result<()> {
     let DepositRewardsArgs {
         amount,
-        lockup_id
+        lockup_id: _
     } = args;
 
     let caller = &ctx.accounts.caller;

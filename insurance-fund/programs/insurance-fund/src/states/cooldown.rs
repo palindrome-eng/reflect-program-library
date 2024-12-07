@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub enum CooldownRewards {

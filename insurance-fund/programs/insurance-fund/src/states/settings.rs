@@ -1,8 +1,4 @@
-use anchor_lang::{prelude::*};
-use anchor_spl::token::{
-    Transfer,
-    transfer
-};
+use anchor_lang::prelude::*;
 
 use crate::errors::InsuranceFundError;
 

@@ -7,8 +7,6 @@ use anchor_spl::token::{
     Mint,
     TokenAccount,
     Token,
-    transfer,
-    Transfer,
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
@@ -27,19 +25,15 @@ pub fn request_withdrawal(
     let RequestWithdrawalArgs {
         amount,
         deposit_id,
-        lockup_id,
+        lockup_id: _,
         reward_boost_id: __
     } = args;
 
     let settings = &ctx.accounts.settings;
-    let token_program = &ctx.accounts.token_program;
     let deposit = &mut ctx.accounts.deposit;
     let user = &mut ctx.accounts.user;
     let lockup = &mut ctx.accounts.lockup;
-    let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
     let asset_mint = &ctx.accounts.asset_mint;
-    let user_asset_ata = &ctx.accounts.user_asset_ata;
-    let user_reward_ata = &ctx.accounts.user_reward_ata;
     let asset = &mut ctx.accounts.asset;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
     let cooldown = &mut ctx.accounts.cooldown;
@@ -183,20 +177,6 @@ pub struct RequestWithdrawal<'info> {
         address = settings.reward_config.main
     )]
     pub reward_mint: Box<Account<'info, Mint>>,
-
-    #[account(
-        mut,
-        associated_token::authority = user,
-        associated_token::mint = asset_mint
-    )]
-    pub user_asset_ata: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        associated_token::authority = user,
-        associated_token::mint = reward_mint
-    )]
-    pub user_reward_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,

@@ -28,7 +28,6 @@ pub fn create_intent(
         lockup_id
     } = args;
 
-    let user = &ctx.accounts.user;
     let deposit = &mut ctx.accounts.deposit;
     let lockup = &ctx.accounts.lockup;
     let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
@@ -39,7 +38,7 @@ pub fn create_intent(
     let asset = &mut ctx.accounts.asset;
 
     let SharesConfig { 
-        hot_wallet_share_bps, 
+        hot_wallet_share_bps: _, 
         cold_wallet_share_bps 
     } = settings.shares_config;
 
@@ -55,7 +54,7 @@ pub fn create_intent(
     // If amount is bigger than cold wallet (70% of total insurance)
     // we have to use both hot and cold wallet.
     // First we'll send entire hot wallet, and the difference will be covered by the intent.
-    if (amount > total_cold_wallet_lockup) {
+    if amount > total_cold_wallet_lockup {
         // Difference between hot wallet deposit and user's deposit
         let difference = amount - total_hot_wallet_lockup;
 

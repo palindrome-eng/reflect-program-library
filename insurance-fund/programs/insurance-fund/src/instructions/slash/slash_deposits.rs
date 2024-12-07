@@ -23,11 +23,10 @@ pub fn slash_deposits(
 ) -> Result<()> {
     let SlashDepositsArgs {
         slash_amount,
-        lockup_id,
+        lockup_id: _,
         slash_id
     } = args;
 
-    let settings = &ctx.accounts.settings;
     let lockup = &ctx.accounts.lockup;
     let slash = &ctx.accounts.slash;
 
@@ -43,11 +42,6 @@ pub fn slash_deposits(
         slash_amount == slash.target_amount,
         InsuranceFundError::SlashAmountMismatch
     );
-
-    let SharesConfig {
-        cold_wallet_share_bps,
-        hot_wallet_share_bps
-    } = settings.shares_config;
 
     for (index, deposit_account_info) in deposits.iter().enumerate() {
         ctx.accounts.validate_deposit(

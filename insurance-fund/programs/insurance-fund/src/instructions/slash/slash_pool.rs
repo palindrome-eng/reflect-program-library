@@ -23,14 +23,13 @@ pub fn slash_pool(
 ) -> Result<()> {
     let SlashPoolArgs {
         lockup_id,
-        slash_id
+        slash_id: _
     } = args;
 
     let settings = &ctx.accounts.settings;
     let slash = &ctx.accounts.slash;
     let token_program = &ctx.accounts.token_program;
     let asset = &mut ctx.accounts.asset;
-    let asset_lockup = &mut ctx.accounts.asset_lockup;
 
     let lockup = &mut ctx.accounts.lockup;
     let signer_seeds = &[

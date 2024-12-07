@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use switchboard_solana::oracle_program;
 use crate::errors::InsuranceFundError;
 use crate::events::RestakeEvent;
 use crate::states::*;
@@ -24,7 +23,7 @@ pub fn restake(
 ) -> Result<()> {
     let RestakeArgs {
         amount,
-        lockup_id
+        lockup_id: _
     } = args;
 
     let token_program = &ctx.accounts.token_program;

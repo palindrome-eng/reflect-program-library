@@ -11,7 +11,7 @@ impl OraclePrice {
     ) -> Result<u64, InsuranceFundError> {
         let price: u64;
 
-        if (self.precision >= 0) {
+        if self.precision >= 0 {
             price = (amount as i128)
                 .checked_mul(self.price.into())
                 .ok_or(InsuranceFundError::MathOverflow.into())?

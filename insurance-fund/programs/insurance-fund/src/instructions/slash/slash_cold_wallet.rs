@@ -33,8 +33,8 @@ pub fn slash_cold_wallet(
 
     let SlashColdWalletArgs {
         transfer_funds,
-        lockup_id,
-        slash_id,
+        lockup_id: _,
+        slash_id: __,
         transfer_sig
     } = args;
 
@@ -45,7 +45,7 @@ pub fn slash_cold_wallet(
 
     let SharesConfig {
         cold_wallet_share_bps,
-        hot_wallet_share_bps,
+        hot_wallet_share_bps: ___,
     } = settings.shares_config;
 
     let amount = slash.target_amount
@@ -54,7 +54,7 @@ pub fn slash_cold_wallet(
         .checked_div(10_000)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
-    if (transfer_funds) {
+    if transfer_funds {
         let source = &ctx.accounts.source;
         let destination = &ctx.accounts.destination;
 
