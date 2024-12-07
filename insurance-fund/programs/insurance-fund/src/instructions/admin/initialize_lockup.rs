@@ -4,6 +4,7 @@ use anchor_spl::token::Token;
 use anchor_spl::token::TokenAccount;
 use crate::states::*;
 use crate::constants::*;
+use crate::events::InitializeLockupEvent;
 use crate::errors::InsuranceFundError;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -23,6 +24,7 @@ pub fn initialize_lockup(
     let lockup = &mut ctx.accounts.lockup;
     let asset_mint = &ctx.accounts.asset_mint;
     let asset = &mut ctx.accounts.asset;
+    let signer = &ctx.accounts.signer;
 
     let InitializeLockupArgs {
         duration,
@@ -52,6 +54,13 @@ pub fn initialize_lockup(
 
     settings.lockups += 1;
     asset.add_lockup()?;
+
+    emit!(InitializeLockupEvent {
+        admin: signer.key(),
+        asset: asset_mint.key(),
+        duration: duration,
+        lockup: lockup.key()
+    });
 
     Ok(())
 }

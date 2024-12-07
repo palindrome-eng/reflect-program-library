@@ -1,10 +1,12 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
+use crate::events::*;
 use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct AddAdminArgs {
+    address: Pubkey,
     permissions: Permissions
 }
 
@@ -13,8 +15,21 @@ pub fn add_admin(
     args: AddAdminArgs
 ) -> Result<()> {
 
+    let settings = &mut ctx.accounts.settings;
     let new_admin = &mut ctx.accounts.new_admin;
+    let signer = &ctx.accounts.signer;
+
     new_admin.permissions = args.permissions;
+    new_admin.address = args.address;
+    new_admin.index = settings.admins;
+
+    settings.admins += 1;
+
+    emit!(ChangeAdminEvent {
+        affected_admin: args.address,
+        signer: signer.key(),
+        permission_change: Some(args.permissions)
+    });
 
     Ok(())
 }

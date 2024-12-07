@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::states::Permissions;
+
 #[event]
 pub struct RestakeEvent {
     pub from: Pubkey,
@@ -61,4 +63,37 @@ pub struct ProcessIntent {
     pub amount: u64,
     pub deposit: Pubkey,
     pub processed_by: Pubkey,
+}
+
+#[event]
+pub struct AddAssetEvent {
+    pub admin: Pubkey,
+    pub asset: Pubkey,
+    pub oracle: Pubkey,
+}
+
+#[event]
+pub struct ChangeAdminEvent {
+    pub affected_admin: Pubkey,
+    pub signer: Pubkey,
+    pub permission_change: Option<Permissions>,
+}
+
+#[event]
+pub struct InitializeInsuranceFund {
+    pub new_admin: Pubkey,
+}
+
+#[event]
+pub struct InitializeLockupEvent {
+    pub admin: Pubkey,
+    pub lockup: Pubkey,
+    pub asset: Pubkey,
+    pub duration: u64,
+}
+
+#[event]
+pub struct ManageFreezeEvent {
+    pub admin: Pubkey,
+    pub frozen: bool
 }

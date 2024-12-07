@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
+use crate::events::InitializeInsuranceFund as InitializeInsuranceFundEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeInsuranceFundArgs {
@@ -35,7 +36,7 @@ pub fn initialize_insurance_fund(
     
     admin.permissions = Permissions::Superadmin;
     admin.address = signer.key();
-    admin.index += 1;
+    admin.index = 0;
 
     let settings = &mut ctx.accounts.settings;
 
@@ -51,6 +52,11 @@ pub fn initialize_insurance_fund(
         main: reward_mint
     };
     settings.frozen = false;
+    settings.admins += 1;
+
+    emit!(InitializeInsuranceFundEvent {
+        new_admin: signer.key()
+    });
 
     Ok(())
 }

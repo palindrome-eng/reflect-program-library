@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::states::*;
+use crate::events::ManageFreezeEvent;
 use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -14,11 +15,17 @@ pub fn manage_freeze(
 ) -> Result<()> {
 
     let settings = &mut ctx.accounts.settings;
+    let signer = &ctx.accounts.signer;
     
     match args.freeze {
         true => settings.freeze(),
         false => settings.unfreeze(),
     }
+
+    emit!(ManageFreezeEvent {
+        admin: signer.key(),
+        frozen: args.freeze
+    });
 
     Ok(())
 }

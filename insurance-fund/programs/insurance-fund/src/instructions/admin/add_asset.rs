@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use switchboard_solana::ID as SWITCHBOARD_PROGRAM_ID;
 use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
 use crate::errors::InsuranceFundError;
+use crate::events::AddAssetEvent;
 use crate::helpers::get_price_from_pyth;
 use crate::helpers::get_price_from_switchboard;
 use crate::states::*;
@@ -14,6 +15,7 @@ pub fn add_asset(
     let asset = &mut ctx.accounts.asset;
     let asset_mint = &ctx.accounts.asset_mint;
     let oracle = &ctx.accounts.oracle;
+    let signer = &ctx.accounts.signer;
 
     asset.mint = asset_mint.key();  
     asset.tvl = 0;
@@ -21,6 +23,12 @@ pub fn add_asset(
     asset.lockups = 0;
 
     let clock = Clock::get()?;
+
+    emit!(AddAssetEvent {
+        admin: signer.key(),
+        asset: asset_mint.key(),
+        oracle: oracle.key()
+    });
 
     if oracle.owner.eq(&PYTH_PROGRAM_ID) {
         get_price_from_pyth(oracle, &clock)?;

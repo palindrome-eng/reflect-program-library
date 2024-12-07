@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
+use crate::events::*;
 use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -12,6 +13,16 @@ pub fn remove_admin(
     ctx: Context<RemoveAdmin>,
     args: RemoveAdminArgs
 ) -> Result<()> {
+
+    let admin_to_remove = &ctx.accounts.admin_to_remove;
+    let signer = &ctx.accounts.signer;
+
+    emit!(ChangeAdminEvent {
+        affected_admin: admin_to_remove.address,
+        signer: signer.key(),
+        permission_change: None
+    });
+
     Ok(())
 }
 
