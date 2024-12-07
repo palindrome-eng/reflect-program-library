@@ -51,40 +51,6 @@ pub fn request_withdrawal(
     let user_share = user_lockup as f64 / total_lockup as f64;
     let user_rewards = (total_rewards as f64 * user_share) as u64;
 
-    // let seeds = &[
-    //     LOCKUP_SEED.as_bytes(),
-    //     &lockup_id.to_le_bytes(),
-    //     &[ctx.bumps.lockup]
-    // ];
-
-    // // Transfer rewards
-    // transfer(
-    //     CpiContext::new_with_signer(
-    //         token_program.to_account_info(), 
-    //         Transfer {
-    //             authority: lockup.to_account_info(),
-    //             from: asset_reward_pool.to_account_info(),
-    //             to: user_reward_ata.to_account_info(),
-    //         }, 
-    //         &[seeds]
-    //     ), 
-    //     user_rewards
-    // )?;
-
-    // // Transfer base amount
-    // transfer(
-    //     CpiContext::new_with_signer(
-    //         token_program.to_account_info(), 
-    //         Transfer {
-    //             from: lockup_asset_vault.to_account_info(),
-    //             to: user_asset_ata.to_account_info(),
-    //             authority: lockup.to_account_info()
-    //         }, 
-    //         &[seeds]
-    //     ), 
-    //     amount
-    // )?;
-
     cooldown.base_amount = amount;
     cooldown.deposit_id = deposit_id;
 
@@ -92,14 +58,16 @@ pub fn request_withdrawal(
         YieldMode::Single => {
             CooldownRewards::Single(user_rewards)
         },
-        YieldMode::Dual(rate) => {
+        YieldMode::Dual(_) => {
             CooldownRewards::Dual([user_rewards, 0])
         }
     };
 
     cooldown.lock(settings.cooldown_duration)?;
 
-    deposit.amount -= amount;
+    // We're not subtracting from the deposit yet, since user may still be slashed.
+    // However, user_rewards are locked-up in the Cooldown account at the moment of this call, so rewards are not accrued anymore.
+
     asset.decrease_tvl(amount)?;
     lockup.decrease_deposits(amount)?;
 
@@ -162,8 +130,8 @@ pub struct RequestWithdrawal<'info> {
     pub deposit: Account<'info, Deposit>,
 
     #[account(
-        // If exists, simply means that we're overwriting. 
-        // Invoking this IX will always cause the cooldown to be +1 epoch.
+        // We use init_if_needed since user may want to increase their withdrawal before the cooldown ends.
+        // In such case, we're just gonna 'refresh' the cooldown, and the new total amount will have to wait entire cooldown period again.
         init_if_needed,
         seeds = [
             COOLDOWN_SEED.as_bytes(),

@@ -36,6 +36,7 @@ pub fn create_intent(
     let settings = &ctx.accounts.settings;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let token_program = &ctx.accounts.token_program;
+    let asset = &mut ctx.accounts.asset;
 
     let SharesConfig { 
         hot_wallet_share_bps, 
@@ -78,6 +79,8 @@ pub fn create_intent(
             ), 
             total_hot_wallet_lockup
         )?;
+
+        asset.decrease_tvl(total_hot_wallet_lockup)?;
 
         deposit.amount = deposit
             .amount
@@ -137,6 +140,16 @@ pub struct CreateIntent<'info> {
         bump,
     )]
     pub lockup: Account<'info, Lockup>,
+
+    #[account(
+        mut,
+        seeds = [
+            ASSET_SEED.as_bytes(),
+            &asset_mint.key().to_bytes()
+        ],
+        bump,
+    )]
+    pub asset: Account<'info, Asset>,
 
     #[account(
         mut,

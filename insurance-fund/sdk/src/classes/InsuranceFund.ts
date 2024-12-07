@@ -38,7 +38,6 @@ import {
 } from "../generated";
 import BN from "bn.js";
 import {Account, getAccount, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
-import {use} from "chai";
 
 type InsuranceFundAccount = Asset | Admin | Cooldown | Deposit | Intent | Lockup | RewardBoost | Settings | Slash;
 
