@@ -963,6 +963,11 @@ describe("insurance-fund", () => {
             program.programId
         );
 
+        const settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
         const lockupDataPre = await Lockup.fromAccountAddress(
             provider.connection,
             lockup
@@ -986,6 +991,11 @@ describe("insurance-fund", () => {
             program.programId
         );
 
+        const depositDataPre = await Deposit.fromAccountAddress(
+            provider.connection,
+            deposit
+        );
+
         const [asset] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("asset"),
@@ -1003,6 +1013,8 @@ describe("insurance-fund", () => {
             program.programId
         );
 
+        const assetRewardPoolDataPre = await getAccount(provider.connection, assetRewardPool);
+
         const [cooldown] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("cooldown"),
@@ -1010,6 +1022,8 @@ describe("insurance-fund", () => {
             ],
             PROGRAM_ID
         );
+
+        const timestampPre = Math.floor(Date.now() / 1000);
 
         await program
             .methods
@@ -1036,6 +1050,32 @@ describe("insurance-fund", () => {
             })
             .signers([user])
             .rpc();
+
+        const cooldownDataPost = await Cooldown.fromAccountAddress(
+            provider.connection,
+            cooldown
+        );
+
+        const totalLockup = new BN(lockupDataPre.totalDeposits).toNumber();
+        const depositLockup = new BN(depositDataPre.amount).toNumber();
+        const depositShare = depositLockup / totalLockup;
+        const totalRewardsPre = new BN(assetRewardPoolDataPre.amount.toString()).toNumber();
+        const userRewards = totalRewardsPre * depositShare;
+
+        expect(cooldownDataPost.baseAmount.toString()).eq(amount.toString());
+        expect(cooldownDataPost.user.toString()).eq(user.publicKey.toString());
+        expect(cooldownDataPost.lockupId.toString()).eq(lockupId.toString());
+        expect(cooldownDataPost.depositId.toString()).eq(depositId.toString());
+        expect(parseInt((cooldownDataPost.rewards.fields[0] as BN | number).toString()))
+            .approximately(
+                userRewards,
+                1 * LAMPORTS_PER_SOL
+            );
+        expect(parseInt(cooldownDataPost.unlockTs.toString()))
+            .approximately(
+                parseInt(settingsData.cooldownDuration.toString()) + timestampPre,
+                2 // 2 second delta
+            );
     });
 
     it("Waits cooldown duration & withdraws.", async () => {
@@ -1209,11 +1249,7 @@ describe("insurance-fund", () => {
         expect(parseInt(userAssetAtaPost.amount.toString()))
             .eq(parseInt(userAssetAtaPre.amount.toString()) + parseInt(cooldownData.baseAmount.toString()));
 
-        const totalLockup = new BN(lockupDataPre.totalDeposits).toNumber();
-        const depositLockup = new BN(depositDataPre.amount).toNumber();
-        const depositShare = depositLockup / totalLockup;
-        const totalRewardsPre = new BN(assetRewardPoolDataPre.amount.toString()).toNumber();
-        const userRewards = totalRewardsPre * depositShare;
+        const userRewards = parseInt((cooldownData.rewards.fields[0] as (number | BN)).toString());
 
         expect(userRewards)
             .approximately(
@@ -1226,9 +1262,6 @@ describe("insurance-fund", () => {
                 parseInt(assetRewardPoolDataPre.amount.toString()) - userRewards,
                 1 * LAMPORTS_PER_SOL // 1 full token delta
             );
-
-        expect(new BN(depositDataPost.amount).toNumber())
-            .eq(new BN(depositDataPre.amount).toNumber() - 5 * LAMPORTS_PER_SOL);
 
         expect(new BN(lockupAssetVaultBalancePost.amount.toString()).toNumber())
             .eq(new BN(lockupAssetVaultBalancePre.amount.toString()).toNumber() - 5 * LAMPORTS_PER_SOL);

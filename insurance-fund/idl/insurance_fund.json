@@ -1143,6 +1143,10 @@
             "type": "u64"
           },
           {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
             "name": "baseAmount",
             "type": "u64"
           },

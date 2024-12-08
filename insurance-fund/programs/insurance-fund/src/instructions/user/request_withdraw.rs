@@ -1,3 +1,4 @@
+use anchor_lang::accounts::signer;
 use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::events::WithdrawEvent;
@@ -47,6 +48,8 @@ pub fn request_withdrawal(
 
     cooldown.base_amount = amount;
     cooldown.deposit_id = deposit_id;
+    cooldown.user = user.key();
+    cooldown.lockup_id = lockup.index;
 
     cooldown.rewards = match lockup.yield_mode {
         YieldMode::Single => {

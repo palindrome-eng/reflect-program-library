@@ -18,6 +18,7 @@ import { CooldownRewards, cooldownRewardsBeet } from '../types/CooldownRewards'
 export type CooldownArgs = {
   user: web3.PublicKey
   depositId: beet.bignum
+  lockupId: beet.bignum
   baseAmount: beet.bignum
   unlockTs: beet.bignum
   rewards: CooldownRewards
@@ -35,6 +36,7 @@ export class Cooldown implements CooldownArgs {
   private constructor(
     readonly user: web3.PublicKey,
     readonly depositId: beet.bignum,
+    readonly lockupId: beet.bignum,
     readonly baseAmount: beet.bignum,
     readonly unlockTs: beet.bignum,
     readonly rewards: CooldownRewards
@@ -47,6 +49,7 @@ export class Cooldown implements CooldownArgs {
     return new Cooldown(
       args.user,
       args.depositId,
+      args.lockupId,
       args.baseAmount,
       args.unlockTs,
       args.rewards
@@ -170,6 +173,17 @@ export class Cooldown implements CooldownArgs {
         }
         return x
       })(),
+      lockupId: (() => {
+        const x = <{ toNumber: () => number }>this.lockupId
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       baseAmount: (() => {
         const x = <{ toNumber: () => number }>this.baseAmount
         if (typeof x.toNumber === 'function') {
@@ -211,6 +225,7 @@ export const cooldownBeet = new beet.FixableBeetStruct<
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['user', beetSolana.publicKey],
     ['depositId', beet.u64],
+    ['lockupId', beet.u64],
     ['baseAmount', beet.u64],
     ['unlockTs', beet.u64],
     ['rewards', cooldownRewardsBeet],
