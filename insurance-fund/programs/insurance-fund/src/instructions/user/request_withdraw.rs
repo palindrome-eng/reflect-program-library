@@ -1,4 +1,3 @@
-use anchor_lang::accounts::signer;
 use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::events::WithdrawEvent;

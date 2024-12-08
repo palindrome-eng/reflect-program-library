@@ -11,7 +11,7 @@ pub struct RemoveAdminArgs {
 
 pub fn remove_admin(
     ctx: Context<RemoveAdmin>,
-    args: RemoveAdminArgs
+    _: RemoveAdminArgs
 ) -> Result<()> {
 
     let admin_to_remove = &ctx.accounts.admin_to_remove;

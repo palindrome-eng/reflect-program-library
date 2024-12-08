@@ -18,7 +18,7 @@ pub struct ProcessIntentArgs {
 
 pub fn process_intent(
     ctx: Context<ProcessIntent>,
-    args: ProcessIntentArgs
+    _: ProcessIntentArgs
 ) -> Result<()> {
 
     let token_program = &ctx.accounts.token_program;
