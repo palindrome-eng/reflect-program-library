@@ -42,7 +42,7 @@ pub struct BoostRewards<'info> {
     #[account(
         mut,
         constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
-        constraint = admin.has_permissions(Permissions::Superadmin)
+        constraint = admin.has_permissions(Permissions::AssetsAndLockups)
     )]
     pub admin: Account<'info, Admin>,
 

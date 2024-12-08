@@ -12,7 +12,8 @@ import * as beet from '@metaplex-foundation/beet'
  */
 export enum Permissions {
   Freeze,
-  AddAsset,
+  AssetsAndLockups,
+  Slashing,
   Superadmin,
 }
 

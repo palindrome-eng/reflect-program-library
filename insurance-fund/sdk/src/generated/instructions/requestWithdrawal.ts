@@ -49,8 +49,6 @@ export const requestWithdrawalStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] asset
  * @property [_writable_] assetMint
  * @property [_writable_] rewardMint
- * @property [_writable_] userAssetAta
- * @property [_writable_] userRewardAta
  * @property [_writable_] lockupAssetVault
  * @property [_writable_] assetRewardPool
  * @property [] clock
@@ -68,8 +66,6 @@ export type RequestWithdrawalInstructionAccounts = {
   asset: web3.PublicKey
   assetMint: web3.PublicKey
   rewardMint: web3.PublicKey
-  userAssetAta: web3.PublicKey
-  userRewardAta: web3.PublicKey
   lockupAssetVault: web3.PublicKey
   assetRewardPool: web3.PublicKey
   clock: web3.PublicKey
@@ -147,16 +143,6 @@ export function createRequestWithdrawalInstruction(
     },
     {
       pubkey: accounts.rewardMint,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.userAssetAta,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.userRewardAta,
       isWritable: true,
       isSigner: false,
     },

@@ -6,9 +6,11 @@ pub enum Permissions {
     // This should be used for team members' wallets who can easily execute freeze of the protocol in case of emergency.
     Freeze = 0,
     // Gives ability to whitelist new assets for restaking.
-    AddAsset = 1,
+    AssetsAndLockups = 1,
+    // Gives ability to whitelist new assets for restaking.
+    Slashing = 2,
     // Gives full authority over the program management, including removing and adding new admins of a lower scopes.
-    Superadmin = 2
+    Superadmin = 3
 }
 
 #[account]
@@ -19,13 +21,17 @@ pub struct Admin {
 }
 
 impl Admin {
-    pub const SIZE: usize = 8 + 8 + 32 + (1 + 1);
+    pub const SIZE: usize = 8 + 1 + 32 + (1 + 1);
 
     pub fn has_permissions(&self, activity: Permissions) -> bool {
         self.permissions >= activity
     }
 
     pub fn has_permissions_over(&self, activity: Permissions) -> bool {
-        self.permissions > activity
+        match self.permissions {
+            // Every superadmin has permissions over all other admins, including superadmins.
+            Permissions::Superadmin => true,
+            _ => self.permissions > activity
+        }
     }
 }

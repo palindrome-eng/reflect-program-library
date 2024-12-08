@@ -43,6 +43,7 @@ export const createIntentStruct = new beet.BeetArgsStruct<
  * @property [_writable_, **signer**] user
  * @property [_writable_] settings
  * @property [_writable_] lockup
+ * @property [_writable_] asset
  * @property [_writable_] assetMint
  * @property [_writable_] userAssetAta
  * @property [_writable_] lockupAssetVault
@@ -57,6 +58,7 @@ export type CreateIntentInstructionAccounts = {
   user: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
+  asset: web3.PublicKey
   assetMint: web3.PublicKey
   userAssetAta: web3.PublicKey
   lockupAssetVault: web3.PublicKey
@@ -104,6 +106,11 @@ export function createCreateIntentInstruction(
     },
     {
       pubkey: accounts.lockup,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.asset,
       isWritable: true,
       isSigner: false,
     },

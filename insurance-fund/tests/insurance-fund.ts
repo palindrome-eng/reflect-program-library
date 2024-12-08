@@ -11,11 +11,12 @@ import {
 } from "@solana/web3.js";
 import {before} from "mocha";
 import {
-    Asset,
+    Admin,
+    Asset, Cooldown,
     createDepositRewardsInstruction,
     Deposit,
     Intent,
-    Lockup,
+    Lockup, Permissions,
     PROGRAM_ID,
     Settings,
     Slash
@@ -189,7 +190,65 @@ describe("insurance-fund", () => {
         );
 
         expect(settingsData.frozen).eq(false);
-    })
+    });
+
+    it("Rotates admins", async () => {
+        for (let i = 0; i < 3; i++) {
+            const keypair = Keypair.generate();
+
+            const [newAdmin] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("admin"),
+                    new BN(i + 1).toArrayLike(Buffer, "le", 1)
+                ],
+                PROGRAM_ID
+            );
+
+            await program
+                .methods
+                .addAdmin({
+                    address: keypair.publicKey,
+                    permissions: { superadmin: undefined }
+                })
+                .accounts({
+                    signer: provider.publicKey,
+                    existingAdmin: admin,
+                    newAdmin,
+                    settings,
+                    systemProgram: SystemProgram.programId
+                })
+                .rpc();
+
+            const {
+                index,
+                permissions,
+                address
+            } = await Admin.fromAccountAddress(
+                provider.connection,
+                newAdmin
+            );
+
+            expect(index.toString()).eq(`${i + 1}`);
+            expect(permissions).eq(Permissions.Superadmin);
+            expect(address.toString()).eq(keypair.publicKey.toString());
+
+            await program
+                .methods
+                .removeAdmin({
+                    adminId: i + 1
+                })
+                .accounts({
+                    // self-destruct
+                    signer: keypair.publicKey,
+                    admin: newAdmin,
+                    adminToRemove: newAdmin,
+                    settings,
+                    systemProgram: SystemProgram.programId
+                })
+                .signers([keypair])
+                .rpc();
+        }
+    });
 
     it("Mints and adds assets to insurance pool.", async () => {
         const assets: PublicKey[] = [];
@@ -661,7 +720,8 @@ describe("insurance-fund", () => {
             })
             .accounts({
                 settings,
-                superadmin: provider.publicKey,
+                signer: provider.publicKey,
+                admin,
                 lockup,
                 assetMint: lockupData.asset,
                 assetLockup,
@@ -721,7 +781,8 @@ describe("insurance-fund", () => {
             })
             .accounts({
                 settings,
-                superadmin: provider.publicKey,
+                admin,
+                signer: provider.publicKey,
                 lockup,
                 assetMint: lockupData.asset,
                 assetLockup,
@@ -810,7 +871,8 @@ describe("insurance-fund", () => {
             })
             .accounts({
                 tokenProgram: TOKEN_PROGRAM_ID,
-                superadmin: provider.publicKey,
+                signer: provider.publicKey,
+                admin,
                 source: null,
                 destination: null,
                 assetMint: lockupData.asset,
@@ -858,7 +920,8 @@ describe("insurance-fund", () => {
             })
             .accounts({
                 settings,
-                superadmin: provider.publicKey,
+                signer: provider.publicKey,
+                admin,
                 lockup,
                 asset,
                 assetMint: lockupData.asset,
@@ -885,12 +948,108 @@ describe("insurance-fund", () => {
             );
     });
 
-    it("Awaits 10 second lockup time, withdraws & claims rewards.", async () => {
+    it("Awaits 10 second lockup time and requests withdrawal.", async () => {
         await sleep(10);
 
         const lockupId = new BN(0);
         const depositId = new BN(0);
         const amount = new BN(5 * LAMPORTS_PER_SOL);
+
+        const [lockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lockup"),
+                new BN(lockupId).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const lockupDataPre = await Lockup.fromAccountAddress(
+            provider.connection,
+            lockup
+        );
+
+        const [lockupAssetVault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                lockup.toBuffer(),
+                lockupDataPre.asset.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const [deposit] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("deposit"),
+                lockup.toBuffer(),
+                new BN(depositId).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const [asset] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("asset"),
+                lockupDataPre.asset.toBuffer()
+            ],
+            program.programId
+        );
+
+        const [assetRewardPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("reward_pool"),
+                lockup.toBuffer(),
+                rewardToken.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const [cooldown] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("cooldown"),
+                deposit.toBuffer()
+            ],
+            PROGRAM_ID
+        );
+
+        await program
+            .methods
+            .requestWithdrawal({
+                lockupId,
+                depositId,
+                rewardBoostId: null,
+                amount
+            })
+            .accounts({
+                user: user.publicKey,
+                settings,
+                lockup,
+                deposit,
+                asset,
+                assetMint: lockupDataPre.asset,
+                lockupAssetVault,
+                clock: SYSVAR_CLOCK_PUBKEY,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                assetRewardPool,
+                rewardBoost: program.programId,
+                rewardMint: rewardToken,
+                cooldown,
+            })
+            .signers([user])
+            .rpc();
+    });
+
+    it("Waits cooldown duration & withdraws.", async () => {
+        const {
+            cooldownDuration
+        } = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
+        await sleep(parseInt(cooldownDuration.toString()));
+
+        const lockupId = new BN(0);
+        const depositId = new BN(0);
 
         const [lockup] = PublicKey.findProgramAddressSync(
             [
@@ -926,6 +1085,19 @@ describe("insurance-fund", () => {
                 new BN(depositId).toArrayLike(Buffer, "le", 8)
             ],
             program.programId
+        );
+
+        const [cooldown] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("cooldown"),
+                deposit.toBuffer()
+            ],
+            PROGRAM_ID
+        );
+
+        const cooldownData = await Cooldown.fromAccountAddress(
+            provider.connection,
+            cooldown
         );
 
         const depositDataPre = await Deposit.fromAccountAddress(
@@ -980,26 +1152,23 @@ describe("insurance-fund", () => {
             .methods
             .withdraw({
                 lockupId,
-                depositId,
-                rewardBoostId: null,
-                amount
+                depositId
             })
             .accounts({
-                user: user.publicKey,
                 settings,
+                user: user.publicKey,
                 lockup,
                 deposit,
-                asset,
+                cooldown,
                 assetMint: lockupDataPre.asset,
+                asset,
                 userAssetAta,
-                lockupAssetVault,
-                clock: SYSVAR_CLOCK_PUBKEY,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: SystemProgram.programId,
-                assetRewardPool,
-                rewardBoost: program.programId,
                 rewardMint: rewardToken,
                 userRewardAta,
+                lockupAssetVault,
+                assetRewardPool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                clock: SYSVAR_CLOCK_PUBKEY
             })
             .preInstructions([
                 createAssociatedTokenAccountInstruction(
@@ -1038,7 +1207,7 @@ describe("insurance-fund", () => {
         );
 
         expect(parseInt(userAssetAtaPost.amount.toString()))
-            .eq(parseInt(userAssetAtaPre.amount.toString()) + amount.toNumber());
+            .eq(parseInt(userAssetAtaPre.amount.toString()) + parseInt(cooldownData.baseAmount.toString()));
 
         const totalLockup = new BN(lockupDataPre.totalDeposits).toNumber();
         const depositLockup = new BN(depositDataPre.amount).toNumber();
@@ -1102,6 +1271,11 @@ describe("insurance-fund", () => {
             lockup
         );
 
+        const [asset] = PublicKey.findProgramAddressSync(
+            [Buffer.from("asset"), assetMint.toBuffer()],
+            PROGRAM_ID
+        );
+
         const userAssetAta = getAssociatedTokenAddressSync(
             assetMint,
             user.publicKey,
@@ -1138,6 +1312,7 @@ describe("insurance-fund", () => {
                 lockup,
                 deposit,
                 assetMint,
+                asset,
                 userAssetAta,
                 lockupAssetVault,
                 systemProgram: SystemProgram.programId,

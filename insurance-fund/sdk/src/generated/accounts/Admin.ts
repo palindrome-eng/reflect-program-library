@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { Permissions, permissionsBeet } from '../types/Permissions'
 
@@ -16,7 +16,7 @@ import { Permissions, permissionsBeet } from '../types/Permissions'
  * @category generated
  */
 export type AdminArgs = {
-  index: beet.bignum
+  index: number
   address: web3.PublicKey
   permissions: Permissions
 }
@@ -31,7 +31,7 @@ export const adminDiscriminator = [244, 158, 220, 65, 8, 73, 4, 65]
  */
 export class Admin implements AdminArgs {
   private constructor(
-    readonly index: beet.bignum,
+    readonly index: number,
     readonly address: web3.PublicKey,
     readonly permissions: Permissions
   ) {}
@@ -146,17 +146,7 @@ export class Admin implements AdminArgs {
    */
   pretty() {
     return {
-      index: (() => {
-        const x = <{ toNumber: () => number }>this.index
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
+      index: this.index,
       address: this.address.toBase58(),
       permissions: 'Permissions.' + Permissions[this.permissions],
     }
@@ -175,7 +165,7 @@ export const adminBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['index', beet.u64],
+    ['index', beet.u8],
     ['address', beetSolana.publicKey],
     ['permissions', permissionsBeet],
   ],

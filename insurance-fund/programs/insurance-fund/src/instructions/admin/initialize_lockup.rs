@@ -78,7 +78,7 @@ pub struct InitializeLockup<'info> {
     #[account(
         mut,
         constraint = admin.address == signer.key(),
-        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::InvalidSigner,
+        constraint = admin.has_permissions(Permissions::AssetsAndLockups) @ InsuranceFundError::InvalidSigner,
     )]
     pub admin: Account<'info, Admin>,
 

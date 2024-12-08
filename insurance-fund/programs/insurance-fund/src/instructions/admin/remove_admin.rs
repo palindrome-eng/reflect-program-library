@@ -37,7 +37,7 @@ pub struct RemoveAdmin<'info> {
     #[account(
         mut,
         constraint = signer.key() == admin.address @ InsuranceFundError::InvalidSigner,
-        // Either self-remove, or only remove if the other admin has smaller permissions (equal is not enough).
+        // Either self-remove, or only remove if the other admin has smaller permissions (equal is not enough, unless superadmin).
         constraint = admin.key() == admin_to_remove.key() || admin.has_permissions_over(admin_to_remove.permissions) @ InsuranceFundError::PermissionsTooLow
     )]
     pub admin: Account<'info, Admin>,

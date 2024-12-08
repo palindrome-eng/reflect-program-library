@@ -24,6 +24,20 @@ pub mod insurance_fund {
         )
     }
 
+    pub fn add_admin(
+        ctx: Context<AddAdmin>,
+        args: AddAdminArgs
+    ) -> Result<()> {
+        instructions::add_admin(ctx, args)
+    }
+
+    pub fn remove_admin(
+        ctx: Context<RemoveAdmin>,
+        args: RemoveAdminArgs
+    ) -> Result<()> {
+        instructions::remove_admin(ctx, args)
+    }
+
     pub fn add_asset(
         ctx: Context<AddAsset>,
     ) -> Result<()> {

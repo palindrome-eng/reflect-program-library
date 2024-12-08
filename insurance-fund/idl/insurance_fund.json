@@ -103,6 +103,82 @@
       ]
     },
     {
+      "name": "addAdmin",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "existingAdmin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "newAdmin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddAdminArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeAdmin",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "adminToRemove",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RemoveAdminArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "addAsset",
       "accounts": [
         {
@@ -444,16 +520,6 @@
         },
         {
           "name": "rewardMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userAssetAta",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userRewardAta",
           "isMut": true,
           "isSigner": false
         },
@@ -882,6 +948,11 @@
           "isSigner": false
         },
         {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "assetMint",
           "isMut": true,
           "isSigner": false
@@ -1013,7 +1084,7 @@
         "fields": [
           {
             "name": "index",
-            "type": "u64"
+            "type": "u8"
           },
           {
             "name": "address",
@@ -1329,6 +1400,10 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "address",
+            "type": "publicKey"
+          },
           {
             "name": "permissions",
             "type": {
@@ -1693,7 +1768,10 @@
             "name": "Freeze"
           },
           {
-            "name": "AddAsset"
+            "name": "AssetsAndLockups"
+          },
+          {
+            "name": "Slashing"
           },
           {
             "name": "Superadmin"
@@ -1936,6 +2014,100 @@
         {
           "name": "processedBy",
           "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "AddAssetEvent",
+      "fields": [
+        {
+          "name": "admin",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "asset",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "oracle",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "ChangeAdminEvent",
+      "fields": [
+        {
+          "name": "affectedAdmin",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "signer",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "permissionChange",
+          "type": {
+            "option": {
+              "defined": "Permissions"
+            }
+          },
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "InitializeInsuranceFund",
+      "fields": [
+        {
+          "name": "newAdmin",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "InitializeLockupEvent",
+      "fields": [
+        {
+          "name": "admin",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "lockup",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "asset",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "duration",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "ManageFreezeEvent",
+      "fields": [
+        {
+          "name": "admin",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "frozen",
+          "type": "bool",
           "index": false
         }
       ]

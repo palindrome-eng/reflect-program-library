@@ -55,7 +55,7 @@ pub struct AddAsset<'info> {
     #[account(
         mut,
         constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
-        constraint = admin.has_permissions(Permissions::AddAsset) @ InsuranceFundError::PermissionsTooLow
+        constraint = admin.has_permissions(Permissions::AssetsAndLockups) @ InsuranceFundError::PermissionsTooLow
     )]
     pub admin: Account<'info, Admin>,
 

@@ -1,3 +1,10 @@
+pub mod get_price_from_pyth;
+pub use get_price_from_pyth::*;
+
+pub mod get_price_from_switchboard;
+pub use get_price_from_switchboard::*;
+
+use crate::errors::InsuranceFundError;
 
 #[derive(Debug)]
 pub struct OraclePrice {
@@ -49,11 +56,3 @@ impl OraclePrice {
         Ok(price)
     }
 }
-
-pub mod get_price_from_pyth;
-pub use get_price_from_pyth::*;
-
-pub mod get_price_from_switchboard;
-pub use get_price_from_switchboard::*;
-
-use crate::errors::InsuranceFundError;
