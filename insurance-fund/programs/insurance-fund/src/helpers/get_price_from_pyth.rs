@@ -16,10 +16,10 @@ pub fn get_price_from_pyth(
         &oracle.price_message.feed_id
     )?;
 
-    let precision = price.exponent;
+    let exponent = price.exponent;
 
     Ok(OraclePrice {
         price: price.price,
-        precision
+        exponent
     })
 }

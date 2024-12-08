@@ -20,7 +20,7 @@ pub struct RestakeArgs {
 pub fn restake(
     ctx: Context<Restake>,
     args: RestakeArgs
-) -> Result<()> {
+) -> anchor_lang::prelude::Result<()> {
     let RestakeArgs {
         amount,
         lockup_id: _
@@ -47,21 +47,30 @@ pub fn restake(
     deposit.unlock_ts = unix_ts + lockup.duration;
     deposit.last_slashed = None;
     deposit.amount_slashed = 0;
+
+    msg!("Getting oracle price.");
     
     let oracle_price = asset
         .get_price(oracle, &clock)?;
 
+    msg!("Oracle Price: {:?}", oracle_price);
+
     // Multiply oracle price by amount of tokens, 
     // then divide by token decimals to get value of 1 full token instead of `lamports`.
-    let usd_value = oracle_price
-        .mul(amount)?
+    let usd_value_with_decimals = oracle_price.mul(amount)?;
+    msg!("USD Value with decimals: {:?}", usd_value_with_decimals);
+
+    let usd_value: u64 = usd_value_with_decimals
         .checked_div(
-            10_u64
+            10_u128
             .checked_pow(asset_mint.decimals as u32)
             .ok_or(InsuranceFundError::MathOverflow)?
         )
-        .ok_or(InsuranceFundError::MathOverflow)?;
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .try_into()
+        .map_err(|_| InsuranceFundError::MathOverflow)?;
 
+    msg!("USD Value: {:?}", usd_value);
     deposit.initial_usd_value = usd_value;
 
     let hot_wallet_deposit = settings.calculate_hot_wallet_deposit(amount)?;

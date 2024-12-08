@@ -1,25 +1,26 @@
 
+#[derive(Debug)]
 pub struct OraclePrice {
     pub price: i64,
-    pub precision: i32,
+    pub exponent: i32,
 }
 
 impl OraclePrice {
     pub fn mul(
         &self,
         amount: u64
-    ) -> Result<u64, InsuranceFundError> {
-        let price: u64;
+    ) -> Result<u128, InsuranceFundError> {
+        let price: u128;
 
-        if self.precision >= 0 {
+        if self.exponent >= 0 {
             price = (amount as i128)
                 .checked_mul(self.price.into())
                 .ok_or(InsuranceFundError::MathOverflow.into())?
-                // If exponent is positive, divide by power of 10.
-                .checked_div(
+                // If exponent is positive, multiply by power of 10.
+                .checked_mul(
                     i128::try_from(
                         10_i64
-                            .checked_pow(self.precision.abs_diff(0))
+                            .checked_pow(self.exponent.abs_diff(0))
                             .ok_or(InsuranceFundError::MathOverflow.into())?
                     )
                     .map_err(|_| InsuranceFundError::MathOverflow)?
@@ -31,11 +32,11 @@ impl OraclePrice {
             price = (amount as i128)
                 .checked_mul(self.price.into())
                 .ok_or(InsuranceFundError::MathOverflow.into())?
-                // If exponent is negative, multiply by power of 10.
-                .checked_mul(
+                // If exponent is negative, divide by power of 10.
+                .checked_div(
                     i128::try_from(
                         10_i64
-                            .checked_pow(self.precision.abs_diff(0))
+                            .checked_pow(self.exponent.abs_diff(0))
                             .ok_or(InsuranceFundError::MathOverflow.into())?
                     )
                     .map_err(|_| InsuranceFundError::MathOverflow)?

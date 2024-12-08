@@ -7,7 +7,7 @@ import {
     SystemProgram,
     LAMPORTS_PER_SOL,
     SYSVAR_CLOCK_PUBKEY,
-    TransactionMessage
+    TransactionMessage, Connection
 } from "@solana/web3.js";
 import {before} from "mocha";
 import {
@@ -19,7 +19,7 @@ import {
     PROGRAM_ID,
     Settings,
     Slash
-} from "../sdk/generated";
+} from "../sdk/src/generated";
 import {expect} from "chai";
 import createToken from "./helpers/createToken";
 import BN from "bn.js";
@@ -44,6 +44,7 @@ describe("insurance-fund", () => {
     let rewardToken: PublicKey;
     let price: BN;
     let pricePrecision: BN;
+    let admin: PublicKey;
 
     const lsts: PublicKey[] = [];
 
@@ -67,19 +68,30 @@ describe("insurance-fund", () => {
             provider.connection,
             provider
         );
+
+        [admin] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("admin"),
+                new BN(0).toArrayLike(Buffer, "le", 1)
+            ],
+            PROGRAM_ID
+        );
     });
 
     it("Initializes insurance fund.", async () => {
+
         await program
             .methods
             .initializeInsuranceFund({
                 coldWallet,
                 coldWalletShareBps: new BN(0.7 * 10_000),
                 hotWalletShareBps: new BN(0.3 * 10_000),
-                rewardMint: rewardToken
+                rewardMint: rewardToken,
+                cooldownDuration: new BN(30) // 30 seconds
             })
             .accounts({
-                superadmin: provider.publicKey,
+                signer: provider.publicKey,
+                admin,
                 settings,
                 systemProgram: SystemProgram.programId,
             })
@@ -87,12 +99,12 @@ describe("insurance-fund", () => {
 
         const {
             coldWallet: setColdWallet,
-            superadmin,
-            bump,
             lockups,
             frozen,
             sharesConfig,
-            rewardConfig
+            rewardConfig,
+            admins,
+            cooldownDuration
         } = await Settings.fromAccountAddress(
             provider.connection,
             settings
@@ -100,7 +112,8 @@ describe("insurance-fund", () => {
 
         expect(setColdWallet.toString()).eq(coldWallet.toString());
         expect(lockups.toString()).eq("0");
-        expect(superadmin.toString()).eq(provider.publicKey.toString());
+        expect(admins.toString()).eq("1");
+        expect(cooldownDuration.toString()).eq(`${30}`);
         expect(sharesConfig.coldWalletShareBps.toString()).eq(`${7_000}`);
         expect(sharesConfig.hotWalletShareBps.toString()).eq(`${3_000}`);
         expect(frozen).eq(false);
@@ -114,7 +127,8 @@ describe("insurance-fund", () => {
                 freeze: true
             })
             .accounts({
-                superadmin: provider.publicKey,
+                admin,
+                signer: provider.publicKey,
                 settings
             })
             .rpc()
@@ -144,7 +158,8 @@ describe("insurance-fund", () => {
                 asset,
                 systemProgram: SystemProgram.programId,
                 settings,
-                superadmin: provider.publicKey,
+                signer: provider.publicKey,
+                admin,
                 // Just to pass the test
                 oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
             })
@@ -162,7 +177,8 @@ describe("insurance-fund", () => {
                 freeze: false
             })
             .accounts({
-                superadmin: provider.publicKey,
+                admin,
+                signer: provider.publicKey,
                 settings
             })
             .rpc();
@@ -204,7 +220,8 @@ describe("insurance-fund", () => {
                     asset,
                     systemProgram: SystemProgram.programId,
                     settings,
-                    superadmin: provider.publicKey,
+                    signer: provider.publicKey,
+                    admin,
                     // Just to pass the test
                     oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
                 })
@@ -284,7 +301,8 @@ describe("insurance-fund", () => {
 
                     })
                     .accounts({
-                        superadmin: provider.publicKey,
+                        admin,
+                        signer: provider.publicKey,
                         settings,
                         lockup,
                         assetMint: mint,
@@ -299,7 +317,6 @@ describe("insurance-fund", () => {
 
                 const {
                     asset: assetMint,
-                    bump,
                     duration: setDuration,
                     yieldBps,
                     minDeposit,
@@ -309,7 +326,8 @@ describe("insurance-fund", () => {
                     depositCap,
                     rewardBoosts,
                     slashState,
-                    locked
+                    locked,
+                    totalDeposits
                 } = await Lockup.fromAccountAddress(
                     provider.connection,
                     lockup
@@ -327,6 +345,7 @@ describe("insurance-fund", () => {
                 expect(slashState.index.toString()).eq("0");
                 expect(slashState.amount.toString()).eq("0");
                 expect(locked).eq(false);
+                expect(totalDeposits.toString()).eq("0");
             }
         }
     });

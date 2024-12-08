@@ -1,7 +1,8 @@
+use std::ops::Mul;
+
 use anchor_lang::prelude::*;
 use switchboard_solana::AggregatorAccountData;
 use crate::constants::ORACLE_MAXIMUM_AGE;
-
 use super::OraclePrice;
 
 pub fn get_price_from_switchboard(
@@ -21,6 +22,8 @@ pub fn get_price_from_switchboard(
 
     Ok(OraclePrice {
         price: result.try_into()?,
-        precision: result.scale as i32
+        // result.scale is always decimal places to move to the **LEFT** to yield the actual value
+        // since pyth can return both negative or positive scales, we have to add negative sign here
+        exponent: (result.scale as i32).mul(-1)
     })
 }
