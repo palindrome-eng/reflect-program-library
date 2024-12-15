@@ -10,20 +10,25 @@ use anchor_spl::token::{
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
+pub enum RequestWithdrawalMode {
+    ExactIn(u64), // Exact receipt tokens burned
+    ExactOut(u64) // Exact base tokens received
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
 pub struct RequestWithdrawalArgs {
     pub lockup_id: u64,
     pub deposit_id: u64,
     pub reward_boost_id: Option<u64>,
-    pub amount: u64,
+    pub mode: RequestWithdrawalMode,
 }
 
 pub fn request_withdrawal(
     ctx: Context<RequestWithdrawal>,
     args: RequestWithdrawalArgs
 ) -> Result<()> {
-
     let RequestWithdrawalArgs {
-        amount,
+        mode,
         deposit_id,
         lockup_id: _,
         reward_boost_id: __
@@ -39,11 +44,52 @@ pub fn request_withdrawal(
     let cooldown = &mut ctx.accounts.cooldown;
     let lockup_cold_vault = &ctx.accounts.lockup_cold_vault;
     let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
+    let receipt_token_mint = &ctx.accounts.receipt_token_mint;
+    let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
 
     let total_rewards = asset_reward_pool.amount;
+    let total_receipts = receipt_token_mint.supply;
     let total_deposits = lockup_cold_vault.amount
         .checked_add(lockup_hot_vault.amount)
         .ok_or(InsuranceFundError::MathOverflow)?;
+
+    let receipt_to_deposit_exchange_rate_bps = total_deposits
+        .checked_mul(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(total_receipts)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    let (
+        base_amount, 
+        receipt_amount
+    ) = match args.mode {
+        RequestWithdrawalMode::ExactIn(receipt_tokens) => {
+            (
+                receipt_tokens
+                    .checked_mul(receipt_to_deposit_exchange_rate_bps)
+                    .ok_or(InsuranceFundError::MathOverflow)?
+                    .checked_div(10_000)
+                    .ok_or(InsuranceFundError::MathOverflow)?,
+                receipt_tokens
+            )
+        },
+        RequestWithdrawalMode::ExactOut(base_tokens) => {
+            (
+                base_tokens,
+                base_tokens
+                    .checked_mul(10_000)
+                    .ok_or(InsuranceFundError::MathOverflow)?
+                    .checked_div(receipt_to_deposit_exchange_rate_bps)
+                    .ok_or(InsuranceFundError::MathOverflow)?
+            )
+        }
+    };
+
+    // Check if user actually owns enough receipts to process this
+    require!(
+        receipt_amount <= deposit_receipt_token_account.amount,
+        InsuranceFundError::NotEnoughReceiptTokens
+    );
 
     // Here we check if the amount is not bigger than allowed share, no matter if the
     // cold-hot wallet ratios are currently balanced.
@@ -54,28 +100,39 @@ pub fn request_withdrawal(
         .ok_or(InsuranceFundError::MathOverflow)?;
 
     require!(
-        amount <= max_allowed_withdrawal,
+        base_amount <= max_allowed_withdrawal,
         InsuranceFundError::WithdrawalThresholdOverflow
     );
 
     // If above passes, we check if the pools are actually balanced 
     // well enough to process the withdrawal.
     require!(
-        amount <= lockup_hot_vault.amount,
+        base_amount <= lockup_hot_vault.amount,
         InsuranceFundError::PoolImbalance
     );
 
-    cooldown.base_amount = amount;
+    cooldown.base_amount = base_amount;
     cooldown.deposit_id = deposit_id;
     cooldown.user = user.key();
     cooldown.lockup_id = lockup.index;
 
+    let receipt_to_reward_exchange_rate_bps = total_rewards
+        .checked_mul(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(total_receipts)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    let rewards = deposit.compute_accrued_rewards(
+        receipt_to_reward_exchange_rate_bps, 
+        receipt_amount
+    )?;
+
     cooldown.rewards = match lockup.yield_mode {
         YieldMode::Single => {
-            CooldownRewards::Single(user_rewards)
+            CooldownRewards::Single(rewards)
         },
         YieldMode::Dual(_) => {
-            CooldownRewards::Dual([user_rewards, 0])
+            CooldownRewards::Dual([rewards, 0])
         }
     };
 
@@ -84,13 +141,13 @@ pub fn request_withdrawal(
     // We're not subtracting from the deposit yet, since user may still be slashed.
     // However, user_rewards are locked-up in the Cooldown account at the moment of this call, so rewards are not accrued anymore.
 
-    asset.decrease_tvl(amount)?;
+    asset.decrease_tvl(base_amount)?;
 
     emit!(WithdrawEvent {
         asset: asset_mint.key(),
         from: user.key(),
-        base_amount: amount,
-        reward_amount: user_rewards
+        base_amount: base_amount,
+        reward_amount: rewards
     });
 
     Ok(())
@@ -129,6 +186,12 @@ pub struct RequestWithdrawal<'info> {
 
     #[account(
         mut,
+        address = lockup.receipt_mint
+    )]
+    pub receipt_token_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
         seeds = [
             DEPOSIT_SEED.as_bytes(),
             lockup.key().as_ref(),
@@ -143,6 +206,22 @@ pub struct RequestWithdrawal<'info> {
         has_one = user
     )]
     pub deposit: Account<'info, Deposit>,
+
+    #[account(
+        mut,
+        seeds = [
+            // This scheme could be less complex, but keep it this
+            // way in case of future updates that would possibly allow 
+            // multi-asset deposits with multiple receipts.
+            DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
+            deposit.key().as_ref(),
+            receipt_token_mint.key().as_ref(),
+        ],
+        bump,
+        token::mint = receipt_token_mint,
+        token::authority = deposit,
+    )]
+    pub deposit_receipt_token_account: Account<'info, TokenAccount>,
 
     #[account(
         init,
@@ -241,3 +320,27 @@ pub struct RequestWithdrawal<'info> {
     #[account()]
     pub system_program: Program<'info, System>,
 }
+
+// impl RequestWithdrawal<'_> {
+//     pub fn validate_withdrawal_amounts(
+//         &self,
+//         mode: &RequestWithdrawalMode
+//     ) -> Result<()> {
+//         match mode {
+//             RequestWithdrawalMode::ExactIn(receipt_tokens) => {
+//                 require!(
+//                     receipt_tokens <= self.deposit_receipt_token_account.amount,
+//                     InsuranceFundError::NotEnoughReceiptTokens
+//                 );
+//             },
+//             RequestWithdrawalMode::ExactOut(tokens_out) => {
+//                 let total_receipts = self.receipt_token_mint.supply;
+//                 let total_deposited_tokens = self.lockup_hot_vault.amount
+//                     .checked_add(self.lockup_cold_vault.amount)
+//                     .ok_or(InsuranceFundError::MathOverflow)?;
+
+
+//             }
+//         }
+//     }
+// }

@@ -20,6 +20,9 @@ pub enum InsuranceFundError {
     #[msg("NotEnoughFunds")]
     NotEnoughFunds,
 
+    #[msg("NotEnoughReceiptTokens")]
+    NotEnoughReceiptTokens,
+
     #[msg("NotEnoughFundsToSlash")]
     NotEnoughFundsToSlash,
 

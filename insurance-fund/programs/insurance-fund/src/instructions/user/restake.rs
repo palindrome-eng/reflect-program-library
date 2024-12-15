@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token;
 use crate::errors::InsuranceFundError;
 use crate::events::RestakeEvent;
 use crate::states::*;
@@ -42,6 +41,7 @@ pub fn restake(
     let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
     let receipt_token_mint = &ctx.accounts.receipt_token_mint;
     let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
+    let reward_pool = &ctx.accounts.reward_pool;
 
     let clock = Clock::get()?;
     let unix_ts = clock.unix_timestamp as u64;
@@ -99,13 +99,23 @@ pub fn restake(
     deposit.unlock_ts = unix_ts + lockup.duration;
     deposit.last_slashed = None;
     deposit.amount_slashed = 0;
+
+    let total_rewards = reward_pool.amount;
+    let initial_receipt_exchange_rate_bps = total_rewards
+        .checked_mul(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(total_receipts)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    deposit.initial_receipt_exchange_rate_bps = initial_receipt_exchange_rate_bps;
     
     let oracle_price = asset
         .get_price(oracle, &clock)?;
 
     // Multiply oracle price by amount of tokens, 
     // then divide by token decimals to get value of 1 full token instead of `lamports`.
-    let usd_value_with_decimals = oracle_price.mul(amount)?;
+    let usd_value_with_decimals = oracle_price
+        .mul(amount)?;
 
     let usd_value: u64 = usd_value_with_decimals
         .checked_div(
@@ -277,6 +287,25 @@ pub struct Restake<'info> {
         constraint = user_asset_ata.amount >= args.amount @ InsuranceFundError::NotEnoughFunds,
     )]
     pub user_asset_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = settings.reward_config.main
+    )]
+    pub reward_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        seeds = [
+            REWARD_POOL_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            reward_mint.key().as_ref(),
+        ],
+        bump,
+        token::mint = reward_mint,
+        token::authority = lockup,
+    )]
+    pub reward_pool: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: Directly checking the address + checking type later.
     #[account(
