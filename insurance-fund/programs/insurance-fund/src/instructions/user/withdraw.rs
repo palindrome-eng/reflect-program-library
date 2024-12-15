@@ -128,7 +128,7 @@ pub struct Withdraw<'info> {
 
     #[account(
         mut,
-        address = lockup.asset,
+        address = lockup.asset_mint,
     )]
     pub asset_mint: Box<Account<'info, Mint>>,
 

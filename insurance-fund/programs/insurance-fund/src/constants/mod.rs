@@ -34,6 +34,9 @@ pub const INTENT_SEED: &str = "intent";
 pub const COOLDOWN_SEED: &str = "cooldown";
 
 #[constant]
+pub const COOLDOWN_VAULT_SEED: &str = "cooldown_vault";
+
+#[constant]
 pub const ADMIN_SEED: &str = "admin";
 
 #[constant]

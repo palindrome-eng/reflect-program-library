@@ -184,6 +184,20 @@ pub struct InitializeLockup<'info> {
     pub pool_share_receipt: Account<'info, Mint>,
 
     #[account(
+        init,
+        payer = signer,
+        seeds = [
+            COOLDOWN_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            pool_share_receipt.key().as_ref(),
+        ],
+        bump,
+        token::mint = pool_share_receipt,
+        token::authority = lockup,
+    )]
+    pub lockup_cooldown_vault: Account<'info, TokenAccount>,
+
+    #[account(
         address = Token::id()
     )]
     pub token_program: Program<'info, Token>,

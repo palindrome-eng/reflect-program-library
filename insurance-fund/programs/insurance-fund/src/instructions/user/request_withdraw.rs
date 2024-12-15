@@ -7,6 +7,8 @@ use anchor_spl::token::{
     Mint,
     TokenAccount,
     Token,
+    transfer,
+    Transfer
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
@@ -46,6 +48,8 @@ pub fn request_withdrawal(
     let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
     let receipt_token_mint = &ctx.accounts.receipt_token_mint;
     let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
+    let lockup_cooldown_vault = &ctx.accounts.lockup_cooldown_vault;
+    let token_program = &ctx.accounts.token_program;
 
     let total_rewards = asset_reward_pool.amount;
     let total_receipts = receipt_token_mint.supply;
@@ -123,6 +127,7 @@ pub fn request_withdrawal(
         .ok_or(InsuranceFundError::MathOverflow)?;
 
     let rewards = deposit.compute_accrued_rewards(
+        // This should be read from lockup, since we need the accumulator here
         receipt_to_reward_exchange_rate_bps, 
         receipt_amount
     )?;
@@ -138,10 +143,29 @@ pub fn request_withdrawal(
 
     cooldown.lock(settings.cooldown_duration)?;
 
-    // We're not subtracting from the deposit yet, since user may still be slashed.
-    // However, user_rewards are locked-up in the Cooldown account at the moment of this call, so rewards are not accrued anymore.
+    let lockup_key = lockup.key();
+    let seeds = &[
+        DEPOSIT_SEED.as_bytes(),
+        lockup_key.as_ref(),
+        &args.deposit_id.to_le_bytes(),
+        &[deposit.bump]
+    ];
 
-    asset.decrease_tvl(base_amount)?;
+    // Transfer receipts into cooldown vault
+    // We need this to be able to still slash (since slashing is based on the total receipt supply)
+    // but not influence others rewards (since reward calculation is based on the total receipt supply - cooldown vault balance)
+    transfer(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(), 
+            Transfer {
+                from: deposit_receipt_token_account.to_account_info(),
+                to: lockup_cooldown_vault.to_account_info(),
+                authority: deposit.to_account_info()
+            },
+            &[seeds]
+        ), 
+        receipt_amount
+    )?;
 
     emit!(WithdrawEvent {
         asset: asset_mint.key(),
@@ -200,8 +224,6 @@ pub struct RequestWithdrawal<'info> {
         bump,
         // Cannot withdraw before unlock timestamp
         constraint = deposit.unlock_ts <= (clock.unix_timestamp as u64) @ InsuranceFundError::LockupInForce,
-        // Cannot withdraw more than in deposit
-        constraint = deposit.amount >= args.amount @ InsuranceFundError::NotEnoughFunds,
         // Enforce account ownership
         has_one = user
     )]
@@ -266,7 +288,7 @@ pub struct RequestWithdrawal<'info> {
 
     #[account(
         mut,
-        address = lockup.asset,
+        address = lockup.asset_mint,
     )]
     pub asset_mint: Box<Account<'info, Mint>>,
 
@@ -310,6 +332,19 @@ pub struct RequestWithdrawal<'info> {
         token::authority = lockup,
     )]
     pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        seeds = [
+            COOLDOWN_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            receipt_token_mint.key().as_ref(),
+        ],
+        bump,
+        token::mint = receipt_token_mint,
+        token::authority = lockup,
+    )]
+    pub lockup_cooldown_vault: Account<'info, TokenAccount>,
 
     #[account()]
     pub clock: Sysvar<'info, Clock>,
