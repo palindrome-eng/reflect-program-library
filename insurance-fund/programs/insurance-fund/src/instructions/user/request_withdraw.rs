@@ -37,13 +37,33 @@ pub fn request_withdrawal(
     let asset = &mut ctx.accounts.asset;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
     let cooldown = &mut ctx.accounts.cooldown;
+    let lockup_cold_vault = &ctx.accounts.lockup_cold_vault;
+    let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
 
     let total_rewards = asset_reward_pool.amount;
+    let total_deposits = lockup_cold_vault.amount
+        .checked_add(lockup_hot_vault.amount)
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
-    let total_lockup = lockup.total_deposits;
-    let user_lockup = deposit.amount;
-    let user_share = user_lockup as f64 / total_lockup as f64;
-    let user_rewards = (total_rewards as f64 * user_share) as u64;
+    // Here we check if the amount is not bigger than allowed share, no matter if the
+    // cold-hot wallet ratios are currently balanced.
+    let max_allowed_withdrawal = total_deposits
+        .checked_mul(settings.shares_config.hot_wallet_share_bps)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    require!(
+        amount <= max_allowed_withdrawal,
+        InsuranceFundError::WithdrawalThresholdOverflow
+    );
+
+    // If above passes, we check if the pools are actually balanced 
+    // well enough to process the withdrawal.
+    require!(
+        amount <= lockup_hot_vault.amount,
+        InsuranceFundError::PoolImbalance
+    );
 
     cooldown.base_amount = amount;
     cooldown.deposit_id = deposit_id;
@@ -65,7 +85,6 @@ pub fn request_withdrawal(
     // However, user_rewards are locked-up in the Cooldown account at the moment of this call, so rewards are not accrued anymore.
 
     asset.decrease_tvl(amount)?;
-    lockup.decrease_deposits(amount)?;
 
     emit!(WithdrawEvent {
         asset: asset_mint.key(),
@@ -126,9 +145,7 @@ pub struct RequestWithdrawal<'info> {
     pub deposit: Account<'info, Deposit>,
 
     #[account(
-        // We use init_if_needed since user may want to increase their withdrawal before the cooldown ends.
-        // In such case, we're just gonna 'refresh' the cooldown, and the new total amount will have to wait entire cooldown period again.
-        init_if_needed,
+        init,
         seeds = [
             COOLDOWN_SEED.as_bytes(),
             &deposit.key().to_bytes(),
@@ -183,17 +200,24 @@ pub struct RequestWithdrawal<'info> {
     #[account(
         mut,
         seeds = [
-            VAULT_SEED.as_bytes(),
+            HOT_VAULT_SEED.as_bytes(),
             lockup.key().as_ref(),
             asset_mint.key().as_ref(),
         ],
         bump,
-        // This should never happen
-        constraint = lockup_asset_vault.amount >= args.amount @ InsuranceFundError::NotEnoughFunds,
-        token::mint = asset_mint,
-        token::authority = lockup
     )]
-    pub lockup_asset_vault: Box<Account<'info, TokenAccount>>,
+    pub lockup_hot_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [
+            COLD_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            asset_mint.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub lockup_cold_vault: Account<'info, TokenAccount>,
 
     #[account(
         mut,

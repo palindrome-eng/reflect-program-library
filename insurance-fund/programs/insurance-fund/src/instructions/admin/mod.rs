@@ -21,3 +21,6 @@ pub use add_admin::*;
 
 pub mod remove_admin;
 pub use remove_admin::*;
+
+pub mod update_deposit_cap;
+pub use update_deposit_cap::*;

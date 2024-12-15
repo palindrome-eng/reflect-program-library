@@ -7,7 +7,7 @@ pub const SETTINGS_SEED: &str = "settings";
 pub const LOCKUP_SEED: &str = "lockup";
 
 #[constant]
-pub const VAULT_SEED: &str = "vault";
+pub const COLD_VAULT_SEED: &str = "cold_vault";
 
 #[constant]
 pub const DEPOSIT_SEED: &str = "deposit";
@@ -35,6 +35,12 @@ pub const COOLDOWN_SEED: &str = "cooldown";
 
 #[constant]
 pub const ADMIN_SEED: &str = "admin";
+
+#[constant]
+pub const HOT_VAULT_SEED: &str = "hot_vault";
+
+#[constant]
+pub const DEPOSIT_RECEIPT_VAULT_SEED: &str = "deposit_receipt_vault";
 
 #[constant]
 pub const ORACLE_MAXIMUM_AGE: u64 = 60;

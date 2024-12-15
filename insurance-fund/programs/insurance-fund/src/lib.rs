@@ -5,6 +5,7 @@ pub mod constants;
 pub mod errors;
 pub mod instructions;
 pub mod events;
+pub mod reference;
 pub mod helpers;
 use crate::instructions::*;
 

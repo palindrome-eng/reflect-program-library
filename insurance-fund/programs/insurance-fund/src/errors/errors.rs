@@ -67,4 +67,13 @@ pub enum InsuranceFundError {
 
     #[msg("PermissionsTooLow")]
     PermissionsTooLow,
+
+    #[msg("WithdrawalThresholdOverflow")]
+    WithdrawalThresholdOverflow,
+
+    #[msg("PoolImbalance")]
+    PoolImbalance,
+
+    #[msg("InvalidReceiptTokenSetup")]
+    InvalidReceiptTokenSetup,
 }

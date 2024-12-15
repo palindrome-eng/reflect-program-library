@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token;
 use crate::errors::InsuranceFundError;
 use crate::events::RestakeEvent;
 use crate::states::*;
@@ -8,7 +9,9 @@ use anchor_spl::token::{
     Token,
     TokenAccount,
     transfer,
-    Transfer
+    Transfer,
+    mint_to,
+    MintTo
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -32,16 +35,65 @@ pub fn restake(
     let asset = &mut ctx.accounts.asset;
     let asset_mint = &ctx.accounts.asset_mint;
     let user_asset_ata = &ctx.accounts.user_asset_ata;
-    let lockup_asset_vault = &ctx.accounts.lockup_asset_vault;
-    let cold_wallet_vault = &ctx.accounts.cold_wallet_vault;
     let lockup = &mut ctx.accounts.lockup;
     let deposit = &mut ctx.accounts.deposit;
     let oracle = &ctx.accounts.oracle;
+    let lockup_cold_vault = &ctx.accounts.lockup_cold_vault;
+    let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
+    let receipt_token_mint = &ctx.accounts.receipt_token_mint;
+    let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
 
     let clock = Clock::get()?;
     let unix_ts = clock.unix_timestamp as u64;
 
-    deposit.amount = amount;
+    let total_deposits = lockup_cold_vault.amount
+        .checked_add(lockup_hot_vault.amount)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    match lockup.deposit_cap {
+        Some(cap) => {
+            require!(
+                total_deposits + amount <= cap,
+                InsuranceFundError::DepositCapOverflow
+            );
+        },
+        None => {}
+    }
+
+    let total_receipts = receipt_token_mint.supply;
+
+    let receipt_exchange_rate_bps = total_deposits
+        .checked_mul(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(total_receipts)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    let total_receipts_to_mint = amount
+        .checked_mul(receipt_exchange_rate_bps)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    let seeds = &[
+        LOCKUP_SEED.as_bytes(),
+        &args.lockup_id.to_le_bytes(),
+        &[lockup.bump]
+    ];
+
+    // Mint receipts to deposit-owned token account.
+    mint_to(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(), 
+            MintTo {
+                to: deposit_receipt_token_account.to_account_info(),
+                mint: receipt_token_mint.to_account_info(),
+                authority: lockup.to_account_info()
+            }, 
+            &[seeds]
+        ), 
+        amount
+    )?;
+
     deposit.lockup = lockup.key();
     deposit.user = user.key();
     deposit.unlock_ts = unix_ts + lockup.duration;
@@ -67,16 +119,17 @@ pub fn restake(
 
     deposit.initial_usd_value = usd_value;
 
-    let hot_wallet_deposit = settings.calculate_hot_wallet_deposit(amount)?;
+    let hot_wallet_deposit = settings
+        .calculate_hot_wallet_deposit(amount)?;
 
-    // Transfer to multisig
+    // Transfer to cold wallet
     transfer(
         CpiContext::new(
             token_program.to_account_info(),
             Transfer {
                 from: user_asset_ata.to_account_info(),
                 authority: user.to_account_info(),
-                to: cold_wallet_vault.to_account_info()
+                to: lockup_cold_vault.to_account_info()
             }
         ),
         amount - hot_wallet_deposit
@@ -88,7 +141,7 @@ pub fn restake(
             token_program.to_account_info(), 
             Transfer {
                 from: user_asset_ata.to_account_info(),
-                to: lockup_asset_vault.to_account_info(),
+                to: lockup_hot_vault.to_account_info(),
                 authority: user.to_account_info()
             }
         ), 
@@ -96,7 +149,6 @@ pub fn restake(
     )?;
 
     lockup.deposits += 1;
-    lockup.increase_deposits(amount)?;
 
     asset.increase_tvl(amount)?;
     asset.add_deposit()?;
@@ -144,6 +196,12 @@ pub struct Restake<'info> {
     pub lockup: Account<'info, Lockup>,
 
     #[account(
+        mut,
+        address = lockup.receipt_mint
+    )]
+    pub receipt_token_mint: Account<'info, Mint>,
+
+    #[account(
         init,
         payer = user,
         seeds = [
@@ -156,19 +214,22 @@ pub struct Restake<'info> {
     )]
     pub deposit: Account<'info, Deposit>,
 
-    // For now it's SystemAccount - should be Squads multisig type?
     #[account(
-        mut,
-        address = settings.cold_wallet
+        init,
+        payer = user,
+        seeds = [
+            // This scheme could be less complex, but keep it this
+            // way in case of future updates that would possibly allow 
+            // multi-asset deposits with multiple receipts.
+            DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
+            deposit.key().as_ref(),
+            receipt_token_mint.key().as_ref(),
+        ],
+        bump,
+        token::mint = receipt_token_mint,
+        token::authority = deposit,
     )]
-    pub cold_wallet: SystemAccount<'info>,
-
-    #[account(
-        mut,
-        associated_token::mint = asset_mint,
-        associated_token::authority = cold_wallet
-    )]
-    pub cold_wallet_vault: Account<'info, TokenAccount>,
+    pub deposit_receipt_token_account: Account<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -183,9 +244,31 @@ pub struct Restake<'info> {
 
     #[account(
         mut,
-        address = lockup.asset,
+        address = lockup.asset_mint,
     )]
     pub asset_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        seeds = [
+            HOT_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            asset_mint.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub lockup_hot_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [
+            COLD_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            asset_mint.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub lockup_cold_vault: Account<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -194,19 +277,6 @@ pub struct Restake<'info> {
         constraint = user_asset_ata.amount >= args.amount @ InsuranceFundError::NotEnoughFunds,
     )]
     pub user_asset_ata: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        seeds = [
-            VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
-        ],
-        bump,
-        // Unwrap is safe here since in case of `None` value, only the first statement will be checked
-        constraint = lockup.deposit_cap.is_none() || lockup_asset_vault.amount + args.amount <= lockup.deposit_cap.unwrap() @ InsuranceFundError::DepositCapOverflow
-    )]
-    pub lockup_asset_vault: Account<'info, TokenAccount>,
 
     /// CHECK: Directly checking the address + checking type later.
     #[account(
