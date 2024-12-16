@@ -60,7 +60,7 @@ pub fn withdraw(
         .ok_or(InsuranceFundError::MathOverflow)?;
 
     let deposit_to_return = cooldown.receipt_amount
-        .checked_mul(total_receipts)
+        .checked_mul(receipt_to_deposit_exchange_rate_bps)
         .ok_or(InsuranceFundError::MathOverflow)?
         .checked_div(10_000)
         .ok_or(InsuranceFundError::MathOverflow)?;
