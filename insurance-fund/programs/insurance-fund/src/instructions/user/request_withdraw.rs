@@ -115,7 +115,7 @@ pub fn request_withdrawal(
         InsuranceFundError::PoolImbalance
     );
 
-    cooldown.base_amount = base_amount;
+    cooldown.receipt_amount = receipt_amount;
     cooldown.deposit_id = deposit_id;
     cooldown.user = user.key();
     cooldown.lockup_id = lockup.index;
