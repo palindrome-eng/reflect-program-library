@@ -70,4 +70,8 @@ For transparency reasons, it is advised to provide signature of the transfer ins
 
 ![Untitled Diagram drawio (5)](https://github.com/user-attachments/assets/d742a2af-c00c-4959-9923-9d313ba9f283)
 
+## New Flows with Receipt Tokens
+![flows-with-receipts](https://github.com/user-attachments/assets/510c09c3-fb6d-4a99-a186-f0ee57ebf802)
+
+
 
