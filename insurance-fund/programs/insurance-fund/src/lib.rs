@@ -97,34 +97,6 @@ pub mod insurance_fund {
         instructions::withdraw(ctx, args)
     }
 
-    pub fn initialize_slash(
-        ctx: Context<InitializeSlash>,
-        args: InitializeSlashArgs
-    ) -> Result<()> {
-        instructions::initialize_slash(ctx, args)
-    }
-    
-    pub fn slash_deposits(
-        ctx: Context<SlashDeposits>,
-        args: SlashDepositsArgs
-    ) -> Result<()> {
-        instructions::slash_deposits(ctx, args)
-    }
-
-    pub fn slash_pool(
-        ctx: Context<SlashPool>,
-        args: SlashPoolArgs
-    ) -> Result<()> {
-        instructions::slash_pool(ctx, args)
-    }
-
-    pub fn slash_cold_wallet(
-        ctx: Context<SlashColdWallet>,
-        args: SlashColdWalletArgs
-    ) -> Result<()> {
-        instructions::slash_cold_wallet(ctx, args)
-    }
-
     pub fn deposit_rewards(
         ctx: Context<DepositRewards>,
         args: DepositRewardsArgs

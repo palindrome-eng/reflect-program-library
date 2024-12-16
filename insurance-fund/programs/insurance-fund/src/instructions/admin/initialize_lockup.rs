@@ -48,7 +48,7 @@ pub fn initialize_lockup(
         amount: 0
     };
     lockup.reward_boosts = 0;
-    lockup.receipt_to_reward_exchange_rate_bps = 0;
+    lockup.receipt_to_reward_exchange_rate_bps_accumulator = 0;
     lockup.receipt_mint = receipt_mint.key();
     lockup.locked = false;
 

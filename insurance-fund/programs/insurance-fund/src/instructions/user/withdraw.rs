@@ -152,8 +152,7 @@ pub struct Withdraw<'info> {
             LOCKUP_SEED.as_bytes(),
             &args.lockup_id.to_le_bytes()
         ],
-        bump,
-        constraint = !lockup.locked @ InsuranceFundError::DepositsLocked,
+        bump
     )]
     pub lockup: Account<'info, Lockup>,
 

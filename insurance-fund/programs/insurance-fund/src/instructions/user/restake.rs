@@ -62,16 +62,10 @@ pub fn restake(
 
     let total_receipts = receipt_token_mint.supply;
 
-    let receipt_exchange_rate_bps = total_deposits
-        .checked_mul(10_000)
+    let total_receipts_to_mint: u64 = amount
+        .checked_mul(total_receipts)
         .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(total_receipts)
-        .ok_or(InsuranceFundError::MathOverflow)?;
-
-    let total_receipts_to_mint = amount
-        .checked_mul(receipt_exchange_rate_bps)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(10_000)
+        .checked_div(total_deposits)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
     let seeds = &[
@@ -91,7 +85,7 @@ pub fn restake(
             }, 
             &[seeds]
         ), 
-        amount
+        total_receipts_to_mint
     )?;
 
     deposit.lockup = lockup.key();
@@ -200,7 +194,6 @@ pub struct Restake<'info> {
             &args.lockup_id.to_le_bytes()
         ],
         bump,
-        constraint = !lockup.locked @ InsuranceFundError::DepositsLocked,
         constraint = lockup.min_deposit <= args.amount @ InsuranceFundError::DepositTooLow,
     )]
     pub lockup: Account<'info, Lockup>,

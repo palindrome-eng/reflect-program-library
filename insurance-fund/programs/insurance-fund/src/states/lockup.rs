@@ -19,11 +19,10 @@ pub struct SlashState {
 #[account]
 pub struct Lockup {
     pub bump: u8,
-    pub locked: bool,
     pub index: u64,
     pub asset_mint: Pubkey,
     pub receipt_mint: Pubkey,
-    pub receipt_to_reward_exchange_rate_bps: u64,
+    pub receipt_to_reward_exchange_rate_bps_accumulator: u64,
     pub deposit_cap: Option<u64>,
     pub min_deposit: u64,
     pub duration: u64,
@@ -34,13 +33,5 @@ pub struct Lockup {
 }
 
 impl Lockup {
-    pub const SIZE: usize = 8 + 1 + 1 + 8 * 6 + 2 * 32 + (1 + 8) + (1 + 8) + (2 * 8);
-
-    pub fn lock(&mut self) {
-        self.locked = true;
-    } 
-
-    pub fn unlock(&mut self) {
-        self.locked = false;
-    }
+    pub const SIZE: usize = 8 + 1 + 8 * 6 + 2 * 32 + (1 + 8) + (1 + 8) + (2 * 8);
 }
