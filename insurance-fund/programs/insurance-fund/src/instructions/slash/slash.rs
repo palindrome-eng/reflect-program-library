@@ -13,6 +13,7 @@ use anchor_spl::token::{
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SlashArgs {
     lockup_id: u64,
+    amount: u64,
 }
 
 pub fn slash(
@@ -24,9 +25,14 @@ pub fn slash(
     let lockup = &ctx.accounts.lockup;
     let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
 
+    let SlashArgs {
+        amount,
+        lockup_id
+    } = args;
+
     let seeds = &[
         LOCKUP_SEED.as_bytes(),
-        &args.lockup_id.to_le_bytes(),
+        &lockup_id.to_le_bytes(),
         &[lockup.bump]
     ];
     
@@ -97,6 +103,7 @@ pub struct Slash<'info> {
             asset_mint.key().as_ref(),
         ],
         bump,
+        constraint = lockup_hot_vault.amount >= args.amount @ InsuranceFundError::NotEnoughFundsToSlash
     )]
     pub lockup_hot_vault: Account<'info, TokenAccount>,
 

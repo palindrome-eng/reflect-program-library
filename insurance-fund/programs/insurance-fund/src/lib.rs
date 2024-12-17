@@ -59,13 +59,6 @@ pub mod insurance_fund {
         instructions::initialize_lockup(ctx, args)
     }
 
-    pub fn manage_lockup_lock(
-        ctx: Context<ManageLockupLock>,
-        args: ManageLockupLockArgs
-    ) -> Result<()> {
-        instructions::manage_lockup_lock(ctx, args)
-    }
-
     pub fn boost_rewards(
         ctx: Context<BoostRewards>,
         args: BoostRewardsArgs
