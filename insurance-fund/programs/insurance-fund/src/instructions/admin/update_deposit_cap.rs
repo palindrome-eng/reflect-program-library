@@ -34,7 +34,11 @@ pub struct UpdateDepositCap<'info> {
 
     #[account(
         mut,
-        constraint = admin.address == signer.key(),
+        seeds = [
+            ADMIN_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump,
         constraint = admin.has_permissions(Permissions::AssetsAndLockups) @ InsuranceFundError::InvalidSigner,
     )]
     pub admin: Account<'info, Admin>,

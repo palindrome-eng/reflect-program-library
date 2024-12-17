@@ -79,4 +79,7 @@ pub enum InsuranceFundError {
 
     #[msg("InvalidReceiptTokenSetup")]
     InvalidReceiptTokenSetup,
+
+    #[msg("MinimumSuperadminsRequired")]
+    MinimumSuperadminsRequired,
 }

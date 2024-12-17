@@ -12,7 +12,6 @@ pub struct InitializeLockupArgs {
     pub min_deposit: u64,
     pub deposit_cap: u64,
     pub duration: u64,
-    pub yield_bps: u64,
     pub yield_mode: YieldMode,
 }
 
@@ -30,7 +29,6 @@ pub fn initialize_lockup(
     let InitializeLockupArgs {
         duration,
         min_deposit,
-        yield_bps,
         yield_mode,
         deposit_cap
     } = args;
@@ -76,7 +74,11 @@ pub struct InitializeLockup<'info> {
 
     #[account(
         mut,
-        constraint = admin.address == signer.key(),
+        seeds = [
+            ADMIN_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump,
         constraint = admin.has_permissions(Permissions::AssetsAndLockups) @ InsuranceFundError::InvalidSigner,
     )]
     pub admin: Account<'info, Admin>,

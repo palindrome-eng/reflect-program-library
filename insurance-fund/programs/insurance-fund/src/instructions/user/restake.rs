@@ -41,7 +41,6 @@ pub fn restake(
     let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
     let receipt_token_mint = &ctx.accounts.receipt_token_mint;
     let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
-    let reward_pool = &ctx.accounts.reward_pool;
 
     let clock = Clock::get()?;
     let unix_ts = clock.unix_timestamp as u64;
@@ -63,9 +62,9 @@ pub fn restake(
     let total_receipts = receipt_token_mint.supply;
 
     let total_receipts_to_mint: u64 = amount
-        .checked_mul(total_receipts)
+        .checked_mul(total_deposits)
         .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(total_deposits)
+        .checked_div(total_receipts)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
     let seeds = &[
@@ -94,14 +93,8 @@ pub fn restake(
     deposit.last_slashed = None;
     deposit.amount_slashed = 0;
 
-    let total_rewards = reward_pool.amount;
-    let initial_receipt_exchange_rate_bps = total_rewards
-        .checked_mul(10_000)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(total_receipts)
-        .ok_or(InsuranceFundError::MathOverflow)?;
-
-    deposit.initial_receipt_exchange_rate_bps = initial_receipt_exchange_rate_bps;
+    let receipt_exchange_rate_bps = lockup.receipt_to_reward_exchange_rate_bps_accumulator;
+    deposit.initial_receipt_exchange_rate_bps = receipt_exchange_rate_bps;
     
     let oracle_price = asset
         .get_price(oracle, &clock)?;

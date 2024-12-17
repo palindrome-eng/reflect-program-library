@@ -24,7 +24,7 @@ impl RewardConfig {
 #[account]
 pub struct Settings {
     pub bump: u8,
-    pub admins: u8,
+    pub superadmins: u8,
     pub cold_wallet: Pubkey,
     pub lockups: u64,
     pub cooldown_duration: u64,

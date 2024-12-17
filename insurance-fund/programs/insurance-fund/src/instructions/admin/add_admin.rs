@@ -14,16 +14,18 @@ pub fn add_admin(
     ctx: Context<AddAdmin>,
     args: AddAdminArgs
 ) -> Result<()> {
-
     let settings = &mut ctx.accounts.settings;
     let new_admin = &mut ctx.accounts.new_admin;
     let signer = &ctx.accounts.signer;
 
     new_admin.permissions = args.permissions;
-    new_admin.address = args.address;
-    new_admin.index = settings.admins;
-
-    settings.admins += 1;
+    
+    match args.permissions {
+        Permissions::Superadmin => {
+            settings.superadmins += 1;
+        },
+        _ => {}
+    };
 
     emit!(ChangeAdminEvent {
         affected_admin: args.address,
@@ -46,17 +48,22 @@ pub struct AddAdmin<'info> {
 
     #[account(
         mut,
-        constraint = signer.key() == existing_admin.address @ InsuranceFundError::InvalidSigner,
+        seeds = [
+            ADMIN_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump,
         constraint = existing_admin.has_permissions_over(args.permissions) @ InsuranceFundError::PermissionsTooLow
     )]
     pub existing_admin: Account<'info, Admin>,
 
     #[account(
-        init,
+        // If exists, change, grant or remove one's permissions
+        init_if_needed,
         payer = signer,
         seeds = [
             ADMIN_SEED.as_bytes(),
-            &settings.admins.to_le_bytes(),
+            args.address.as_ref(),
         ],
         bump,
         space = Admin::SIZE,
