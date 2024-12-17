@@ -59,6 +59,20 @@ pub mod insurance_fund {
         instructions::initialize_lockup(ctx, args)
     }
 
+    pub fn update_deposit_cap(
+        ctx: Context<UpdateDepositCap>,
+        args: UpdateDepositCapArgs
+    ) -> Result<()> {
+        instructions::update_deposit_cap(ctx, args)
+    }
+
+    pub fn rebalance(
+        ctx: Context<Rebalance>,
+        args: RebalanceArgs
+    ) -> Result<()> {
+        instructions::rebalance(ctx, args)
+    }
+
     pub fn boost_rewards(
         ctx: Context<BoostRewards>,
         args: BoostRewardsArgs
