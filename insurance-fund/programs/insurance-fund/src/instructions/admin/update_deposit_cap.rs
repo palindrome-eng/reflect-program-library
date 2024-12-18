@@ -1,33 +1,32 @@
 use anchor_lang::prelude::*;
-use crate::errors::InsuranceFundError;
 use crate::states::*;
 use crate::constants::*;
+use crate::errors::InsuranceFundError;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct ManageLockupLockArgs {
-    lockup_id: u64,
-    lock: bool
+pub struct UpdateDepositCapArgs {
+    pub lockup_id: u64,
+    pub new_cap: Option<u64>
 }
 
-pub fn manage_lockup_lock(
-    ctx: Context<ManageLockupLock>,
-    args: ManageLockupLockArgs
+pub fn update_deposit_cap(
+    ctx: Context<UpdateDepositCap>,
+    args: UpdateDepositCapArgs
 ) -> Result<()> {
-    let lockup = &mut ctx.accounts.lockup;
+    let UpdateDepositCapArgs {
+        lockup_id: _,
+        new_cap
+    } = args;
 
-    match args.lock {
-        true => lockup.lock(),
-        false => lockup.unlock(),
-    }
+    let lockup = &mut ctx.accounts.lockup;
+    lockup.deposit_cap = new_cap;
 
     Ok(())
 }
 
 #[derive(Accounts)]
-#[instruction(
-    args: ManageLockupLockArgs
-)]
-pub struct ManageLockupLock<'info> {
+#[instruction(args: UpdateDepositCapArgs)]
+pub struct UpdateDepositCap<'info> {
     #[account(
         mut,
     )]
@@ -35,8 +34,12 @@ pub struct ManageLockupLock<'info> {
 
     #[account(
         mut,
-        constraint = admin.address == signer.key(),
-        constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::InvalidSigner,
+        seeds = [
+            ADMIN_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump,
+        constraint = admin.has_permissions(Permissions::AssetsAndLockups) @ InsuranceFundError::InvalidSigner,
     )]
     pub admin: Account<'info, Admin>,
 

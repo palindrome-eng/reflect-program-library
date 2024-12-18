@@ -6,19 +6,19 @@ use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct RemoveAdminArgs {
-    admin_id: u8,
+    address: Pubkey,
 }
 
 pub fn remove_admin(
     ctx: Context<RemoveAdmin>,
-    _: RemoveAdminArgs
+    args: RemoveAdminArgs
 ) -> Result<()> {
-
-    let admin_to_remove = &ctx.accounts.admin_to_remove;
     let signer = &ctx.accounts.signer;
 
+    ctx.accounts.verify_removal()?;
+
     emit!(ChangeAdminEvent {
-        affected_admin: admin_to_remove.address,
+        affected_admin: args.address,
         signer: signer.key(),
         permission_change: None
     });
@@ -36,9 +36,11 @@ pub struct RemoveAdmin<'info> {
 
     #[account(
         mut,
-        constraint = signer.key() == admin.address @ InsuranceFundError::InvalidSigner,
-        // Either self-remove, or only remove if the other admin has smaller permissions (equal is not enough, unless superadmin).
-        constraint = admin.key() == admin_to_remove.key() || admin.has_permissions_over(admin_to_remove.permissions) @ InsuranceFundError::PermissionsTooLow
+        seeds = [
+            ADMIN_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump,
     )]
     pub admin: Account<'info, Admin>,
 
@@ -46,7 +48,7 @@ pub struct RemoveAdmin<'info> {
         mut,
         seeds = [
             ADMIN_SEED.as_bytes(),
-            &args.admin_id.to_le_bytes(),
+            &args.address.as_ref(),
         ],
         bump,
         close = signer,
@@ -65,4 +67,27 @@ pub struct RemoveAdmin<'info> {
 
     #[account()]
     pub system_program: Program<'info, System>,
+}
+
+impl RemoveAdmin<'_> {
+
+    pub fn verify_removal(&self) -> Result<()> {
+        require!(
+            self.admin.key() == self.admin_to_remove.key() || 
+            self.admin.has_permissions_over(self.admin_to_remove.permissions),
+            InsuranceFundError::PermissionsTooLow
+        );
+
+        match self.admin_to_remove.permissions {
+            Permissions::Superadmin => {
+                require!(
+                    self.settings.superadmins > 1,
+                    InsuranceFundError::MinimumSuperadminsRequired
+                );
+            },
+            _ => {}
+        };
+
+        Ok(())
+    }
 }

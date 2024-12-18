@@ -20,6 +20,9 @@ pub enum InsuranceFundError {
     #[msg("NotEnoughFunds")]
     NotEnoughFunds,
 
+    #[msg("NotEnoughReceiptTokens")]
+    NotEnoughReceiptTokens,
+
     #[msg("NotEnoughFundsToSlash")]
     NotEnoughFundsToSlash,
 
@@ -67,4 +70,22 @@ pub enum InsuranceFundError {
 
     #[msg("PermissionsTooLow")]
     PermissionsTooLow,
+
+    #[msg("WithdrawalThresholdOverflow")]
+    WithdrawalThresholdOverflow,
+
+    #[msg("PoolImbalance")]
+    PoolImbalance,
+
+    #[msg("InvalidReceiptTokenSetup")]
+    InvalidReceiptTokenSetup,
+
+    #[msg("MinimumSuperadminsRequired")]
+    MinimumSuperadminsRequired,
+
+    #[msg("IntentValueTooLow")]
+    IntentValueTooLow,
+
+    #[msg("WithdrawalNeedsIntent")]
+    WithdrawalNeedsIntent,
 }

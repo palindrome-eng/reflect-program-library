@@ -12,7 +12,6 @@ pub struct InitializeLockupArgs {
     pub min_deposit: u64,
     pub deposit_cap: u64,
     pub duration: u64,
-    pub yield_bps: u64,
     pub yield_mode: YieldMode,
 }
 
@@ -25,32 +24,30 @@ pub fn initialize_lockup(
     let asset_mint = &ctx.accounts.asset_mint;
     let asset = &mut ctx.accounts.asset;
     let signer = &ctx.accounts.signer;
+    let receipt_mint = &mut ctx.accounts.pool_share_receipt;
 
     let InitializeLockupArgs {
         duration,
         min_deposit,
-        yield_bps,
         yield_mode,
         deposit_cap
     } = args;
 
     lockup.bump = ctx.bumps.lockup;
     lockup.index = settings.lockups;
-    lockup.asset = asset_mint.key();
+    lockup.asset_mint = asset_mint.key();
     lockup.duration = duration;
-    lockup.yield_bps = yield_bps;
     lockup.yield_mode = yield_mode;
-
     lockup.deposits = 0;
-    lockup.total_deposits = 0;
     lockup.min_deposit = min_deposit;
     lockup.deposit_cap = if deposit_cap > 0 { Some(deposit_cap) } else { None };
-    
     lockup.slash_state = SlashState {
         index: 0,
         amount: 0
     };
     lockup.reward_boosts = 0;
+    lockup.receipt_to_reward_exchange_rate_bps_accumulator = 0;
+    lockup.receipt_mint = receipt_mint.key();
 
     settings.lockups += 1;
     asset.add_lockup()?;
@@ -77,7 +74,11 @@ pub struct InitializeLockup<'info> {
 
     #[account(
         mut,
-        constraint = admin.address == signer.key(),
+        seeds = [
+            ADMIN_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump,
         constraint = admin.has_permissions(Permissions::AssetsAndLockups) @ InsuranceFundError::InvalidSigner,
     )]
     pub admin: Account<'info, Admin>,
@@ -130,7 +131,7 @@ pub struct InitializeLockup<'info> {
         init,
         payer = signer,
         seeds = [
-            VAULT_SEED.as_bytes(),
+            HOT_VAULT_SEED.as_bytes(),
             lockup.key().as_ref(),
             asset_mint.key().as_ref(),
         ],
@@ -138,7 +139,26 @@ pub struct InitializeLockup<'info> {
         token::mint = asset_mint,
         token::authority = lockup,
     )]
-    pub lockup_asset_vault: Account<'info, TokenAccount>,
+    pub lockup_hot_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        address = settings.cold_wallet
+    )]
+    pub cold_wallet: UncheckedAccount<'info>,
+
+    #[account(
+        init,
+        payer = signer,
+        seeds = [
+            COLD_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            asset_mint.key().as_ref(),
+        ],
+        bump,
+        token::mint = asset_mint,
+        token::authority = cold_wallet,
+    )]
+    pub lockup_cold_vault: Account<'info, TokenAccount>,
 
     #[account(
         init,
@@ -153,6 +173,30 @@ pub struct InitializeLockup<'info> {
         token::authority = lockup,
     )]
     pub asset_reward_pool: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        constraint = pool_share_receipt.supply == 0 &&
+            pool_share_receipt.mint_authority.unwrap() == lockup.key() &&
+            pool_share_receipt.freeze_authority.is_none() &&
+            pool_share_receipt.is_initialized &&
+            pool_share_receipt.decimals == 9 @ InsuranceFundError::InvalidReceiptTokenSetup
+    )]
+    pub pool_share_receipt: Account<'info, Mint>,
+
+    #[account(
+        init,
+        payer = signer,
+        seeds = [
+            COOLDOWN_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            pool_share_receipt.key().as_ref(),
+        ],
+        bump,
+        token::mint = pool_share_receipt,
+        token::authority = lockup,
+    )]
+    pub lockup_cooldown_vault: Account<'info, TokenAccount>,
 
     #[account(
         address = Token::id()

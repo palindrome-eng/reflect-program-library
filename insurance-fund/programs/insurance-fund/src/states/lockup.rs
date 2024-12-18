@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+
 use crate::errors::InsuranceFundError;
 
 // Arrays are holding rates at which users are rewarded per 1 unit per lockup duration.
@@ -20,44 +21,35 @@ pub struct SlashState {
 #[account]
 pub struct Lockup {
     pub bump: u8,
-    pub locked: bool,
     pub index: u64,
-    pub asset: Pubkey,
-    pub min_deposit: u64,
-    pub total_deposits: u64,
-    pub duration: u64,
-    // Not required, yield will depend on the crank depositing into the pool
-    pub yield_bps: u64,
-    pub yield_mode: YieldMode,
+    pub asset_mint: Pubkey,
+    pub receipt_mint: Pubkey,
+    pub receipt_to_reward_exchange_rate_bps_accumulator: u64,
     pub deposit_cap: Option<u64>,
+    pub min_deposit: u64,
+    pub duration: u64,
     pub deposits: u64,
-    pub slash_state: SlashState,
     pub reward_boosts: u64,
+    pub yield_mode: YieldMode,
+    pub slash_state: SlashState,
 }
 
 impl Lockup {
-    pub const SIZE: usize = 8 + 1 + 1 + 6 * 8 + 1 + 32 + 17 + 16 + 8 + 8;
+    pub const SIZE: usize = 8 + 1 + 8 * 6 + 2 * 32 + (1 + 8) + (1 + 8) + (2 * 8);
 
-    pub fn lock(&mut self) {
-        self.locked = true;
-    } 
-
-    pub fn unlock(&mut self) {
-        self.locked = false;
-    } 
-
-    pub fn increase_deposits(&mut self, amount: u64) -> Result<()> {
-        self.total_deposits = self.total_deposits
-            .checked_add(amount)
+    pub fn increase_exchange_rate_accumulator(
+        &mut self,
+        active_receipts_supply: u64,
+        new_rewards: u64,
+    ) -> Result<()> {
+        
+        let increase_bps = new_rewards
+            .checked_mul(10_000)
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .checked_div(active_receipts_supply)
             .ok_or(InsuranceFundError::MathOverflow)?;
 
-        Ok(())
-    }
-
-    pub fn decrease_deposits(&mut self, amount: u64) -> Result<()> {
-        self.total_deposits = self.total_deposits
-            .checked_sub(amount)
-            .ok_or(InsuranceFundError::MathOverflow)?;
+        self.receipt_to_reward_exchange_rate_bps_accumulator += increase_bps;
 
         Ok(())
     }

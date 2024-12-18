@@ -35,8 +35,6 @@ pub fn initialize_insurance_fund(
     let admin = &mut ctx.accounts.admin;
     
     admin.permissions = Permissions::Superadmin;
-    admin.address = signer.key();
-    admin.index = 0;
 
     let settings = &mut ctx.accounts.settings;
 
@@ -52,7 +50,7 @@ pub fn initialize_insurance_fund(
         main: reward_mint
     };
     settings.frozen = false;
-    settings.admins += 1;
+    settings.superadmins = 1;
 
     emit!(InitializeInsuranceFundEvent {
         new_admin: signer.key()
@@ -73,8 +71,7 @@ pub struct InitializeInsuranceFund<'info> {
         payer = signer,
         seeds = [
             ADMIN_SEED.as_bytes(),
-            // Zero index.
-            &(0_u8).to_le_bytes(),
+            signer.key().as_ref()
         ],
         bump,
         space = Admin::SIZE

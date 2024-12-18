@@ -16,7 +16,6 @@ pub enum Permissions {
 #[account]
 pub struct Admin {
     pub index: u8,
-    pub address: Pubkey,
     pub permissions: Permissions
 }
 

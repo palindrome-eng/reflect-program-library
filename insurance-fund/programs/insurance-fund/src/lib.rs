@@ -5,6 +5,7 @@ pub mod constants;
 pub mod errors;
 pub mod instructions;
 pub mod events;
+pub mod reference;
 pub mod helpers;
 use crate::instructions::*;
 
@@ -58,11 +59,18 @@ pub mod insurance_fund {
         instructions::initialize_lockup(ctx, args)
     }
 
-    pub fn manage_lockup_lock(
-        ctx: Context<ManageLockupLock>,
-        args: ManageLockupLockArgs
+    pub fn update_deposit_cap(
+        ctx: Context<UpdateDepositCap>,
+        args: UpdateDepositCapArgs
     ) -> Result<()> {
-        instructions::manage_lockup_lock(ctx, args)
+        instructions::update_deposit_cap(ctx, args)
+    }
+
+    pub fn rebalance(
+        ctx: Context<Rebalance>,
+        args: RebalanceArgs
+    ) -> Result<()> {
+        instructions::rebalance(ctx, args)
     }
 
     pub fn boost_rewards(
@@ -94,34 +102,6 @@ pub mod insurance_fund {
         args: WithdrawArgs
     ) -> Result<()> {
         instructions::withdraw(ctx, args)
-    }
-
-    pub fn initialize_slash(
-        ctx: Context<InitializeSlash>,
-        args: InitializeSlashArgs
-    ) -> Result<()> {
-        instructions::initialize_slash(ctx, args)
-    }
-    
-    pub fn slash_deposits(
-        ctx: Context<SlashDeposits>,
-        args: SlashDepositsArgs
-    ) -> Result<()> {
-        instructions::slash_deposits(ctx, args)
-    }
-
-    pub fn slash_pool(
-        ctx: Context<SlashPool>,
-        args: SlashPoolArgs
-    ) -> Result<()> {
-        instructions::slash_pool(ctx, args)
-    }
-
-    pub fn slash_cold_wallet(
-        ctx: Context<SlashColdWallet>,
-        args: SlashColdWalletArgs
-    ) -> Result<()> {
-        instructions::slash_cold_wallet(ctx, args)
     }
 
     pub fn deposit_rewards(
