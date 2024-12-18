@@ -6,3 +6,6 @@ pub use request_withdraw::*;
 
 pub mod withdraw;
 pub use withdraw::*;
+
+pub mod process_intent;
+pub use process_intent::*;

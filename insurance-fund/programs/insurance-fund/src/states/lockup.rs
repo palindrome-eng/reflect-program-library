@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::errors::InsuranceFundError;
+
 // Arrays are holding rates at which users are rewarded per 1 unit per lockup duration.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub enum YieldMode {
@@ -34,4 +36,21 @@ pub struct Lockup {
 
 impl Lockup {
     pub const SIZE: usize = 8 + 1 + 8 * 6 + 2 * 32 + (1 + 8) + (1 + 8) + (2 * 8);
+
+    pub fn increase_exchange_rate_accumulator(
+        &mut self,
+        active_receipts_supply: u64,
+        new_rewards: u64,
+    ) -> Result<()> {
+        
+        let increase_bps = new_rewards
+            .checked_mul(10_000)
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .checked_div(active_receipts_supply)
+            .ok_or(InsuranceFundError::MathOverflow)?;
+
+        self.receipt_to_reward_exchange_rate_bps_accumulator += increase_bps;
+
+        Ok(())
+    }
 }

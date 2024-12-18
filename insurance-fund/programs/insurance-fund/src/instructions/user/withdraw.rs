@@ -36,6 +36,7 @@ pub fn withdraw(
         lockup_id,
     } = args;
 
+    let settings = &ctx.accounts.settings;
     let lockup = &ctx.accounts.lockup;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
     let user_reward_ata = &ctx.accounts.user_reward_ata;
@@ -71,40 +72,11 @@ pub fn withdraw(
         &[lockup.bump]
     ];
 
-    let deposit_seeds = &[
-        DEPOSIT_SEED.as_bytes(),
-        lockup.key().as_ref(),
-        &args.deposit_id.to_le_bytes(),
-        &[deposit.bump]
-    ];
-
-    // Burn user receipts
-    burn(
-        CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            Burn {
-                authority: lockup.to_account_info(),
-                from: lockup_cooldown_vault.to_account_info(),
-                mint: receipt_token_mint.to_account_info()
-            }, 
-            &[lockup_seeds]
-        ), 
-        cooldown.receipt_amount
-    )?;
-
-    // Transfer user base_amount
-    transfer(
-        CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            Transfer {
-                from: lockup_hot_vault.to_account_info(),
-                to: user_asset_ata.to_account_info(),
-                authority: lockup.to_account_info()
-            },
-            &[lockup_seeds]
-        ), 
-        deposit_to_return
-    )?;
+    let max_allowed_auto_withdrawal = total_deposits
+        .checked_mul(settings.shares_config.hot_wallet_share_bps)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(10_000)
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
     let reward = match cooldown.rewards {
         CooldownRewards::Single(base) => base,
@@ -123,6 +95,61 @@ pub fn withdraw(
             &[lockup_seeds]
         ), 
         reward
+    )?;
+
+    // Burn user receipts
+    burn(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(), 
+            Burn {
+                authority: lockup.to_account_info(),
+                from: lockup_cooldown_vault.to_account_info(),
+                mint: receipt_token_mint.to_account_info()
+            }, 
+            &[lockup_seeds]
+        ), 
+        receipt_amount
+    )?;
+
+    if deposit_to_return > max_allowed_auto_withdrawal {
+        require!(
+            ctx.accounts.intent.is_some(),
+            InsuranceFundError::WithdrawalNeedsIntent
+        );
+
+        let intent = ctx.accounts.intent.unwrap();
+        intent.amount = deposit_to_return;
+        intent.deposit = deposit.key();
+        intent.lockup = lockup.key();
+
+        return Ok(());
+    }
+
+    // Prevent account from initializing if passed and not needed.
+    require!(
+        ctx.accounts.intent.is_none(),
+        InsuranceFundError::IntentValueTooLow
+    );
+
+    // Check if the pools are actually balanced 
+    // well enough to process the withdrawal.
+    require!(
+        deposit_to_return <= lockup_hot_vault.amount,
+        InsuranceFundError::PoolImbalance
+    );
+
+    // Transfer user base_amount
+    transfer(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(), 
+            Transfer {
+                from: lockup_hot_vault.to_account_info(),
+                to: user_asset_ata.to_account_info(),
+                authority: lockup.to_account_info()
+            },
+            &[lockup_seeds]
+        ), 
+        deposit_to_return
     )?;
 
     Ok(())
@@ -202,6 +229,7 @@ pub struct Withdraw<'info> {
             &deposit.key().to_bytes(),
         ],
         bump,
+        close = user
     )]
     pub cooldown: Account<'info, Cooldown>,
 
@@ -290,9 +318,24 @@ pub struct Withdraw<'info> {
     )]
     pub lockup_cooldown_vault: Account<'info, TokenAccount>,
 
+    #[account(
+        init,
+        payer = user,
+        seeds = [
+            INTENT_SEED.as_bytes(),
+            deposit.key().as_ref()
+        ],
+        bump,
+        space = Intent::LEN,
+    )]
+    pub intent: Option<Account<'info, Intent>>,
+
     #[account()]
     pub token_program: Program<'info, Token>,
 
     #[account()]
     pub clock: Sysvar<'info, Clock>,
+
+    #[account()]
+    pub system_program: Program<'info, System>,
 }

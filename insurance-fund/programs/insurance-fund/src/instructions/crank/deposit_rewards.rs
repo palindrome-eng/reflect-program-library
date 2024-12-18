@@ -30,11 +30,26 @@ pub fn deposit_rewards(
         lockup_id: _
     } = args;
 
+    let lockup = &mut ctx.accounts.lockup;
     let caller = &ctx.accounts.caller;
     let reward_mint = &ctx.accounts.reward_mint;
     let caller_reward_ata = &ctx.accounts.caller_reward_ata;
     let asset_reward_pool = &ctx.accounts.asset_reward_pool;
     let token_program = &ctx.accounts.token_program;
+    let receipt_token_mint = &ctx.accounts.receipt_token_mint;
+    let lockup_cooldown_vault = &ctx.accounts.lockup_cooldown_vault;
+
+    let total_receipts = receipt_token_mint.supply;
+    let cooldown_receipts = lockup_cooldown_vault.amount;
+
+    let active_receipts = total_receipts
+        .checked_sub(cooldown_receipts)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    lockup.increase_exchange_rate_accumulator(
+        active_receipts, 
+        amount
+    )?;
 
     transfer(
         CpiContext::new(
@@ -112,6 +127,25 @@ pub struct DepositRewards<'info> {
         token::authority = lockup,
     )]
     pub asset_reward_pool: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = lockup.receipt_mint
+    )]
+    pub receipt_token_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        seeds = [
+            COOLDOWN_VAULT_SEED.as_bytes(),
+            lockup.key().as_ref(),
+            receipt_token_mint.key().as_ref(),
+        ],
+        bump,
+        token::mint = receipt_token_mint,
+        token::authority = lockup,
+    )]
+    pub lockup_cooldown_vault: Account<'info, TokenAccount>,
 
     #[account()]
     pub token_program: Program<'info, Token>,

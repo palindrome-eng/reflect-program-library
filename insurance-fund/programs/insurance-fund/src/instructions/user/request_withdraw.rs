@@ -41,8 +41,6 @@ pub fn request_withdrawal(
     let user = &mut ctx.accounts.user;
     let lockup = &mut ctx.accounts.lockup;
     let asset_mint = &ctx.accounts.asset_mint;
-    let asset = &mut ctx.accounts.asset;
-    let asset_reward_pool = &ctx.accounts.asset_reward_pool;
     let cooldown = &mut ctx.accounts.cooldown;
     let lockup_cold_vault = &ctx.accounts.lockup_cold_vault;
     let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
@@ -51,7 +49,6 @@ pub fn request_withdrawal(
     let lockup_cooldown_vault = &ctx.accounts.lockup_cooldown_vault;
     let token_program = &ctx.accounts.token_program;
 
-    let total_rewards = asset_reward_pool.amount;
     let total_receipts = receipt_token_mint.supply;
     let total_deposits = lockup_cold_vault.amount
         .checked_add(lockup_hot_vault.amount)
@@ -95,40 +92,29 @@ pub fn request_withdrawal(
         InsuranceFundError::NotEnoughReceiptTokens
     );
 
-    // Here we check if the amount is not bigger than allowed share, no matter if the
-    // cold-hot wallet ratios are currently balanced.
-    let max_allowed_withdrawal = total_deposits
-        .checked_mul(settings.shares_config.hot_wallet_share_bps)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(10_000)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+    // // Here we check if the amount is not bigger than allowed share, no matter if the
+    // // cold-hot wallet ratios are currently balanced.
+    // let max_allowed_auto_withdrawal = total_deposits
+    //     .checked_mul(settings.shares_config.hot_wallet_share_bps)
+    //     .ok_or(InsuranceFundError::MathOverflow)?
+    //     .checked_div(10_000)
+    //     .ok_or(InsuranceFundError::MathOverflow)?;
 
-    require!(
-        base_amount <= max_allowed_withdrawal,
-        InsuranceFundError::WithdrawalThresholdOverflow
-    );
-
-    // If above passes, we check if the pools are actually balanced 
-    // well enough to process the withdrawal.
-    require!(
-        base_amount <= lockup_hot_vault.amount,
-        InsuranceFundError::PoolImbalance
-    );
+    // // If above passes, we check if the pools are actually balanced 
+    // // well enough to process the withdrawal.
+    // require!(
+    //     base_amount <= lockup_hot_vault.amount,
+    //     InsuranceFundError::PoolImbalance
+    // );
 
     cooldown.receipt_amount = receipt_amount;
     cooldown.deposit_id = deposit_id;
     cooldown.user = user.key();
     cooldown.lockup_id = lockup.index;
 
-    let receipt_to_reward_exchange_rate_bps = total_rewards
-        .checked_mul(10_000)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(total_receipts)
-        .ok_or(InsuranceFundError::MathOverflow)?;
-
     let rewards = deposit.compute_accrued_rewards(
         // This should be read from lockup, since we need the accumulator here
-        receipt_to_reward_exchange_rate_bps, 
+        lockup.receipt_to_reward_exchange_rate_bps_accumulator, 
         receipt_amount
     )?;
 
@@ -221,7 +207,7 @@ pub struct RequestWithdrawal<'info> {
             &args.deposit_id.to_le_bytes()
         ],
         bump,
-        // Cannot withdraw before unlock timestamp
+        // Cannot request withdraw before unlock timestamp
         constraint = deposit.unlock_ts <= (clock.unix_timestamp as u64) @ InsuranceFundError::LockupInForce,
         // Enforce account ownership
         has_one = user

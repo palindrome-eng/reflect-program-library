@@ -82,4 +82,10 @@ pub enum InsuranceFundError {
 
     #[msg("MinimumSuperadminsRequired")]
     MinimumSuperadminsRequired,
+
+    #[msg("IntentValueTooLow")]
+    IntentValueTooLow,
+
+    #[msg("WithdrawalNeedsIntent")]
+    WithdrawalNeedsIntent,
 }
