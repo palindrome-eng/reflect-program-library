@@ -64,7 +64,11 @@ pub struct Slash<'info> {
 
     #[account(
         mut,
-        constraint = admin.address == signer.key() @ InsuranceFundError::InvalidSigner,
+        seeds = [
+            ADMIN_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump,
         constraint = admin.has_permissions(Permissions::Superadmin) @ InsuranceFundError::PermissionsTooLow,
     )]
     pub admin: Account<'info, Admin>,
