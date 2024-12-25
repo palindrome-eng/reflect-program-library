@@ -6,24 +6,20 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type SlashColdWalletArgs = {
+export type UpdateDepositCapArgs = {
   lockupId: beet.bignum
-  slashId: beet.bignum
-  transferFunds: boolean
-  transferSig: beet.COption<string>
+  newCap: beet.COption<beet.bignum>
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const slashColdWalletArgsBeet =
-  new beet.FixableBeetArgsStruct<SlashColdWalletArgs>(
+export const updateDepositCapArgsBeet =
+  new beet.FixableBeetArgsStruct<UpdateDepositCapArgs>(
     [
       ['lockupId', beet.u64],
-      ['slashId', beet.u64],
-      ['transferFunds', beet.bool],
-      ['transferSig', beet.coption(beet.utf8String)],
+      ['newCap', beet.coption(beet.u64)],
     ],
-    'SlashColdWalletArgs'
+    'UpdateDepositCapArgs'
   )

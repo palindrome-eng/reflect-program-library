@@ -5,77 +5,84 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
+import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import {
-  ManageLockupLockArgs,
-  manageLockupLockArgsBeet,
-} from '../types/ManageLockupLockArgs'
+import { RebalanceArgs, rebalanceArgsBeet } from '../types/RebalanceArgs'
 
 /**
  * @category Instructions
- * @category ManageLockupLock
+ * @category Rebalance
  * @category generated
  */
-export type ManageLockupLockInstructionArgs = {
-  args: ManageLockupLockArgs
+export type RebalanceInstructionArgs = {
+  args: RebalanceArgs
 }
 /**
  * @category Instructions
- * @category ManageLockupLock
+ * @category Rebalance
  * @category generated
  */
-export const manageLockupLockStruct = new beet.BeetArgsStruct<
-  ManageLockupLockInstructionArgs & {
+export const rebalanceStruct = new beet.BeetArgsStruct<
+  RebalanceInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', manageLockupLockArgsBeet],
+    ['args', rebalanceArgsBeet],
   ],
-  'ManageLockupLockInstructionArgs'
+  'RebalanceInstructionArgs'
 )
 /**
- * Accounts required by the _manageLockupLock_ instruction
+ * Accounts required by the _rebalance_ instruction
  *
  * @property [_writable_, **signer**] signer
  * @property [_writable_] admin
  * @property [_writable_] settings
  * @property [_writable_] lockup
+ * @property [_writable_] assetMint
+ * @property [_writable_] lockupHotVault
+ * @property [] coldWallet
+ * @property [_writable_] lockupColdVault
  * @category Instructions
- * @category ManageLockupLock
+ * @category Rebalance
  * @category generated
  */
-export type ManageLockupLockInstructionAccounts = {
+export type RebalanceInstructionAccounts = {
   signer: web3.PublicKey
   admin: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
+  assetMint: web3.PublicKey
+  lockupHotVault: web3.PublicKey
+  coldWallet: web3.PublicKey
+  lockupColdVault: web3.PublicKey
+  tokenProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const manageLockupLockInstructionDiscriminator = [
-  236, 72, 44, 71, 110, 190, 135, 139,
+export const rebalanceInstructionDiscriminator = [
+  108, 158, 77, 9, 210, 52, 88, 62,
 ]
 
 /**
- * Creates a _ManageLockupLock_ instruction.
+ * Creates a _Rebalance_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category ManageLockupLock
+ * @category Rebalance
  * @category generated
  */
-export function createManageLockupLockInstruction(
-  accounts: ManageLockupLockInstructionAccounts,
-  args: ManageLockupLockInstructionArgs,
+export function createRebalanceInstruction(
+  accounts: RebalanceInstructionAccounts,
+  args: RebalanceInstructionArgs,
   programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
-  const [data] = manageLockupLockStruct.serialize({
-    instructionDiscriminator: manageLockupLockInstructionDiscriminator,
+  const [data] = rebalanceStruct.serialize({
+    instructionDiscriminator: rebalanceInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -97,6 +104,31 @@ export function createManageLockupLockInstruction(
     {
       pubkey: accounts.lockup,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.assetMint,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.lockupHotVault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.coldWallet,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.lockupColdVault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
+      isWritable: false,
       isSigner: false,
     },
   ]

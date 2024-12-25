@@ -138,13 +138,36 @@ createErrorFromCodeLookup.set(0x1775, () => new NotEnoughFundsError())
 createErrorFromNameLookup.set('NotEnoughFunds', () => new NotEnoughFundsError())
 
 /**
+ * NotEnoughReceiptTokens: 'NotEnoughReceiptTokens'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class NotEnoughReceiptTokensError extends Error {
+  readonly code: number = 0x1776
+  readonly name: string = 'NotEnoughReceiptTokens'
+  constructor() {
+    super('NotEnoughReceiptTokens')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NotEnoughReceiptTokensError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1776, () => new NotEnoughReceiptTokensError())
+createErrorFromNameLookup.set(
+  'NotEnoughReceiptTokens',
+  () => new NotEnoughReceiptTokensError()
+)
+
+/**
  * NotEnoughFundsToSlash: 'NotEnoughFundsToSlash'
  *
  * @category Errors
  * @category generated
  */
 export class NotEnoughFundsToSlashError extends Error {
-  readonly code: number = 0x1776
+  readonly code: number = 0x1777
   readonly name: string = 'NotEnoughFundsToSlash'
   constructor() {
     super('NotEnoughFundsToSlash')
@@ -154,7 +177,7 @@ export class NotEnoughFundsToSlashError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1776, () => new NotEnoughFundsToSlashError())
+createErrorFromCodeLookup.set(0x1777, () => new NotEnoughFundsToSlashError())
 createErrorFromNameLookup.set(
   'NotEnoughFundsToSlash',
   () => new NotEnoughFundsToSlashError()
@@ -167,7 +190,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class DepositsLockedError extends Error {
-  readonly code: number = 0x1777
+  readonly code: number = 0x1778
   readonly name: string = 'DepositsLocked'
   constructor() {
     super('DepositsLocked')
@@ -177,7 +200,7 @@ export class DepositsLockedError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1777, () => new DepositsLockedError())
+createErrorFromCodeLookup.set(0x1778, () => new DepositsLockedError())
 createErrorFromNameLookup.set('DepositsLocked', () => new DepositsLockedError())
 
 /**
@@ -187,7 +210,7 @@ createErrorFromNameLookup.set('DepositsLocked', () => new DepositsLockedError())
  * @category generated
  */
 export class DepositsOpenError extends Error {
-  readonly code: number = 0x1778
+  readonly code: number = 0x1779
   readonly name: string = 'DepositsOpen'
   constructor() {
     super('DepositsOpen')
@@ -197,7 +220,7 @@ export class DepositsOpenError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1778, () => new DepositsOpenError())
+createErrorFromCodeLookup.set(0x1779, () => new DepositsOpenError())
 createErrorFromNameLookup.set('DepositsOpen', () => new DepositsOpenError())
 
 /**
@@ -207,7 +230,7 @@ createErrorFromNameLookup.set('DepositsOpen', () => new DepositsOpenError())
  * @category generated
  */
 export class DepositsNotSlashedError extends Error {
-  readonly code: number = 0x1779
+  readonly code: number = 0x177a
   readonly name: string = 'DepositsNotSlashed'
   constructor() {
     super('DepositsNotSlashed')
@@ -217,7 +240,7 @@ export class DepositsNotSlashedError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1779, () => new DepositsNotSlashedError())
+createErrorFromCodeLookup.set(0x177a, () => new DepositsNotSlashedError())
 createErrorFromNameLookup.set(
   'DepositsNotSlashed',
   () => new DepositsNotSlashedError()
@@ -230,7 +253,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class AllDepositsSlashedError extends Error {
-  readonly code: number = 0x177a
+  readonly code: number = 0x177b
   readonly name: string = 'AllDepositsSlashed'
   constructor() {
     super('AllDepositsSlashed')
@@ -240,7 +263,7 @@ export class AllDepositsSlashedError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x177a, () => new AllDepositsSlashedError())
+createErrorFromCodeLookup.set(0x177b, () => new AllDepositsSlashedError())
 createErrorFromNameLookup.set(
   'AllDepositsSlashed',
   () => new AllDepositsSlashedError()
@@ -253,7 +276,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SlashAmountMismatchError extends Error {
-  readonly code: number = 0x177b
+  readonly code: number = 0x177c
   readonly name: string = 'SlashAmountMismatch'
   constructor() {
     super('SlashAmountMismatch')
@@ -263,7 +286,7 @@ export class SlashAmountMismatchError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x177b, () => new SlashAmountMismatchError())
+createErrorFromCodeLookup.set(0x177c, () => new SlashAmountMismatchError())
 createErrorFromNameLookup.set(
   'SlashAmountMismatch',
   () => new SlashAmountMismatchError()
@@ -276,7 +299,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ShareConfigOverflowError extends Error {
-  readonly code: number = 0x177c
+  readonly code: number = 0x177d
   readonly name: string = 'ShareConfigOverflow'
   constructor() {
     super('ShareConfigOverflow')
@@ -286,7 +309,7 @@ export class ShareConfigOverflowError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x177c, () => new ShareConfigOverflowError())
+createErrorFromCodeLookup.set(0x177d, () => new ShareConfigOverflowError())
 createErrorFromNameLookup.set(
   'ShareConfigOverflow',
   () => new ShareConfigOverflowError()
@@ -299,7 +322,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class FrozenError extends Error {
-  readonly code: number = 0x177d
+  readonly code: number = 0x177e
   readonly name: string = 'Frozen'
   constructor() {
     super('Frozen')
@@ -309,7 +332,7 @@ export class FrozenError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x177d, () => new FrozenError())
+createErrorFromCodeLookup.set(0x177e, () => new FrozenError())
 createErrorFromNameLookup.set('Frozen', () => new FrozenError())
 
 /**
@@ -319,7 +342,7 @@ createErrorFromNameLookup.set('Frozen', () => new FrozenError())
  * @category generated
  */
 export class InvalidOracleError extends Error {
-  readonly code: number = 0x177e
+  readonly code: number = 0x177f
   readonly name: string = 'InvalidOracle'
   constructor() {
     super('InvalidOracle')
@@ -329,7 +352,7 @@ export class InvalidOracleError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x177e, () => new InvalidOracleError())
+createErrorFromCodeLookup.set(0x177f, () => new InvalidOracleError())
 createErrorFromNameLookup.set('InvalidOracle', () => new InvalidOracleError())
 
 /**
@@ -339,7 +362,7 @@ createErrorFromNameLookup.set('InvalidOracle', () => new InvalidOracleError())
  * @category generated
  */
 export class MathOverflowError extends Error {
-  readonly code: number = 0x177f
+  readonly code: number = 0x1780
   readonly name: string = 'MathOverflow'
   constructor() {
     super('MathOverflow')
@@ -349,7 +372,7 @@ export class MathOverflowError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x177f, () => new MathOverflowError())
+createErrorFromCodeLookup.set(0x1780, () => new MathOverflowError())
 createErrorFromNameLookup.set('MathOverflow', () => new MathOverflowError())
 
 /**
@@ -359,7 +382,7 @@ createErrorFromNameLookup.set('MathOverflow', () => new MathOverflowError())
  * @category generated
  */
 export class LockupInForceError extends Error {
-  readonly code: number = 0x1780
+  readonly code: number = 0x1781
   readonly name: string = 'LockupInForce'
   constructor() {
     super('LockupInForce')
@@ -369,7 +392,7 @@ export class LockupInForceError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1780, () => new LockupInForceError())
+createErrorFromCodeLookup.set(0x1781, () => new LockupInForceError())
 createErrorFromNameLookup.set('LockupInForce', () => new LockupInForceError())
 
 /**
@@ -379,7 +402,7 @@ createErrorFromNameLookup.set('LockupInForce', () => new LockupInForceError())
  * @category generated
  */
 export class BoostNotAppliedError extends Error {
-  readonly code: number = 0x1781
+  readonly code: number = 0x1782
   readonly name: string = 'BoostNotApplied'
   constructor() {
     super('BoostNotApplied')
@@ -389,7 +412,7 @@ export class BoostNotAppliedError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1781, () => new BoostNotAppliedError())
+createErrorFromCodeLookup.set(0x1782, () => new BoostNotAppliedError())
 createErrorFromNameLookup.set(
   'BoostNotApplied',
   () => new BoostNotAppliedError()
@@ -402,7 +425,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InvalidSignersError extends Error {
-  readonly code: number = 0x1782
+  readonly code: number = 0x1783
   readonly name: string = 'InvalidSigners'
   constructor() {
     super('InvalidSigners')
@@ -412,7 +435,7 @@ export class InvalidSignersError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1782, () => new InvalidSignersError())
+createErrorFromCodeLookup.set(0x1783, () => new InvalidSignersError())
 createErrorFromNameLookup.set('InvalidSigners', () => new InvalidSignersError())
 
 /**
@@ -422,7 +445,7 @@ createErrorFromNameLookup.set('InvalidSigners', () => new InvalidSignersError())
  * @category generated
  */
 export class TransferSignatureRequiredError extends Error {
-  readonly code: number = 0x1783
+  readonly code: number = 0x1784
   readonly name: string = 'TransferSignatureRequired'
   constructor() {
     super('TransferSignatureRequired')
@@ -433,7 +456,7 @@ export class TransferSignatureRequiredError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x1783,
+  0x1784,
   () => new TransferSignatureRequiredError()
 )
 createErrorFromNameLookup.set(
@@ -448,7 +471,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ColdWalletNotSlashedError extends Error {
-  readonly code: number = 0x1784
+  readonly code: number = 0x1785
   readonly name: string = 'ColdWalletNotSlashed'
   constructor() {
     super('ColdWalletNotSlashed')
@@ -458,7 +481,7 @@ export class ColdWalletNotSlashedError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1784, () => new ColdWalletNotSlashedError())
+createErrorFromCodeLookup.set(0x1785, () => new ColdWalletNotSlashedError())
 createErrorFromNameLookup.set(
   'ColdWalletNotSlashed',
   () => new ColdWalletNotSlashedError()
@@ -471,7 +494,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PermissionsTooLowError extends Error {
-  readonly code: number = 0x1785
+  readonly code: number = 0x1786
   readonly name: string = 'PermissionsTooLow'
   constructor() {
     super('PermissionsTooLow')
@@ -481,10 +504,151 @@ export class PermissionsTooLowError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1785, () => new PermissionsTooLowError())
+createErrorFromCodeLookup.set(0x1786, () => new PermissionsTooLowError())
 createErrorFromNameLookup.set(
   'PermissionsTooLow',
   () => new PermissionsTooLowError()
+)
+
+/**
+ * WithdrawalThresholdOverflow: 'WithdrawalThresholdOverflow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WithdrawalThresholdOverflowError extends Error {
+  readonly code: number = 0x1787
+  readonly name: string = 'WithdrawalThresholdOverflow'
+  constructor() {
+    super('WithdrawalThresholdOverflow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WithdrawalThresholdOverflowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1787,
+  () => new WithdrawalThresholdOverflowError()
+)
+createErrorFromNameLookup.set(
+  'WithdrawalThresholdOverflow',
+  () => new WithdrawalThresholdOverflowError()
+)
+
+/**
+ * PoolImbalance: 'PoolImbalance'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PoolImbalanceError extends Error {
+  readonly code: number = 0x1788
+  readonly name: string = 'PoolImbalance'
+  constructor() {
+    super('PoolImbalance')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PoolImbalanceError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1788, () => new PoolImbalanceError())
+createErrorFromNameLookup.set('PoolImbalance', () => new PoolImbalanceError())
+
+/**
+ * InvalidReceiptTokenSetup: 'InvalidReceiptTokenSetup'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidReceiptTokenSetupError extends Error {
+  readonly code: number = 0x1789
+  readonly name: string = 'InvalidReceiptTokenSetup'
+  constructor() {
+    super('InvalidReceiptTokenSetup')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidReceiptTokenSetupError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1789, () => new InvalidReceiptTokenSetupError())
+createErrorFromNameLookup.set(
+  'InvalidReceiptTokenSetup',
+  () => new InvalidReceiptTokenSetupError()
+)
+
+/**
+ * MinimumSuperadminsRequired: 'MinimumSuperadminsRequired'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MinimumSuperadminsRequiredError extends Error {
+  readonly code: number = 0x178a
+  readonly name: string = 'MinimumSuperadminsRequired'
+  constructor() {
+    super('MinimumSuperadminsRequired')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MinimumSuperadminsRequiredError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x178a,
+  () => new MinimumSuperadminsRequiredError()
+)
+createErrorFromNameLookup.set(
+  'MinimumSuperadminsRequired',
+  () => new MinimumSuperadminsRequiredError()
+)
+
+/**
+ * IntentValueTooLow: 'IntentValueTooLow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class IntentValueTooLowError extends Error {
+  readonly code: number = 0x178b
+  readonly name: string = 'IntentValueTooLow'
+  constructor() {
+    super('IntentValueTooLow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, IntentValueTooLowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x178b, () => new IntentValueTooLowError())
+createErrorFromNameLookup.set(
+  'IntentValueTooLow',
+  () => new IntentValueTooLowError()
+)
+
+/**
+ * WithdrawalNeedsIntent: 'WithdrawalNeedsIntent'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WithdrawalNeedsIntentError extends Error {
+  readonly code: number = 0x178c
+  readonly name: string = 'WithdrawalNeedsIntent'
+  constructor() {
+    super('WithdrawalNeedsIntent')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WithdrawalNeedsIntentError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x178c, () => new WithdrawalNeedsIntentError())
+createErrorFromNameLookup.set(
+  'WithdrawalNeedsIntent',
+  () => new WithdrawalNeedsIntentError()
 )
 
 /**

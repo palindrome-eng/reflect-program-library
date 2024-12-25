@@ -18,7 +18,7 @@ import { RewardConfig, rewardConfigBeet } from '../types/RewardConfig'
  */
 export type SettingsArgs = {
   bump: number
-  admins: number
+  superadmins: number
   coldWallet: web3.PublicKey
   lockups: beet.bignum
   cooldownDuration: beet.bignum
@@ -38,7 +38,7 @@ export const settingsDiscriminator = [223, 179, 163, 190, 177, 224, 67, 173]
 export class Settings implements SettingsArgs {
   private constructor(
     readonly bump: number,
-    readonly admins: number,
+    readonly superadmins: number,
     readonly coldWallet: web3.PublicKey,
     readonly lockups: beet.bignum,
     readonly cooldownDuration: beet.bignum,
@@ -53,7 +53,7 @@ export class Settings implements SettingsArgs {
   static fromArgs(args: SettingsArgs) {
     return new Settings(
       args.bump,
-      args.admins,
+      args.superadmins,
       args.coldWallet,
       args.lockups,
       args.cooldownDuration,
@@ -167,7 +167,7 @@ export class Settings implements SettingsArgs {
   pretty() {
     return {
       bump: this.bump,
-      admins: this.admins,
+      superadmins: this.superadmins,
       coldWallet: this.coldWallet.toBase58(),
       lockups: (() => {
         const x = <{ toNumber: () => number }>this.lockups
@@ -211,7 +211,7 @@ export const settingsBeet = new beet.BeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['bump', beet.u8],
-    ['admins', beet.u8],
+    ['superadmins', beet.u8],
     ['coldWallet', beetSolana.publicKey],
     ['lockups', beet.u64],
     ['cooldownDuration', beet.u64],

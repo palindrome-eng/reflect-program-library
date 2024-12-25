@@ -6,21 +6,15 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type CreateIntentArgs = {
-  amount: beet.bignum
+export type RebalanceArgs = {
   lockupId: beet.bignum
-  depositId: beet.bignum
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const createIntentArgsBeet = new beet.BeetArgsStruct<CreateIntentArgs>(
-  [
-    ['amount', beet.u64],
-    ['lockupId', beet.u64],
-    ['depositId', beet.u64],
-  ],
-  'CreateIntentArgs'
+export const rebalanceArgsBeet = new beet.BeetArgsStruct<RebalanceArgs>(
+  [['lockupId', beet.u64]],
+  'RebalanceArgs'
 )

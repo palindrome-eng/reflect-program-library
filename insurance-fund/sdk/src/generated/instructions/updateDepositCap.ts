@@ -5,86 +5,77 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { SlashPoolArgs, slashPoolArgsBeet } from '../types/SlashPoolArgs'
+import {
+  UpdateDepositCapArgs,
+  updateDepositCapArgsBeet,
+} from '../types/UpdateDepositCapArgs'
 
 /**
  * @category Instructions
- * @category SlashPool
+ * @category UpdateDepositCap
  * @category generated
  */
-export type SlashPoolInstructionArgs = {
-  args: SlashPoolArgs
+export type UpdateDepositCapInstructionArgs = {
+  args: UpdateDepositCapArgs
 }
 /**
  * @category Instructions
- * @category SlashPool
+ * @category UpdateDepositCap
  * @category generated
  */
-export const slashPoolStruct = new beet.BeetArgsStruct<
-  SlashPoolInstructionArgs & {
+export const updateDepositCapStruct = new beet.FixableBeetArgsStruct<
+  UpdateDepositCapInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', slashPoolArgsBeet],
+    ['args', updateDepositCapArgsBeet],
   ],
-  'SlashPoolInstructionArgs'
+  'UpdateDepositCapInstructionArgs'
 )
 /**
- * Accounts required by the _slashPool_ instruction
+ * Accounts required by the _updateDepositCap_ instruction
  *
  * @property [_writable_, **signer**] signer
  * @property [_writable_] admin
  * @property [_writable_] settings
  * @property [_writable_] lockup
- * @property [_writable_] slash
- * @property [_writable_] assetMint
- * @property [_writable_] asset
- * @property [_writable_] assetLockup
- * @property [_writable_] destination
  * @category Instructions
- * @category SlashPool
+ * @category UpdateDepositCap
  * @category generated
  */
-export type SlashPoolInstructionAccounts = {
+export type UpdateDepositCapInstructionAccounts = {
   signer: web3.PublicKey
   admin: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
-  slash: web3.PublicKey
-  assetMint: web3.PublicKey
-  asset: web3.PublicKey
-  assetLockup: web3.PublicKey
-  destination: web3.PublicKey
-  tokenProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const slashPoolInstructionDiscriminator = [
-  96, 203, 37, 117, 91, 235, 38, 76,
+export const updateDepositCapInstructionDiscriminator = [
+  175, 41, 137, 203, 27, 184, 245, 164,
 ]
 
 /**
- * Creates a _SlashPool_ instruction.
+ * Creates a _UpdateDepositCap_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SlashPool
+ * @category UpdateDepositCap
  * @category generated
  */
-export function createSlashPoolInstruction(
-  accounts: SlashPoolInstructionAccounts,
-  args: SlashPoolInstructionArgs,
+export function createUpdateDepositCapInstruction(
+  accounts: UpdateDepositCapInstructionAccounts,
+  args: UpdateDepositCapInstructionArgs,
   programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
 ) {
-  const [data] = slashPoolStruct.serialize({
-    instructionDiscriminator: slashPoolInstructionDiscriminator,
+  const [data] = updateDepositCapStruct.serialize({
+    instructionDiscriminator: updateDepositCapInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -106,36 +97,6 @@ export function createSlashPoolInstruction(
     {
       pubkey: accounts.lockup,
       isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.slash,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.assetMint,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.asset,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.assetLockup,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.destination,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
-      isWritable: false,
       isSigner: false,
     },
   ]

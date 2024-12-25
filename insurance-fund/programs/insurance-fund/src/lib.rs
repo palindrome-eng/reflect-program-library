@@ -110,18 +110,4 @@ pub mod insurance_fund {
     ) -> Result<()> {
         instructions::deposit_rewards(ctx, args)
     }
-
-    pub fn create_intent(
-        ctx: Context<CreateIntent>,
-        args: CreateIntentArgs
-    ) -> Result<()> {
-        instructions::create_intent(ctx, args)
-    }
-
-    pub fn process_intent(
-        ctx: Context<ProcessIntent>,
-        args: ProcessIntentArgs
-    ) -> Result<()> {
-        instructions::process_intent(ctx, args)
-    }
 }

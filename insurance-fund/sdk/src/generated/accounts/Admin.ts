@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { Permissions, permissionsBeet } from '../types/Permissions'
 
@@ -17,7 +17,6 @@ import { Permissions, permissionsBeet } from '../types/Permissions'
  */
 export type AdminArgs = {
   index: number
-  address: web3.PublicKey
   permissions: Permissions
 }
 
@@ -32,7 +31,6 @@ export const adminDiscriminator = [244, 158, 220, 65, 8, 73, 4, 65]
 export class Admin implements AdminArgs {
   private constructor(
     readonly index: number,
-    readonly address: web3.PublicKey,
     readonly permissions: Permissions
   ) {}
 
@@ -40,7 +38,7 @@ export class Admin implements AdminArgs {
    * Creates a {@link Admin} instance from the provided args.
    */
   static fromArgs(args: AdminArgs) {
-    return new Admin(args.index, args.address, args.permissions)
+    return new Admin(args.index, args.permissions)
   }
 
   /**
@@ -147,7 +145,6 @@ export class Admin implements AdminArgs {
   pretty() {
     return {
       index: this.index,
-      address: this.address.toBase58(),
       permissions: 'Permissions.' + Permissions[this.permissions],
     }
   }
@@ -166,7 +163,6 @@ export const adminBeet = new beet.BeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['index', beet.u8],
-    ['address', beetSolana.publicKey],
     ['permissions', permissionsBeet],
   ],
   Admin.fromArgs,

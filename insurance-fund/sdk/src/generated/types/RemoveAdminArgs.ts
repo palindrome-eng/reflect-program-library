@@ -5,9 +5,11 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
+import * as web3 from '@solana/web3.js'
+import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
 export type RemoveAdminArgs = {
-  adminId: number
+  address: web3.PublicKey
 }
 
 /**
@@ -15,6 +17,6 @@ export type RemoveAdminArgs = {
  * @category generated
  */
 export const removeAdminArgsBeet = new beet.BeetArgsStruct<RemoveAdminArgs>(
-  [['adminId', beet.u8]],
+  [['address', beetSolana.publicKey]],
   'RemoveAdminArgs'
 )

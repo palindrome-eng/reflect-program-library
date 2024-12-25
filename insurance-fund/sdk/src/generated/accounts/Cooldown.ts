@@ -19,7 +19,7 @@ export type CooldownArgs = {
   user: web3.PublicKey
   depositId: beet.bignum
   lockupId: beet.bignum
-  baseAmount: beet.bignum
+  receiptAmount: beet.bignum
   unlockTs: beet.bignum
   rewards: CooldownRewards
 }
@@ -37,7 +37,7 @@ export class Cooldown implements CooldownArgs {
     readonly user: web3.PublicKey,
     readonly depositId: beet.bignum,
     readonly lockupId: beet.bignum,
-    readonly baseAmount: beet.bignum,
+    readonly receiptAmount: beet.bignum,
     readonly unlockTs: beet.bignum,
     readonly rewards: CooldownRewards
   ) {}
@@ -50,7 +50,7 @@ export class Cooldown implements CooldownArgs {
       args.user,
       args.depositId,
       args.lockupId,
-      args.baseAmount,
+      args.receiptAmount,
       args.unlockTs,
       args.rewards
     )
@@ -184,8 +184,8 @@ export class Cooldown implements CooldownArgs {
         }
         return x
       })(),
-      baseAmount: (() => {
-        const x = <{ toNumber: () => number }>this.baseAmount
+      receiptAmount: (() => {
+        const x = <{ toNumber: () => number }>this.receiptAmount
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -226,7 +226,7 @@ export const cooldownBeet = new beet.FixableBeetStruct<
     ['user', beetSolana.publicKey],
     ['depositId', beet.u64],
     ['lockupId', beet.u64],
-    ['baseAmount', beet.u64],
+    ['receiptAmount', beet.u64],
     ['unlockTs', beet.u64],
     ['rewards', cooldownRewardsBeet],
   ],

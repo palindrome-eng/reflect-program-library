@@ -8,6 +8,7 @@
 import * as beet from '@metaplex-foundation/beet'
 export type ProcessIntentArgs = {
   depositId: beet.bignum
+  lockupId: beet.bignum
 }
 
 /**
@@ -15,6 +16,9 @@ export type ProcessIntentArgs = {
  * @category generated
  */
 export const processIntentArgsBeet = new beet.BeetArgsStruct<ProcessIntentArgs>(
-  [['depositId', beet.u64]],
+  [
+    ['depositId', beet.u64],
+    ['lockupId', beet.u64],
+  ],
   'ProcessIntentArgs'
 )

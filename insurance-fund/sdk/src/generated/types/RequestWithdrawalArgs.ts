@@ -6,11 +6,15 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
+import {
+  RequestWithdrawalMode,
+  requestWithdrawalModeBeet,
+} from './RequestWithdrawalMode'
 export type RequestWithdrawalArgs = {
   lockupId: beet.bignum
   depositId: beet.bignum
   rewardBoostId: beet.COption<beet.bignum>
-  amount: beet.bignum
+  mode: RequestWithdrawalMode
 }
 
 /**
@@ -23,7 +27,7 @@ export const requestWithdrawalArgsBeet =
       ['lockupId', beet.u64],
       ['depositId', beet.u64],
       ['rewardBoostId', beet.coption(beet.u64)],
-      ['amount', beet.u64],
+      ['mode', requestWithdrawalModeBeet],
     ],
     'RequestWithdrawalArgs'
   )

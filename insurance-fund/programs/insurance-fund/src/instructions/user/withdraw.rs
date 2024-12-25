@@ -49,6 +49,7 @@ pub fn withdraw(
     let receipt_token_mint = &ctx.accounts.receipt_token_mint;
     let token_program = &ctx.accounts.token_program;
 
+    let receipt_amount = cooldown.receipt_amount;
     let total_receipts = receipt_token_mint.supply;
     let total_deposits = lockup_hot_vault.amount
         .checked_add(lockup_cold_vault.amount)
@@ -60,7 +61,7 @@ pub fn withdraw(
         .checked_div(total_receipts)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
-    let deposit_to_return = cooldown.receipt_amount
+    let deposit_to_return = receipt_amount
         .checked_mul(receipt_to_deposit_exchange_rate_bps)
         .ok_or(InsuranceFundError::MathOverflow)?
         .checked_div(10_000)
@@ -112,17 +113,18 @@ pub fn withdraw(
     )?;
 
     if deposit_to_return > max_allowed_auto_withdrawal {
-        require!(
-            ctx.accounts.intent.is_some(),
-            InsuranceFundError::WithdrawalNeedsIntent
-        );
+        return match &mut ctx.accounts.intent {
+            Some(intent) => {
+                intent.amount = deposit_to_return;
+                intent.deposit = deposit.key();
+                intent.lockup = lockup.key();
 
-        let intent = ctx.accounts.intent.unwrap();
-        intent.amount = deposit_to_return;
-        intent.deposit = deposit.key();
-        intent.lockup = lockup.key();
-
-        return Ok(());
+                Ok(())
+            },
+            None => {
+                Err(InsuranceFundError::WithdrawalNeedsIntent.into())
+            }
+        };
     }
 
     // Prevent account from initializing if passed and not needed.

@@ -59,6 +59,7 @@ pub struct ProcessIntent<'info> {
     )]
     pub admin: Account<'info, Admin>,
 
+    /// CHECK: This can be any wallet that 1) has enough tokens, 2) will sign tx to authorize transfer
     #[account()]
     pub source: AccountInfo<'info>,
 
@@ -96,6 +97,7 @@ pub struct ProcessIntent<'info> {
     )]
     pub deposit: Account<'info, Deposit>,
 
+    /// CHECK: Directly checking address.
     #[account(
         mut,
         address = deposit.user

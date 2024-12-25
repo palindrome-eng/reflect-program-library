@@ -11,7 +11,6 @@ export type InitializeLockupArgs = {
   minDeposit: beet.bignum
   depositCap: beet.bignum
   duration: beet.bignum
-  yieldBps: beet.bignum
   yieldMode: YieldMode
 }
 
@@ -25,7 +24,6 @@ export const initializeLockupArgsBeet =
       ['minDeposit', beet.u64],
       ['depositCap', beet.u64],
       ['duration', beet.u64],
-      ['yieldBps', beet.u64],
       ['yieldMode', yieldModeBeet],
     ],
     'InitializeLockupArgs'

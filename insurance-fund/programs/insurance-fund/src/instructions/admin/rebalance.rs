@@ -162,10 +162,11 @@ pub struct Rebalance<'info> {
     )]
     pub lockup_hot_vault: Account<'info, TokenAccount>,
 
+    /// CHECK: Directly checking the address.
     #[account(
         address = settings.cold_wallet
     )]
-    pub cold_wallet: UncheckedAccount<'info>,
+    pub cold_wallet: AccountInfo<'info>,
 
     #[account(
         mut,

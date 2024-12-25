@@ -40,13 +40,16 @@ export const restakeStruct = new beet.BeetArgsStruct<
  * @property [_writable_, **signer**] user
  * @property [_writable_] settings
  * @property [_writable_] lockup
+ * @property [_writable_] receiptTokenMint
  * @property [_writable_] deposit
- * @property [_writable_] coldWallet
- * @property [_writable_] coldWalletVault
+ * @property [_writable_] depositReceiptTokenAccount
  * @property [_writable_] asset
  * @property [_writable_] assetMint
+ * @property [_writable_] lockupHotVault
+ * @property [_writable_] lockupColdVault
  * @property [_writable_] userAssetAta
- * @property [_writable_] lockupAssetVault
+ * @property [_writable_] rewardMint
+ * @property [_writable_] rewardPool
  * @property [_writable_] oracle
  * @property [] clock
  * @category Instructions
@@ -57,13 +60,16 @@ export type RestakeInstructionAccounts = {
   user: web3.PublicKey
   settings: web3.PublicKey
   lockup: web3.PublicKey
+  receiptTokenMint: web3.PublicKey
   deposit: web3.PublicKey
-  coldWallet: web3.PublicKey
-  coldWalletVault: web3.PublicKey
+  depositReceiptTokenAccount: web3.PublicKey
   asset: web3.PublicKey
   assetMint: web3.PublicKey
+  lockupHotVault: web3.PublicKey
+  lockupColdVault: web3.PublicKey
   userAssetAta: web3.PublicKey
-  lockupAssetVault: web3.PublicKey
+  rewardMint: web3.PublicKey
+  rewardPool: web3.PublicKey
   oracle: web3.PublicKey
   clock: web3.PublicKey
   tokenProgram?: web3.PublicKey
@@ -111,17 +117,17 @@ export function createRestakeInstruction(
       isSigner: false,
     },
     {
+      pubkey: accounts.receiptTokenMint,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.deposit,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.coldWallet,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.coldWalletVault,
+      pubkey: accounts.depositReceiptTokenAccount,
       isWritable: true,
       isSigner: false,
     },
@@ -136,12 +142,27 @@ export function createRestakeInstruction(
       isSigner: false,
     },
     {
+      pubkey: accounts.lockupHotVault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.lockupColdVault,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
       pubkey: accounts.userAssetAta,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.lockupAssetVault,
+      pubkey: accounts.rewardMint,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.rewardPool,
       isWritable: true,
       isSigner: false,
     },

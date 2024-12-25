@@ -6,7 +6,7 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type InitializeSlashArgs = {
+export type SlashArgs = {
   lockupId: beet.bignum
   amount: beet.bignum
 }
@@ -15,11 +15,10 @@ export type InitializeSlashArgs = {
  * @category userTypes
  * @category generated
  */
-export const initializeSlashArgsBeet =
-  new beet.BeetArgsStruct<InitializeSlashArgs>(
-    [
-      ['lockupId', beet.u64],
-      ['amount', beet.u64],
-    ],
-    'InitializeSlashArgs'
-  )
+export const slashArgsBeet = new beet.BeetArgsStruct<SlashArgs>(
+  [
+    ['lockupId', beet.u64],
+    ['amount', beet.u64],
+  ],
+  'SlashArgs'
+)

@@ -15,14 +15,15 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type DepositArgs = {
+  bump: number
   index: beet.bignum
   user: web3.PublicKey
-  amount: beet.bignum
   initialUsdValue: beet.bignum
   amountSlashed: beet.bignum
   lockup: web3.PublicKey
   unlockTs: beet.bignum
   lastSlashed: beet.COption<beet.bignum>
+  initialReceiptExchangeRateBps: beet.bignum
 }
 
 export const depositDiscriminator = [148, 146, 121, 66, 207, 173, 21, 227]
@@ -35,14 +36,15 @@ export const depositDiscriminator = [148, 146, 121, 66, 207, 173, 21, 227]
  */
 export class Deposit implements DepositArgs {
   private constructor(
+    readonly bump: number,
     readonly index: beet.bignum,
     readonly user: web3.PublicKey,
-    readonly amount: beet.bignum,
     readonly initialUsdValue: beet.bignum,
     readonly amountSlashed: beet.bignum,
     readonly lockup: web3.PublicKey,
     readonly unlockTs: beet.bignum,
-    readonly lastSlashed: beet.COption<beet.bignum>
+    readonly lastSlashed: beet.COption<beet.bignum>,
+    readonly initialReceiptExchangeRateBps: beet.bignum
   ) {}
 
   /**
@@ -50,14 +52,15 @@ export class Deposit implements DepositArgs {
    */
   static fromArgs(args: DepositArgs) {
     return new Deposit(
+      args.bump,
       args.index,
       args.user,
-      args.amount,
       args.initialUsdValue,
       args.amountSlashed,
       args.lockup,
       args.unlockTs,
-      args.lastSlashed
+      args.lastSlashed,
+      args.initialReceiptExchangeRateBps
     )
   }
 
@@ -166,6 +169,7 @@ export class Deposit implements DepositArgs {
    */
   pretty() {
     return {
+      bump: this.bump,
       index: (() => {
         const x = <{ toNumber: () => number }>this.index
         if (typeof x.toNumber === 'function') {
@@ -178,17 +182,6 @@ export class Deposit implements DepositArgs {
         return x
       })(),
       user: this.user.toBase58(),
-      amount: (() => {
-        const x = <{ toNumber: () => number }>this.amount
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
       initialUsdValue: (() => {
         const x = <{ toNumber: () => number }>this.initialUsdValue
         if (typeof x.toNumber === 'function') {
@@ -224,6 +217,17 @@ export class Deposit implements DepositArgs {
         return x
       })(),
       lastSlashed: this.lastSlashed,
+      initialReceiptExchangeRateBps: (() => {
+        const x = <{ toNumber: () => number }>this.initialReceiptExchangeRateBps
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -240,14 +244,15 @@ export const depositBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['bump', beet.u8],
     ['index', beet.u64],
     ['user', beetSolana.publicKey],
-    ['amount', beet.u64],
     ['initialUsdValue', beet.u64],
     ['amountSlashed', beet.u64],
     ['lockup', beetSolana.publicKey],
     ['unlockTs', beet.u64],
     ['lastSlashed', beet.coption(beet.u64)],
+    ['initialReceiptExchangeRateBps', beet.u64],
   ],
   Deposit.fromArgs,
   'Deposit'

@@ -18,18 +18,17 @@ import { SlashState, slashStateBeet } from '../types/SlashState'
  */
 export type LockupArgs = {
   bump: number
-  locked: boolean
   index: beet.bignum
-  asset: web3.PublicKey
-  minDeposit: beet.bignum
-  totalDeposits: beet.bignum
-  duration: beet.bignum
-  yieldBps: beet.bignum
-  yieldMode: YieldMode
+  assetMint: web3.PublicKey
+  receiptMint: web3.PublicKey
+  receiptToRewardExchangeRateBpsAccumulator: beet.bignum
   depositCap: beet.COption<beet.bignum>
+  minDeposit: beet.bignum
+  duration: beet.bignum
   deposits: beet.bignum
-  slashState: SlashState
   rewardBoosts: beet.bignum
+  yieldMode: YieldMode
+  slashState: SlashState
 }
 
 export const lockupDiscriminator = [1, 45, 32, 32, 57, 81, 88, 67]
@@ -43,18 +42,17 @@ export const lockupDiscriminator = [1, 45, 32, 32, 57, 81, 88, 67]
 export class Lockup implements LockupArgs {
   private constructor(
     readonly bump: number,
-    readonly locked: boolean,
     readonly index: beet.bignum,
-    readonly asset: web3.PublicKey,
-    readonly minDeposit: beet.bignum,
-    readonly totalDeposits: beet.bignum,
-    readonly duration: beet.bignum,
-    readonly yieldBps: beet.bignum,
-    readonly yieldMode: YieldMode,
+    readonly assetMint: web3.PublicKey,
+    readonly receiptMint: web3.PublicKey,
+    readonly receiptToRewardExchangeRateBpsAccumulator: beet.bignum,
     readonly depositCap: beet.COption<beet.bignum>,
+    readonly minDeposit: beet.bignum,
+    readonly duration: beet.bignum,
     readonly deposits: beet.bignum,
-    readonly slashState: SlashState,
-    readonly rewardBoosts: beet.bignum
+    readonly rewardBoosts: beet.bignum,
+    readonly yieldMode: YieldMode,
+    readonly slashState: SlashState
   ) {}
 
   /**
@@ -63,18 +61,17 @@ export class Lockup implements LockupArgs {
   static fromArgs(args: LockupArgs) {
     return new Lockup(
       args.bump,
-      args.locked,
       args.index,
-      args.asset,
-      args.minDeposit,
-      args.totalDeposits,
-      args.duration,
-      args.yieldBps,
-      args.yieldMode,
+      args.assetMint,
+      args.receiptMint,
+      args.receiptToRewardExchangeRateBpsAccumulator,
       args.depositCap,
+      args.minDeposit,
+      args.duration,
       args.deposits,
-      args.slashState,
-      args.rewardBoosts
+      args.rewardBoosts,
+      args.yieldMode,
+      args.slashState
     )
   }
 
@@ -184,7 +181,6 @@ export class Lockup implements LockupArgs {
   pretty() {
     return {
       bump: this.bump,
-      locked: this.locked,
       index: (() => {
         const x = <{ toNumber: () => number }>this.index
         if (typeof x.toNumber === 'function') {
@@ -196,9 +192,12 @@ export class Lockup implements LockupArgs {
         }
         return x
       })(),
-      asset: this.asset.toBase58(),
-      minDeposit: (() => {
-        const x = <{ toNumber: () => number }>this.minDeposit
+      assetMint: this.assetMint.toBase58(),
+      receiptMint: this.receiptMint.toBase58(),
+      receiptToRewardExchangeRateBpsAccumulator: (() => {
+        const x = <{ toNumber: () => number }>(
+          this.receiptToRewardExchangeRateBpsAccumulator
+        )
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -208,8 +207,9 @@ export class Lockup implements LockupArgs {
         }
         return x
       })(),
-      totalDeposits: (() => {
-        const x = <{ toNumber: () => number }>this.totalDeposits
+      depositCap: this.depositCap,
+      minDeposit: (() => {
+        const x = <{ toNumber: () => number }>this.minDeposit
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -230,19 +230,6 @@ export class Lockup implements LockupArgs {
         }
         return x
       })(),
-      yieldBps: (() => {
-        const x = <{ toNumber: () => number }>this.yieldBps
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
-      yieldMode: this.yieldMode.__kind,
-      depositCap: this.depositCap,
       deposits: (() => {
         const x = <{ toNumber: () => number }>this.deposits
         if (typeof x.toNumber === 'function') {
@@ -254,7 +241,6 @@ export class Lockup implements LockupArgs {
         }
         return x
       })(),
-      slashState: this.slashState,
       rewardBoosts: (() => {
         const x = <{ toNumber: () => number }>this.rewardBoosts
         if (typeof x.toNumber === 'function') {
@@ -266,6 +252,8 @@ export class Lockup implements LockupArgs {
         }
         return x
       })(),
+      yieldMode: this.yieldMode.__kind,
+      slashState: this.slashState,
     }
   }
 }
@@ -283,18 +271,17 @@ export const lockupBeet = new beet.FixableBeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['bump', beet.u8],
-    ['locked', beet.bool],
     ['index', beet.u64],
-    ['asset', beetSolana.publicKey],
-    ['minDeposit', beet.u64],
-    ['totalDeposits', beet.u64],
-    ['duration', beet.u64],
-    ['yieldBps', beet.u64],
-    ['yieldMode', yieldModeBeet],
+    ['assetMint', beetSolana.publicKey],
+    ['receiptMint', beetSolana.publicKey],
+    ['receiptToRewardExchangeRateBpsAccumulator', beet.u64],
     ['depositCap', beet.coption(beet.u64)],
+    ['minDeposit', beet.u64],
+    ['duration', beet.u64],
     ['deposits', beet.u64],
-    ['slashState', slashStateBeet],
     ['rewardBoosts', beet.u64],
+    ['yieldMode', yieldModeBeet],
+    ['slashState', slashStateBeet],
   ],
   Lockup.fromArgs,
   'Lockup'
