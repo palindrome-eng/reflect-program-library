@@ -40,16 +40,22 @@ pub fn deposit_rewards(
     let lockup_cooldown_vault = &ctx.accounts.lockup_cooldown_vault;
 
     let total_receipts = receipt_token_mint.supply;
+    msg!("total_receipts: {:?}", total_receipts);
     let cooldown_receipts = lockup_cooldown_vault.amount;
+    msg!("cooldown_receipts: {:?}", cooldown_receipts);
 
     let active_receipts = total_receipts
         .checked_sub(cooldown_receipts)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
+    msg!("active_receipts: {:?}", active_receipts);
+
     lockup.increase_exchange_rate_accumulator(
         active_receipts, 
         amount
     )?;
+
+    msg!("increased accumulator");
 
     transfer(
         CpiContext::new(

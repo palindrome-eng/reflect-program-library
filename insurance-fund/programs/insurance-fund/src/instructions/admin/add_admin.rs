@@ -14,11 +14,18 @@ pub fn add_admin(
     ctx: Context<AddAdmin>,
     args: AddAdminArgs
 ) -> Result<()> {
+
+    let AddAdminArgs {
+        address,
+        permissions
+    } = args;
+
     let settings = &mut ctx.accounts.settings;
     let new_admin = &mut ctx.accounts.new_admin;
     let signer = &ctx.accounts.signer;
 
-    new_admin.permissions = args.permissions;
+    new_admin.address = address;
+    new_admin.permissions = permissions;
     
     match args.permissions {
         Permissions::Superadmin => {

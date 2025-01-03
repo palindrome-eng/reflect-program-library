@@ -119,13 +119,13 @@ pub struct InitializeLockup<'info> {
         mut,
         address = asset.mint
     )]
-    pub asset_mint: Account<'info, Mint>,
+    pub asset_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         address = settings.reward_config.main
     )]
-    pub reward_mint: Account<'info, Mint>,
+    pub reward_mint: Box<Account<'info, Mint>>,
 
     #[account(
         init,
@@ -139,7 +139,7 @@ pub struct InitializeLockup<'info> {
         token::mint = asset_mint,
         token::authority = lockup,
     )]
-    pub lockup_hot_vault: Account<'info, TokenAccount>,
+    pub lockup_hot_vault: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: Directly checking the address.
     #[account(
@@ -159,7 +159,7 @@ pub struct InitializeLockup<'info> {
         token::mint = asset_mint,
         token::authority = cold_wallet,
     )]
-    pub lockup_cold_vault: Account<'info, TokenAccount>,
+    pub lockup_cold_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -173,7 +173,7 @@ pub struct InitializeLockup<'info> {
         token::mint = reward_mint,
         token::authority = lockup,
     )]
-    pub asset_reward_pool: Account<'info, TokenAccount>,
+    pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -183,7 +183,7 @@ pub struct InitializeLockup<'info> {
             pool_share_receipt.is_initialized &&
             pool_share_receipt.decimals == 9 @ InsuranceFundError::InvalidReceiptTokenSetup
     )]
-    pub pool_share_receipt: Account<'info, Mint>,
+    pub pool_share_receipt: Box<Account<'info, Mint>>,
 
     #[account(
         init,
@@ -197,7 +197,7 @@ pub struct InitializeLockup<'info> {
         token::mint = pool_share_receipt,
         token::authority = lockup,
     )]
-    pub lockup_cooldown_vault: Account<'info, TokenAccount>,
+    pub lockup_cooldown_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         address = Token::id()

@@ -88,4 +88,7 @@ pub enum InsuranceFundError {
 
     #[msg("WithdrawalNeedsIntent")]
     WithdrawalNeedsIntent,
+
+    #[msg("PriceError")]
+    PriceError,
 }

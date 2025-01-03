@@ -17,6 +17,7 @@ impl Slash {
     pub const LEN: usize = 8 + 5 * 8 + (1 + 4 + 64) + 1;
     // signature requires 64 bytes
 
+    #[inline(never)]
     pub fn slash_account(
         &mut self,
         amount: u64

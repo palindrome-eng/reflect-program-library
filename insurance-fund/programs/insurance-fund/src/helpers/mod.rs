@@ -1,3 +1,9 @@
+pub mod calculate_total_deposits;
+pub use calculate_total_deposits::*;
+
+pub mod calculate_receipts_on_mint;
+pub use calculate_receipts_on_mint::*;
+
 pub mod get_price_from_pyth;
 pub use get_price_from_pyth::*;
 
@@ -13,6 +19,8 @@ pub struct OraclePrice {
 }
 
 impl OraclePrice {
+    
+    #[inline(never)]
     pub fn mul(
         &self,
         amount: u64

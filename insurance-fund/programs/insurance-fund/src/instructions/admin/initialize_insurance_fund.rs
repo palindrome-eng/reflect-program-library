@@ -34,6 +34,7 @@ pub fn initialize_insurance_fund(
     let signer = &ctx.accounts.signer;
     let admin = &mut ctx.accounts.admin;
     
+    admin.address = signer.key();
     admin.permissions = Permissions::Superadmin;
 
     let settings = &mut ctx.accounts.settings;

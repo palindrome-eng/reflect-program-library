@@ -652,6 +652,26 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * PriceError: 'PriceError'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PriceErrorError extends Error {
+  readonly code: number = 0x178d
+  readonly name: string = 'PriceError'
+  constructor() {
+    super('PriceError')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PriceErrorError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x178d, () => new PriceErrorError())
+createErrorFromNameLookup.set('PriceError', () => new PriceErrorError())
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

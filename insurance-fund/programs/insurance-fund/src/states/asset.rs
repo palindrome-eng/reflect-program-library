@@ -34,6 +34,7 @@ pub struct Asset {
 impl Asset {
     pub const SIZE: usize = 8 + 32 + 3 * 8 + Oracle::SIZE;
 
+    #[inline(never)]
     pub fn increase_tvl(
         &mut self,
         amount: u64
@@ -44,6 +45,7 @@ impl Asset {
         Ok(())
     }
 
+    #[inline(never)]
     pub fn decrease_tvl(
         &mut self,
         amount: u64
@@ -55,6 +57,7 @@ impl Asset {
         Ok(())
     }
 
+    #[inline(never)]
     pub fn get_price(
         &self,
         account: &AccountInfo,
@@ -66,6 +69,7 @@ impl Asset {
         }
     }
     
+    #[inline(never)]
     pub fn add_lockup(
         &mut self,
     ) -> Result<()> {
@@ -76,6 +80,7 @@ impl Asset {
         Ok(())
     }
 
+    #[inline(never)]
     pub fn add_deposit(
         &mut self,
     ) -> Result<()> {

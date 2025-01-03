@@ -22,13 +22,13 @@ export type LockupArgs = {
   assetMint: web3.PublicKey
   receiptMint: web3.PublicKey
   receiptToRewardExchangeRateBpsAccumulator: beet.bignum
-  depositCap: beet.COption<beet.bignum>
   minDeposit: beet.bignum
   duration: beet.bignum
   deposits: beet.bignum
   rewardBoosts: beet.bignum
   yieldMode: YieldMode
   slashState: SlashState
+  depositCap: beet.COption<beet.bignum>
 }
 
 export const lockupDiscriminator = [1, 45, 32, 32, 57, 81, 88, 67]
@@ -46,13 +46,13 @@ export class Lockup implements LockupArgs {
     readonly assetMint: web3.PublicKey,
     readonly receiptMint: web3.PublicKey,
     readonly receiptToRewardExchangeRateBpsAccumulator: beet.bignum,
-    readonly depositCap: beet.COption<beet.bignum>,
     readonly minDeposit: beet.bignum,
     readonly duration: beet.bignum,
     readonly deposits: beet.bignum,
     readonly rewardBoosts: beet.bignum,
     readonly yieldMode: YieldMode,
-    readonly slashState: SlashState
+    readonly slashState: SlashState,
+    readonly depositCap: beet.COption<beet.bignum>
   ) {}
 
   /**
@@ -65,13 +65,13 @@ export class Lockup implements LockupArgs {
       args.assetMint,
       args.receiptMint,
       args.receiptToRewardExchangeRateBpsAccumulator,
-      args.depositCap,
       args.minDeposit,
       args.duration,
       args.deposits,
       args.rewardBoosts,
       args.yieldMode,
-      args.slashState
+      args.slashState,
+      args.depositCap
     )
   }
 
@@ -207,7 +207,6 @@ export class Lockup implements LockupArgs {
         }
         return x
       })(),
-      depositCap: this.depositCap,
       minDeposit: (() => {
         const x = <{ toNumber: () => number }>this.minDeposit
         if (typeof x.toNumber === 'function') {
@@ -254,6 +253,7 @@ export class Lockup implements LockupArgs {
       })(),
       yieldMode: this.yieldMode.__kind,
       slashState: this.slashState,
+      depositCap: this.depositCap,
     }
   }
 }
@@ -275,13 +275,13 @@ export const lockupBeet = new beet.FixableBeetStruct<
     ['assetMint', beetSolana.publicKey],
     ['receiptMint', beetSolana.publicKey],
     ['receiptToRewardExchangeRateBpsAccumulator', beet.u64],
-    ['depositCap', beet.coption(beet.u64)],
     ['minDeposit', beet.u64],
     ['duration', beet.u64],
     ['deposits', beet.u64],
     ['rewardBoosts', beet.u64],
     ['yieldMode', yieldModeBeet],
     ['slashState', slashStateBeet],
+    ['depositCap', beet.coption(beet.u64)],
   ],
   Lockup.fromArgs,
   'Lockup'

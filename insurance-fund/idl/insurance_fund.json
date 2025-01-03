@@ -543,23 +543,8 @@
           "isSigner": false
         },
         {
-          "name": "rewardMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rewardPool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "oracle",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -866,8 +851,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "index",
-            "type": "u8"
+            "name": "address",
+            "type": "publicKey"
           },
           {
             "name": "permissions",
@@ -1034,12 +1019,6 @@
             "type": "u64"
           },
           {
-            "name": "depositCap",
-            "type": {
-              "option": "u64"
-            }
-          },
-          {
             "name": "minDeposit",
             "type": "u64"
           },
@@ -1065,6 +1044,12 @@
             "name": "slashState",
             "type": {
               "defined": "SlashState"
+            }
+          },
+          {
+            "name": "depositCap",
+            "type": {
+              "option": "u64"
             }
           }
         ]
@@ -1995,6 +1980,11 @@
       "code": 6028,
       "name": "WithdrawalNeedsIntent",
       "msg": "WithdrawalNeedsIntent"
+    },
+    {
+      "code": 6029,
+      "name": "PriceError",
+      "msg": "PriceError"
     }
   ],
   "metadata": {
