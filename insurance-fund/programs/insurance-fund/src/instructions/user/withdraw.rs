@@ -18,14 +18,6 @@ pub struct WithdrawArgs {
     pub deposit_id: u64,
 }
 
-// Withdraw should
-// 1) Take receipt_amount from the cooldown account
-// 2) Recalculate amount of the base_amount that corresponds to the receipt_amount
-// 3) Burn receipts
-// 4) Transfer base_amount
-// 5) Get locked user rewards from the cooldown account
-// 6) Transfer rewards
-
 pub fn withdraw(
     ctx: Context<Withdraw>,
     args: WithdrawArgs
@@ -72,6 +64,12 @@ pub fn withdraw(
         &lockup_id.to_le_bytes(),
         &[lockup.bump]
     ];
+
+    let clock = &Clock::get()?;
+    require!(
+        cooldown.unlock_ts < clock.unix_timestamp as u64,
+        InsuranceFundError::CooldownInForce
+    );
 
     let max_allowed_auto_withdrawal = total_deposits
         .checked_mul(settings.shares_config.hot_wallet_share_bps)
@@ -189,7 +187,7 @@ pub struct Withdraw<'info> {
         mut,
         address = lockup.receipt_mint
     )]
-    pub receipt_token_mint: Account<'info, Mint>,
+    pub receipt_token_mint: Box<Account<'info, Mint>>,
 
     // All these checks were run during initializing cooldown
     // not sure if we need to check them again, likely not.
@@ -201,9 +199,6 @@ pub struct Withdraw<'info> {
             &args.deposit_id.to_le_bytes()
         ],
         bump,
-        // Cannot withdraw before unlock timestamp
-        constraint = deposit.unlock_ts <= (clock.unix_timestamp as u64) @ InsuranceFundError::LockupInForce,
-        // Enforce account ownership
         has_one = user
     )]
     pub deposit: Account<'info, Deposit>,
@@ -211,18 +206,13 @@ pub struct Withdraw<'info> {
     #[account(
         mut,
         seeds = [
-            // This scheme could be less complex, but keep it this
-            // way in case of future updates that would possibly allow 
-            // multi-asset deposits with multiple receipts.
             DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
             deposit.key().as_ref(),
             receipt_token_mint.key().as_ref(),
         ],
         bump,
-        token::mint = receipt_token_mint,
-        token::authority = deposit,
     )]
-    pub deposit_receipt_token_account: Account<'info, TokenAccount>,
+    pub deposit_receipt_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -281,7 +271,7 @@ pub struct Withdraw<'info> {
         ],
         bump,
     )]
-    pub lockup_hot_vault: Account<'info, TokenAccount>,
+    pub lockup_hot_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -292,7 +282,7 @@ pub struct Withdraw<'info> {
         ],
         bump,
     )]
-    pub lockup_cold_vault: Account<'info, TokenAccount>,
+    pub lockup_cold_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -301,9 +291,7 @@ pub struct Withdraw<'info> {
             lockup.key().as_ref(),
             reward_mint.key().as_ref(),
         ],
-        bump,
-        token::mint = reward_mint,
-        token::authority = lockup,
+        bump
     )]
     pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
 
@@ -314,11 +302,9 @@ pub struct Withdraw<'info> {
             lockup.key().as_ref(),
             receipt_token_mint.key().as_ref(),
         ],
-        bump,
-        token::mint = receipt_token_mint,
-        token::authority = lockup,
+        bump
     )]
-    pub lockup_cooldown_vault: Account<'info, TokenAccount>,
+    pub lockup_cooldown_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -336,8 +322,5 @@ pub struct Withdraw<'info> {
     pub token_program: Program<'info, Token>,
 
     #[account()]
-    pub clock: Sysvar<'info, Clock>,
-
-    #[account()]
-    pub system_program: Program<'info, System>,
+    pub system_program: Option<Program<'info, System>>,
 }

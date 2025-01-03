@@ -672,6 +672,29 @@ createErrorFromCodeLookup.set(0x178d, () => new PriceErrorError())
 createErrorFromNameLookup.set('PriceError', () => new PriceErrorError())
 
 /**
+ * CooldownInForce: 'CooldownInForce'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CooldownInForceError extends Error {
+  readonly code: number = 0x178e
+  readonly name: string = 'CooldownInForce'
+  constructor() {
+    super('CooldownInForce')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, CooldownInForceError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x178e, () => new CooldownInForceError())
+createErrorFromNameLookup.set(
+  'CooldownInForce',
+  () => new CooldownInForceError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

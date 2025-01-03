@@ -32,7 +32,7 @@ pub fn request_withdrawal(
     let RequestWithdrawalArgs {
         mode,
         deposit_id,
-        lockup_id: _,
+        lockup_id,
         reward_boost_id: __
     } = args;
 
@@ -48,17 +48,49 @@ pub fn request_withdrawal(
     let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
     let lockup_cooldown_vault = &ctx.accounts.lockup_cooldown_vault;
     let token_program = &ctx.accounts.token_program;
+    let reward_boost = &ctx.accounts.reward_boost;
+
+    msg!("got variables");
+
+    match reward_boost {
+        Some(account) => {
+            require!(
+                account
+                    .validate(deposit.initial_usd_value)
+                    .is_ok(),
+                InsuranceFundError::BoostNotApplied
+            );
+
+            require!(
+                account.lockup == lockup_id,
+                InsuranceFundError::BoostNotApplied
+            );
+        },
+        None => {}
+    }
+
+    let clock = &Clock::get()?;
+    require!(
+        deposit.unlock_ts <= (clock.unix_timestamp as u64),
+        InsuranceFundError::LockupInForce,
+    );
+
+    msg!("got clock");
 
     let total_receipts = receipt_token_mint.supply;
     let total_deposits = lockup_cold_vault.amount
         .checked_add(lockup_hot_vault.amount)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
+    msg!("total_deposits: {:?}", total_deposits);
+
     let receipt_to_deposit_exchange_rate_bps = total_deposits
         .checked_mul(10_000)
         .ok_or(InsuranceFundError::MathOverflow)?
         .checked_div(total_receipts)
         .ok_or(InsuranceFundError::MathOverflow)?;
+
+    msg!("receipt_to_deposit_exchange_rate: {:?}", receipt_to_deposit_exchange_rate_bps);
 
     let (
         base_amount, 
@@ -85,6 +117,9 @@ pub fn request_withdrawal(
             )
         }
     };
+
+    msg!("base_amount: {:?}", base_amount);
+    msg!("receipt_amount: {:?}", receipt_amount);
 
     // Check if user actually owns enough receipts to process this
     require!(
@@ -118,6 +153,8 @@ pub fn request_withdrawal(
         receipt_amount
     )?;
 
+    msg!("computed_accrued_rewards: {:?}", rewards);
+
     cooldown.rewards = match lockup.yield_mode {
         YieldMode::Single => {
             CooldownRewards::Single(rewards)
@@ -132,10 +169,12 @@ pub fn request_withdrawal(
     let lockup_key = lockup.key();
     let seeds = &[
         DEPOSIT_SEED.as_bytes(),
-        lockup_key.as_ref(),
-        &args.deposit_id.to_le_bytes(),
+        &lockup_key.as_ref(),
+        &deposit_id.to_le_bytes(),
         &[deposit.bump]
     ];
+
+    msg!("transferring");
 
     // Transfer receipts into cooldown vault
     // We need this to be able to still slash (since slashing is based on the total receipt supply)
@@ -152,6 +191,8 @@ pub fn request_withdrawal(
         ), 
         receipt_amount
     )?;
+
+    msg!("transferred");
 
     emit!(WithdrawEvent {
         asset: asset_mint.key(),
@@ -207,8 +248,6 @@ pub struct RequestWithdrawal<'info> {
             &args.deposit_id.to_le_bytes()
         ],
         bump,
-        // Cannot request withdraw before unlock timestamp
-        constraint = deposit.unlock_ts <= (clock.unix_timestamp as u64) @ InsuranceFundError::LockupInForce,
         // Enforce account ownership
         has_one = user
     )]
@@ -217,9 +256,6 @@ pub struct RequestWithdrawal<'info> {
     #[account(
         mut,
         seeds = [
-            // This scheme could be less complex, but keep it this
-            // way in case of future updates that would possibly allow 
-            // multi-asset deposits with multiple receipts.
             DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
             deposit.key().as_ref(),
             receipt_token_mint.key().as_ref(),
@@ -250,13 +286,7 @@ pub struct RequestWithdrawal<'info> {
             // Unwrap will panic if reward_boost account is present, but reward_boost_id argument is not.
             &args.reward_boost_id.unwrap().to_le_bytes()
         ],
-        bump,
-
-        constraint = reward_boost
-            .validate(deposit.initial_usd_value)
-            .is_ok() @ InsuranceFundError::BoostNotApplied,
-
-        constraint = reward_boost.lockup == args.lockup_id
+        bump
     )]
     pub reward_boost: Option<Account<'info, RewardBoost>>,
 
@@ -292,7 +322,7 @@ pub struct RequestWithdrawal<'info> {
         ],
         bump,
     )]
-    pub lockup_hot_vault: Account<'info, TokenAccount>,
+    pub lockup_hot_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -303,7 +333,7 @@ pub struct RequestWithdrawal<'info> {
         ],
         bump,
     )]
-    pub lockup_cold_vault: Account<'info, TokenAccount>,
+    pub lockup_cold_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -329,10 +359,7 @@ pub struct RequestWithdrawal<'info> {
         token::mint = receipt_token_mint,
         token::authority = lockup,
     )]
-    pub lockup_cooldown_vault: Account<'info, TokenAccount>,
-
-    #[account()]
-    pub clock: Sysvar<'info, Clock>,
+    pub lockup_cooldown_vault: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub token_program: Program<'info, Token>,
@@ -340,27 +367,3 @@ pub struct RequestWithdrawal<'info> {
     #[account()]
     pub system_program: Program<'info, System>,
 }
-
-// impl RequestWithdrawal<'_> {
-//     pub fn validate_withdrawal_amounts(
-//         &self,
-//         mode: &RequestWithdrawalMode
-//     ) -> Result<()> {
-//         match mode {
-//             RequestWithdrawalMode::ExactIn(receipt_tokens) => {
-//                 require!(
-//                     receipt_tokens <= self.deposit_receipt_token_account.amount,
-//                     InsuranceFundError::NotEnoughReceiptTokens
-//                 );
-//             },
-//             RequestWithdrawalMode::ExactOut(tokens_out) => {
-//                 let total_receipts = self.receipt_token_mint.supply;
-//                 let total_deposited_tokens = self.lockup_hot_vault.amount
-//                     .checked_add(self.lockup_cold_vault.amount)
-//                     .ok_or(InsuranceFundError::MathOverflow)?;
-
-
-//             }
-//         }
-//     }
-// }

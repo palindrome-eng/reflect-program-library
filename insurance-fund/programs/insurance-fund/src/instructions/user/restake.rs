@@ -1,24 +1,15 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token;
 use crate::errors::InsuranceFundError;
 use crate::events::RestakeEvent;
 use crate::helpers::calculate_receipts_on_mint;
 use crate::helpers::calculate_total_deposits;
 use crate::states::*;
 use crate::constants::*;
-use anchor_lang::system_program::{
-    create_account,
-    CreateAccount
-};
 use anchor_spl::token::{
     Mint,
     Token,
-    TokenAccount,
-    transfer,
-    Transfer,
-    mint_to,
-    MintTo,
-    initialize_account3,
-    InitializeAccount3
+    TokenAccount
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -51,58 +42,21 @@ pub fn restake(
     let user_asset_ata = &ctx.accounts.user_asset_ata;
     let settings = &ctx.accounts.settings;
     let system_program = &ctx.accounts.system_program;
+    let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
 
-    let clock = Clock::get()?;
-    let unix_ts = clock.unix_timestamp as u64;
+    deposit.create_deposit_receipt_token_account(
+        &user,
+        &deposit_receipt_token_account,
+        ctx.bumps.deposit_receipt_token_account,
+        &deposit,
+        &receipt_token_mint,
+        &token_program,
+        &system_program
+    )?;
 
     let total_deposits = calculate_total_deposits(
         &lockup_cold_vault,
         &lockup_hot_vault
-    )?;
-
-    let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
-    
-    let rent = Rent::get()?;
-    let lamports = rent.minimum_balance(165);
-
-    create_account(
-        CpiContext::new_with_signer(
-            system_program.to_account_info(), 
-            CreateAccount {
-                from: user.to_account_info(),
-                to: deposit_receipt_token_account.to_account_info()
-            },
-            &[
-                &[
-                    DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
-                    deposit.key().as_ref(),
-                    receipt_token_mint.key().as_ref(),
-                    &[ctx.bumps.deposit_receipt_token_account]
-                ]
-            ]
-        ),
-        lamports,
-        165,
-        &token_program.key()
-    )?;
-
-    initialize_account3(
-        CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            InitializeAccount3 {
-                account: deposit_receipt_token_account.to_account_info(),
-                mint: receipt_token_mint.to_account_info(),
-                authority: deposit.to_account_info()
-            },
-            &[
-                &[
-                    DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
-                    deposit.key().as_ref(),
-                    receipt_token_mint.key().as_ref(),
-                    &[ctx.bumps.deposit_receipt_token_account]
-                ]
-            ]
-        )
     )?;
 
     match lockup.deposit_cap {
@@ -117,40 +71,32 @@ pub fn restake(
 
     let total_receipts_to_mint: u64 = calculate_receipts_on_mint(
         &receipt_token_mint,
-        &amount, 
-        &total_deposits
+        amount, 
+        total_deposits
     )?;
 
-    msg!("calculated total receipts to mint");
-
     lockup.mint_receipts(
-        &total_receipts_to_mint, 
+        total_receipts_to_mint, 
         &lockup, 
         &receipt_token_mint, 
         &deposit_receipt_token_account, 
         &token_program
     )?;
 
-    let deserialized = TokenAccount::try_deserialize(
-        &mut deposit_receipt_token_account.try_borrow_mut_data()?.as_ref()
-    )?;
+    let clock = Clock::get()?;
+    let unix_ts = clock.unix_timestamp as u64;
 
-    msg!("minted receipts");
-    msg!("receipt_balance: {:?}", deserialized.amount);
-
+    deposit.index = lockup.deposits;
     deposit.lockup = lockup.key();
     deposit.user = user.key();
     deposit.unlock_ts = unix_ts + lockup.duration;
-    deposit.last_slashed = None;
-    deposit.amount_slashed = 0;
+    deposit.bump = ctx.bumps.deposit;
 
     let receipt_exchange_rate_bps = lockup.receipt_to_reward_exchange_rate_bps_accumulator;
     deposit.initial_receipt_exchange_rate_bps = receipt_exchange_rate_bps;
     
     let oracle_price = asset
         .get_price(oracle, &clock)?;
-
-    msg!("calculated price");
 
     // Multiply oracle price by amount of tokens, 
     // then divide by token decimals to get value of 1 full token instead of `lamports`.
@@ -166,8 +112,6 @@ pub fn restake(
         .ok_or(InsuranceFundError::MathOverflow)?
         .try_into()
         .map_err(|_| InsuranceFundError::MathOverflow)?;
-
-    msg!("calculated usd value");
 
     deposit.initial_usd_value = usd_value;
 
@@ -192,8 +136,6 @@ pub fn restake(
         amount,
         lockup_ts: deposit.unlock_ts
     });
-
-    panic!();
 
     Ok(())
 }

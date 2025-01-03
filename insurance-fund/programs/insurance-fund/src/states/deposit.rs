@@ -1,6 +1,16 @@
 use anchor_lang::prelude::*;
-
 use crate::errors::InsuranceFundError;
+use crate::constants::*;
+use anchor_lang::system_program::{
+    create_account,
+    CreateAccount
+};
+use anchor_spl::token::{
+    initialize_account3,
+    InitializeAccount3,
+    Token,
+    Mint,
+};
 
 #[account]
 pub struct Deposit {
@@ -8,10 +18,8 @@ pub struct Deposit {
     pub index: u64,
     pub user: Pubkey,
     pub initial_usd_value: u64, // USD value at the moment of the deposit
-    pub amount_slashed: u64, // Amount lost due to slashing
     pub lockup: Pubkey, // Pointer to the lockup
     pub unlock_ts: u64, // Unlock timestamp
-    pub last_slashed: Option<u64>, // Index of the last slash
     pub initial_receipt_exchange_rate_bps: u64,
 }
 
@@ -21,27 +29,11 @@ impl Deposit {
         + 8
         + 32
         + 8
-        + 8
         + 32
         + 8
-        + 1 + 8
         + 8;
-        
-    pub fn slash(
-        &mut self,
-        amount: u64,
-        slash_id: u64
-    ) -> Result<()> {
-        self.amount_slashed = self
-            .amount_slashed
-            .checked_add(amount)
-            .ok_or(InsuranceFundError::MathOverflow)?;
 
-        self.last_slashed = Some(slash_id);
-
-        Ok(())
-    }
-
+    #[inline(never)]
     pub fn compute_accrued_rewards(
         &self, 
         current_receipt_exchange_rate_bps: u64,
@@ -58,5 +50,58 @@ impl Deposit {
             .ok_or(InsuranceFundError::MathOverflow)?;
 
         Ok(result)
+    }
+
+    #[inline(never)]
+    pub fn create_deposit_receipt_token_account<'info>(
+        &self,
+        user: &Signer<'info>,
+        deposit_receipt_token_account: &AccountInfo<'info>,
+        bump: u8,
+        deposit: &Account<'info, Deposit>,
+        receipt_token_mint: &Account<'info, Mint>,
+        token_program: &Program<'info, Token>,
+        system_program: &Program<'info, System>,
+    ) -> Result<()> {
+        let rent = Rent::get()?;
+        let lamports = rent.minimum_balance(165);
+
+        let deposit_key = deposit.key();
+        let receipt_key = receipt_token_mint.key();
+
+        let signer_seeds = &[
+            DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
+            deposit_key.as_ref(),
+            receipt_key.as_ref(),
+            &[bump]
+        ];
+
+        create_account(
+            CpiContext::new_with_signer(
+                system_program.to_account_info(), 
+                CreateAccount {
+                    from: user.to_account_info(),
+                    to: deposit_receipt_token_account.to_account_info()
+                },
+                &[signer_seeds]
+            ),
+            lamports,
+            165,
+            &token_program.key()
+        )?;
+    
+        initialize_account3(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(), 
+                InitializeAccount3 {
+                    account: deposit_receipt_token_account.to_account_info(),
+                    mint: receipt_token_mint.to_account_info(),
+                    authority: deposit.to_account_info()
+                },
+                &[signer_seeds]
+            )
+        )?;
+
+        Ok(())
     }
 }

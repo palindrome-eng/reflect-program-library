@@ -91,4 +91,7 @@ pub enum InsuranceFundError {
 
     #[msg("PriceError")]
     PriceError,
+
+    #[msg("CooldownInForce")]
+    CooldownInForce,
 }

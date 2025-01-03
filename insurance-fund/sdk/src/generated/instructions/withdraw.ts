@@ -54,7 +54,6 @@ export const withdrawStruct = new beet.BeetArgsStruct<
  * @property [_writable_] assetRewardPool
  * @property [_writable_] lockupCooldownVault
  * @property [_writable_] intent (optional)
- * @property [] clock
  * @category Instructions
  * @category Withdraw
  * @category generated
@@ -78,7 +77,6 @@ export type WithdrawInstructionAccounts = {
   lockupCooldownVault: web3.PublicKey
   intent?: web3.PublicKey
   tokenProgram?: web3.PublicKey
-  clock: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -201,12 +199,7 @@ export function createWithdrawInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.clock,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? programId,
       isWritable: false,
       isSigner: false,
     },

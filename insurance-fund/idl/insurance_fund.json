@@ -568,6 +568,64 @@
       ]
     },
     {
+      "name": "slash",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupHotVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupColdVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destination",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SlashArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "requestWithdrawal",
       "accounts": [
         {
@@ -644,11 +702,6 @@
         {
           "name": "lockupCooldownVault",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -766,14 +819,10 @@
           "isSigner": false
         },
         {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         }
       ],
       "args": [
@@ -949,22 +998,12 @@
             "type": "u64"
           },
           {
-            "name": "amountSlashed",
-            "type": "u64"
-          },
-          {
             "name": "lockup",
             "type": "publicKey"
           },
           {
             "name": "unlockTs",
             "type": "u64"
-          },
-          {
-            "name": "lastSlashed",
-            "type": {
-              "option": "u64"
-            }
           },
           {
             "name": "initialReceiptExchangeRateBps",
@@ -1118,44 +1157,6 @@
           },
           {
             "name": "frozen",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "Slash",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "index",
-            "type": "u64"
-          },
-          {
-            "name": "targetAccounts",
-            "type": "u64"
-          },
-          {
-            "name": "slashedAccounts",
-            "type": "u64"
-          },
-          {
-            "name": "targetAmount",
-            "type": "u64"
-          },
-          {
-            "name": "slashedAmount",
-            "type": "u64"
-          },
-          {
-            "name": "transferSig",
-            "type": {
-              "option": "string"
-            }
-          },
-          {
-            "name": "slashedColdWallet",
             "type": "bool"
           }
         ]
@@ -1985,6 +1986,11 @@
       "code": 6029,
       "name": "PriceError",
       "msg": "PriceError"
+    },
+    {
+      "code": 6030,
+      "name": "CooldownInForce",
+      "msg": "CooldownInForce"
     }
   ],
   "metadata": {

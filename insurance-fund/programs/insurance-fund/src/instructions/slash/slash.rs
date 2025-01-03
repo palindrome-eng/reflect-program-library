@@ -22,7 +22,7 @@ pub fn slash(
 ) -> Result<()> {
     let token_program = &ctx.accounts.token_program;
     let destination = &ctx.accounts.destination;
-    let lockup = &ctx.accounts.lockup;
+    let lockup = &mut ctx.accounts.lockup;
     let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
 
     let SlashArgs {
@@ -35,6 +35,8 @@ pub fn slash(
         &lockup_id.to_le_bytes(),
         &[lockup.bump]
     ];
+
+    lockup.slash(amount)?;
     
     transfer(
         CpiContext::new_with_signer(

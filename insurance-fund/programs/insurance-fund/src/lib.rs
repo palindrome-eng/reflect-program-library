@@ -90,6 +90,13 @@ pub mod insurance_fund {
         )
     }
 
+    pub fn slash(
+        ctx: Context<Slash>,
+        args: SlashArgs
+    ) -> Result<()> {
+        instructions::slash(ctx, args)
+    }
+
     pub fn request_withdrawal(
         ctx: Context<RequestWithdrawal>,
         args: RequestWithdrawalArgs

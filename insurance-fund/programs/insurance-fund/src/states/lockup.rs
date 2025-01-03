@@ -41,6 +41,20 @@ pub struct Lockup {
 impl Lockup {
     pub const SIZE: usize = 8 + 1 + 8 * 6 + 2 * 32 + (1 + 8) + (1 + 8) + (2 * 8);
 
+    pub fn slash(
+        &mut self,
+        amount: u64
+    ) -> Result<()> {
+        self.slash_state.amount = self
+            .slash_state
+            .amount
+            .checked_add(amount)
+            .ok_or(InsuranceFundError::MathOverflow)?;
+
+        self.slash_state.index += 1;
+        Ok(())
+    }
+
     #[inline(never)]
     pub fn increase_exchange_rate_accumulator(
         &mut self,
@@ -104,7 +118,7 @@ impl Lockup {
     #[inline(never)]
     pub fn mint_receipts<'info>(
         &self,
-        amount: &u64,
+        amount: u64,
         lockup: &Account<'info, Lockup>,
         receipt_token_mint: &Account<'info, Mint>,
         deposit_receipt_token_account: &AccountInfo<'info>,
@@ -137,7 +151,7 @@ impl Lockup {
                 }, 
                 &[seeds]
             ), 
-            *amount
+            amount
         )?;
 
         msg!("minted this bad boy");

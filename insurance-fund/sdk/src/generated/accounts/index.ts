@@ -6,7 +6,6 @@ export * from './Intent'
 export * from './Lockup'
 export * from './RewardBoost'
 export * from './Settings'
-export * from './Slash'
 
 import { Admin } from './Admin'
 import { Asset } from './Asset'
@@ -16,7 +15,6 @@ import { Intent } from './Intent'
 import { Lockup } from './Lockup'
 import { RewardBoost } from './RewardBoost'
 import { Settings } from './Settings'
-import { Slash } from './Slash'
 
 export const accountProviders = {
   Admin,
@@ -27,5 +25,4 @@ export const accountProviders = {
   Lockup,
   RewardBoost,
   Settings,
-  Slash,
 }

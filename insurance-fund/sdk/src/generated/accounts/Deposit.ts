@@ -19,10 +19,8 @@ export type DepositArgs = {
   index: beet.bignum
   user: web3.PublicKey
   initialUsdValue: beet.bignum
-  amountSlashed: beet.bignum
   lockup: web3.PublicKey
   unlockTs: beet.bignum
-  lastSlashed: beet.COption<beet.bignum>
   initialReceiptExchangeRateBps: beet.bignum
 }
 
@@ -40,10 +38,8 @@ export class Deposit implements DepositArgs {
     readonly index: beet.bignum,
     readonly user: web3.PublicKey,
     readonly initialUsdValue: beet.bignum,
-    readonly amountSlashed: beet.bignum,
     readonly lockup: web3.PublicKey,
     readonly unlockTs: beet.bignum,
-    readonly lastSlashed: beet.COption<beet.bignum>,
     readonly initialReceiptExchangeRateBps: beet.bignum
   ) {}
 
@@ -56,10 +52,8 @@ export class Deposit implements DepositArgs {
       args.index,
       args.user,
       args.initialUsdValue,
-      args.amountSlashed,
       args.lockup,
       args.unlockTs,
-      args.lastSlashed,
       args.initialReceiptExchangeRateBps
     )
   }
@@ -131,36 +125,34 @@ export class Deposit implements DepositArgs {
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Deposit} for the provided args.
-   *
-   * @param args need to be provided since the byte size for this account
-   * depends on them
+   * {@link Deposit}
    */
-  static byteSize(args: DepositArgs) {
-    const instance = Deposit.fromArgs(args)
-    return depositBeet.toFixedFromValue({
-      accountDiscriminator: depositDiscriminator,
-      ...instance,
-    }).byteSize
+  static get byteSize() {
+    return depositBeet.byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
    * {@link Deposit} data from rent
    *
-   * @param args need to be provided since the byte size for this account
-   * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
-    args: DepositArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Deposit.byteSize(args),
+      Deposit.byteSize,
       commitment
     )
+  }
+
+  /**
+   * Determines if the provided {@link Buffer} has the correct byte size to
+   * hold {@link Deposit} data.
+   */
+  static hasCorrectByteSize(buf: Buffer, offset = 0) {
+    return buf.byteLength - offset === Deposit.byteSize
   }
 
   /**
@@ -193,17 +185,6 @@ export class Deposit implements DepositArgs {
         }
         return x
       })(),
-      amountSlashed: (() => {
-        const x = <{ toNumber: () => number }>this.amountSlashed
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
       lockup: this.lockup.toBase58(),
       unlockTs: (() => {
         const x = <{ toNumber: () => number }>this.unlockTs
@@ -216,7 +197,6 @@ export class Deposit implements DepositArgs {
         }
         return x
       })(),
-      lastSlashed: this.lastSlashed,
       initialReceiptExchangeRateBps: (() => {
         const x = <{ toNumber: () => number }>this.initialReceiptExchangeRateBps
         if (typeof x.toNumber === 'function') {
@@ -236,7 +216,7 @@ export class Deposit implements DepositArgs {
  * @category Accounts
  * @category generated
  */
-export const depositBeet = new beet.FixableBeetStruct<
+export const depositBeet = new beet.BeetStruct<
   Deposit,
   DepositArgs & {
     accountDiscriminator: number[] /* size: 8 */
@@ -248,10 +228,8 @@ export const depositBeet = new beet.FixableBeetStruct<
     ['index', beet.u64],
     ['user', beetSolana.publicKey],
     ['initialUsdValue', beet.u64],
-    ['amountSlashed', beet.u64],
     ['lockup', beetSolana.publicKey],
     ['unlockTs', beet.u64],
-    ['lastSlashed', beet.coption(beet.u64)],
     ['initialReceiptExchangeRateBps', beet.u64],
   ],
   Deposit.fromArgs,
