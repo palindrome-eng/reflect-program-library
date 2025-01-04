@@ -103,7 +103,7 @@ export class Settings implements SettingsArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV'
+      '2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, settingsBeet)

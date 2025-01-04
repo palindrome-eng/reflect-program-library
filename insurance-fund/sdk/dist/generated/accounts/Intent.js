@@ -90,7 +90,7 @@ class Intent {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+    static gpaBuilder(programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
         return beetSolana.GpaBuilder.fromStruct(programId, exports.intentBeet);
     }
     /**

@@ -29,14 +29,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.slashDepositsArgsBeet = void 0;
+exports.rebalanceArgsBeet = void 0;
 const beet = __importStar(require("@metaplex-foundation/beet"));
 /**
  * @category userTypes
  * @category generated
  */
-exports.slashDepositsArgsBeet = new beet.BeetArgsStruct([
-    ['lockupId', beet.u64],
-    ['slashId', beet.u64],
-    ['slashAmount', beet.u64],
-], 'SlashDepositsArgs');
+exports.rebalanceArgsBeet = new beet.BeetArgsStruct([['lockupId', beet.u64]], 'RebalanceArgs');

@@ -60,7 +60,7 @@ exports.requestWithdrawalInstructionDiscriminator = [
  * @category RequestWithdrawal
  * @category generated
  */
-function createRequestWithdrawalInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+function createRequestWithdrawalInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
     var _a, _b, _c;
     const [data] = exports.requestWithdrawalStruct.serialize(Object.assign({ instructionDiscriminator: exports.requestWithdrawalInstructionDiscriminator }, args));
     const keys = [
@@ -80,7 +80,17 @@ function createRequestWithdrawalInstruction(accounts, args, programId = new web3
             isSigner: false,
         },
         {
+            pubkey: accounts.receiptTokenMint,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
             pubkey: accounts.deposit,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
+            pubkey: accounts.depositReceiptTokenAccount,
             isWritable: true,
             isSigner: false,
         },
@@ -110,17 +120,12 @@ function createRequestWithdrawalInstruction(accounts, args, programId = new web3
             isSigner: false,
         },
         {
-            pubkey: accounts.userAssetAta,
+            pubkey: accounts.lockupHotVault,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: accounts.userRewardAta,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.lockupAssetVault,
+            pubkey: accounts.lockupColdVault,
             isWritable: true,
             isSigner: false,
         },
@@ -130,8 +135,8 @@ function createRequestWithdrawalInstruction(accounts, args, programId = new web3
             isSigner: false,
         },
         {
-            pubkey: accounts.clock,
-            isWritable: false,
+            pubkey: accounts.lockupCooldownVault,
+            isWritable: true,
             isSigner: false,
         },
         {

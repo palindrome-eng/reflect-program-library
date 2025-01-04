@@ -30,9 +30,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeAdminArgsBeet = void 0;
+const beetSolana = __importStar(require("@metaplex-foundation/beet-solana"));
 const beet = __importStar(require("@metaplex-foundation/beet"));
 /**
  * @category userTypes
  * @category generated
  */
-exports.removeAdminArgsBeet = new beet.BeetArgsStruct([['adminId', beet.u8]], 'RemoveAdminArgs');
+exports.removeAdminArgsBeet = new beet.BeetArgsStruct([['address', beetSolana.publicKey]], 'RemoveAdminArgs');

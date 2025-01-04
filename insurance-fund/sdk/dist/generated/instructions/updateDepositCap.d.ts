@@ -6,56 +6,50 @@
  */
 import * as beet from '@metaplex-foundation/beet';
 import * as web3 from '@solana/web3.js';
-import { SlashDepositsArgs } from '../types/SlashDepositsArgs';
+import { UpdateDepositCapArgs } from '../types/UpdateDepositCapArgs';
 /**
  * @category Instructions
- * @category SlashDeposits
+ * @category UpdateDepositCap
  * @category generated
  */
-export type SlashDepositsInstructionArgs = {
-    args: SlashDepositsArgs;
+export type UpdateDepositCapInstructionArgs = {
+    args: UpdateDepositCapArgs;
 };
 /**
  * @category Instructions
- * @category SlashDeposits
+ * @category UpdateDepositCap
  * @category generated
  */
-export declare const slashDepositsStruct: beet.BeetArgsStruct<SlashDepositsInstructionArgs & {
+export declare const updateDepositCapStruct: beet.FixableBeetArgsStruct<UpdateDepositCapInstructionArgs & {
     instructionDiscriminator: number[];
 }>;
 /**
- * Accounts required by the _slashDeposits_ instruction
+ * Accounts required by the _updateDepositCap_ instruction
  *
  * @property [_writable_, **signer**] signer
  * @property [_writable_] admin
  * @property [_writable_] settings
  * @property [_writable_] lockup
- * @property [_writable_] slash
- * @property [_writable_] assetMint
- * @property [_writable_] assetLockup
  * @category Instructions
- * @category SlashDeposits
+ * @category UpdateDepositCap
  * @category generated
  */
-export type SlashDepositsInstructionAccounts = {
+export type UpdateDepositCapInstructionAccounts = {
     signer: web3.PublicKey;
     admin: web3.PublicKey;
     settings: web3.PublicKey;
     lockup: web3.PublicKey;
-    slash: web3.PublicKey;
-    assetMint: web3.PublicKey;
-    assetLockup: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
 };
-export declare const slashDepositsInstructionDiscriminator: number[];
+export declare const updateDepositCapInstructionDiscriminator: number[];
 /**
- * Creates a _SlashDeposits_ instruction.
+ * Creates a _UpdateDepositCap_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SlashDeposits
+ * @category UpdateDepositCap
  * @category generated
  */
-export declare function createSlashDepositsInstruction(accounts: SlashDepositsInstructionAccounts, args: SlashDepositsInstructionArgs, programId?: web3.PublicKey): web3.TransactionInstruction;
+export declare function createUpdateDepositCapInstruction(accounts: UpdateDepositCapInstructionAccounts, args: UpdateDepositCapInstructionArgs, programId?: web3.PublicKey): web3.TransactionInstruction;

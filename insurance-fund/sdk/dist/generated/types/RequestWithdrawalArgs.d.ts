@@ -5,11 +5,12 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 import * as beet from '@metaplex-foundation/beet';
+import { RequestWithdrawalMode } from './RequestWithdrawalMode';
 export type RequestWithdrawalArgs = {
     lockupId: beet.bignum;
     depositId: beet.bignum;
     rewardBoostId: beet.COption<beet.bignum>;
-    amount: beet.bignum;
+    mode: RequestWithdrawalMode;
 };
 /**
  * @category userTypes

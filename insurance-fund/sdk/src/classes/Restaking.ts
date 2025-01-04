@@ -21,7 +21,7 @@ import {
     createInitializeLockupInstruction,
     createManageFreezeInstruction,
     createRequestWithdrawalInstruction,
-    createRestakeInstruction,
+    createRestakeInstruction, createSlashInstruction,
     createWithdrawInstruction,
     Deposit,
     depositDiscriminator,
@@ -34,7 +34,6 @@ import {
     RewardBoost,
     rewardBoostDiscriminator,
     Settings,
-    Slash
 } from "../generated";
 import BN from "bn.js";
 import {
@@ -53,9 +52,7 @@ import {
     PROGRAM_ID as METAPLEX_PROGRAM_ID
 } from "@metaplex-foundation/mpl-token-metadata";
 
-type InsuranceFundAccount = Asset | Admin | Cooldown | Deposit | Intent | Lockup | RewardBoost | Settings | Slash;
-
-const DEPOSITS_PER_SLASH_INSTRUCTION = 10;
+type InsuranceFundAccount = Asset | Admin | Cooldown | Deposit | Intent | Lockup | RewardBoost | Settings;
 
 export class Restaking {
     private connection: Connection;
@@ -180,7 +177,7 @@ export class Restaking {
         return intents.map(({ pubkey, account }) => ({ pubkey, account: this.accountFromBuffer<Intent>(Intent, account) }));
     }
 
-    deriveAdmin(
+    static deriveAdmin(
         address: PublicKey
     ) {
         const [admin] = PublicKey.findProgramAddressSync(
@@ -203,16 +200,14 @@ export class Restaking {
         return admins.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Admin>(Admin, account) }))
     }
 
-    // Technically program allows for multiple admin accounts under the same signer public key.
-    // Program may require small rework that will ensure there's one Admin instance per publickey, i.e via using pubkey instead of index in seeds
     async getAdminFromPublicKey(address: PublicKey) {
-        const admin = this.deriveAdmin(address);
+        const admin = Restaking.deriveAdmin(address);
 
         const adminData = await Admin.fromAccountAddress(this.connection, admin);
         return { pubkey: admin, account: adminData };
     }
 
-    deriveSettings() {
+    static deriveSettings() {
         const [settings] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("settings"),
@@ -226,8 +221,8 @@ export class Restaking {
     async initializeInsuranceFund(admin: PublicKey, args: InitializeInsuranceFundArgs) {
         return createInitializeInsuranceFundInstruction(
             {
-                admin: this.deriveAdmin(admin),
-                settings: this.deriveSettings(),
+                admin: Restaking.deriveAdmin(admin),
+                settings: Restaking.deriveSettings(),
                 signer: admin,
                 systemProgram: SystemProgram.programId
             },
@@ -239,10 +234,10 @@ export class Restaking {
     }
 
     async getSettingsData() {
-        return Settings.fromAccountAddress(this.connection, this.deriveSettings());
+        return Settings.fromAccountAddress(this.connection, Restaking.deriveSettings());
     }
 
-    deriveLockup(index: number | BN) {
+    static deriveLockup(index: number | BN) {
         const [lockup] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("lockup"),
@@ -254,7 +249,7 @@ export class Restaking {
         return lockup;
     }
 
-    deriveAsset(mint: PublicKey) {
+    static deriveAsset(mint: PublicKey) {
         const [asset] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("asset"),
@@ -266,7 +261,7 @@ export class Restaking {
         return asset;
     }
 
-    deriveAssetPool(
+    static deriveAssetPool(
         type: "vault" | "reward_pool",
         lockup: PublicKey,
         assetMint: PublicKey
@@ -283,7 +278,7 @@ export class Restaking {
         return vault;
     }
 
-    deriveLockupColdVault(lockup: PublicKey, assetMint: PublicKey) {
+    static deriveLockupColdVault(lockup: PublicKey, assetMint: PublicKey) {
         const [coldVault] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("cold_vault"),
@@ -300,7 +295,7 @@ export class Restaking {
         return getAccount(this.connection, address, "confirmed");
     }
 
-    deriveLockupHotVault(lockup: PublicKey, assetMint: PublicKey) {
+    static deriveLockupHotVault(lockup: PublicKey, assetMint: PublicKey) {
         const [hotVault] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("hot_vault"),
@@ -317,7 +312,7 @@ export class Restaking {
         return getAccount(this.connection, address, "confirmed");
     }
 
-    deriveLockupCooldownVault(lockup: PublicKey, receiptMint: PublicKey) {
+    static deriveLockupCooldownVault(lockup: PublicKey, receiptMint: PublicKey) {
         const [cooldownVault] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("cooldown_vault"),
@@ -431,11 +426,11 @@ export class Restaking {
         governanceYield?: BN,
     ) {
         const settingsData = await this.getSettingsData();
-        const asset = this.deriveAsset(assetMint);
-        const lockup = this.deriveLockup(settingsData.lockups);
-        const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint)
-        const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, assetMint);
-        const admin = this.deriveAdmin(signer);
+        const asset = Restaking.deriveAsset(assetMint);
+        const lockup = Restaking.deriveLockup(settingsData.lockups);
+        const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint)
+        const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, assetMint);
+        const admin = Restaking.deriveAdmin(signer);
 
         const {
             instructions: preInstructions,
@@ -447,13 +442,13 @@ export class Restaking {
             true
         );
 
-        const lockupHotVault = this.deriveLockupHotVault(lockup, assetMint);
-        const lockupColdVault = this.deriveLockupColdVault(lockup, assetMint);
-        const lockupCooldownVault = this.deriveLockupCooldownVault(lockup, receiptMint);
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+        const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
 
         const initializeLockupIx = createInitializeLockupInstruction(
             {
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 lockup,
                 admin,
                 asset,
@@ -488,7 +483,7 @@ export class Restaking {
         assetMint: PublicKey,
         oracle: PublicKey
     ) {
-        const asset = this.deriveAsset(assetMint);
+        const asset = Restaking.deriveAsset(assetMint);
         const {
             pubkey: admin
         } = await this.getAdminFromPublicKey(signer);
@@ -500,13 +495,13 @@ export class Restaking {
                 admin,
                 oracle,
                 signer,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
             },
             PROGRAM_ID
         );
     }
 
-    deriveRewardBoost(
+    static deriveRewardBoost(
         lockup: PublicKey,
         boostId: number | BN
     ) {
@@ -536,8 +531,8 @@ export class Restaking {
             receiptMint
         } = await Lockup.fromAccountAddress(this.connection, lockup);
 
-        const lockupHotVault = this.deriveLockupHotVault(lockup, assetMint);
-        const lockupColdVault = this.deriveLockupColdVault(lockup, assetMint);
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
 
         const {
             amount: hotAmount
@@ -566,20 +561,20 @@ export class Restaking {
         boostBps: BN
     ) {
         const adminDatas = await this.getAdminFromPublicKey(signer);
-        const admin = this.deriveAdmin(adminDatas[0].account.index);
-        const lockup = this.deriveLockup(lockupId);
+        const admin = Restaking.deriveAdmin(adminDatas[0].account.index);
+        const lockup = Restaking.deriveLockup(lockupId);
 
         const {
             rewardBoosts
         } = await this.getLockup(lockup);
 
-        const rewardBoost = this.deriveRewardBoost(lockup, rewardBoosts);
+        const rewardBoost = Restaking.deriveRewardBoost(lockup, rewardBoosts);
 
         return createBoostRewardsInstruction(
             {
                 admin,
                 lockup,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 signer,
                 rewardBoost,
                 systemProgram: SystemProgram.programId,
@@ -599,7 +594,7 @@ export class Restaking {
         amount: BN,
         signer: PublicKey
     ) {
-        const lockup = this.deriveLockup(lockupId);
+        const lockup = Restaking.deriveLockup(lockupId);
         const {
             rewardConfig: {
                 main: rewardMint
@@ -610,7 +605,7 @@ export class Restaking {
             receiptMint
         } = await this.getLockup(lockup);
 
-        const lockupCooldownVault = this.deriveLockupCooldownVault(lockup, receiptMint);
+        const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
 
         const callerRewardAta = getAssociatedTokenAddressSync(
             rewardMint,
@@ -621,11 +616,11 @@ export class Restaking {
         return createDepositRewardsInstruction(
             {
                 caller: signer,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 rewardMint,
                 lockup,
                 callerRewardAta,
-                assetRewardPool: this.deriveAssetPool("reward_pool", lockup, rewardMint),
+                assetRewardPool: Restaking.deriveAssetPool("reward_pool", lockup, rewardMint),
                 lockupCooldownVault,
                 receiptTokenMint: receiptMint
             },
@@ -638,7 +633,7 @@ export class Restaking {
         );
     }
 
-    deriveIntent(deposit: PublicKey) {
+    static deriveIntent(deposit: PublicKey) {
         const [intent] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("intent"),
@@ -650,7 +645,7 @@ export class Restaking {
         return intent;
     }
 
-    deriveDeposit(
+    static deriveDeposit(
         lockup: PublicKey,
         depositId: BN | number
     ) {
@@ -670,7 +665,7 @@ export class Restaking {
         return Deposit.fromAccountAddress(this.connection, deposit);
     }
 
-    deriveDepositReceiptVault(deposit: PublicKey, receiptToken: PublicKey) {
+    static deriveDepositReceiptVault(deposit: PublicKey, receiptToken: PublicKey) {
         const [depositReceiptVault] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("deposit_receipt_vault"),
@@ -692,18 +687,30 @@ export class Restaking {
         depositId: BN | number,
         amount: BN
     ) {
-        const lockup = this.deriveLockup(lockupId);
+        const settings = Restaking.deriveSettings();
+        const {
+            rewardConfig: {
+                main: rewardMint
+            }
+        } = await Settings.fromAccountAddress(
+            this.connection,
+            settings
+        );
+
+        const lockup = Restaking.deriveLockup(lockupId);
         const {
             assetMint,
-            receiptMint
+            receiptMint,
         } = await this.getLockup(lockup);
 
-        const deposit = this.deriveDeposit(lockup, depositId);
+        const asset = Restaking.deriveAsset(assetMint);
+
+        const deposit = Restaking.deriveDeposit(lockup, depositId);
         const {
             user,
         } = await this.getDeposit(deposit);
 
-        const depositReceiptVault = this.deriveDepositReceiptVault(deposit, receiptMint);
+        const depositReceiptVault = Restaking.deriveDepositReceiptVault(deposit, receiptMint);
         const {
             amount: receiptAmount
         } = await this.getDepositReceiptVault(depositReceiptVault);
@@ -716,33 +723,56 @@ export class Restaking {
         if (amount.gt(depositAmount))
             throw new Error("Cannot withdraw more funds than deposited");
 
-        const intent= this.deriveIntent(deposit);
+        const intent = Restaking.deriveIntent(deposit);
 
-        const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
+        const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
         const userAssetAta = getAssociatedTokenAddressSync(
             assetMint,
             user
         );
+        const userRewardAta = getAssociatedTokenAddressSync(
+            rewardMint,
+            user
+        );
+        const depositReceiptTokenAccount = getAssociatedTokenAddressSync(
+            receiptMint,
+            deposit,
+            true
+        );
+
+        const cooldown = Restaking.deriveCooldown(deposit);
+
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+        const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, assetMint);
+        const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, assetMint);
 
         return createWithdrawInstruction(
             {
                 lockup,
                 assetMint,
                 intent,
-                settings: this.deriveSettings(),
+                settings,
                 user,
                 deposit,
-                clock: SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
-                lockupAssetVault,
                 userAssetAta,
+                rewardMint,
+                asset,
+                userRewardAta,
+                cooldown,
+                lockupHotVault,
+                lockupColdVault,
+                lockupCooldownVault,
+                receiptTokenMint: receiptMint,
+                assetRewardPool,
+                depositReceiptTokenAccount
             },
             {
                 args: {
                     lockupId,
-                    amount,
-                    depositId
+                    depositId,
                 }
             }
         )
@@ -750,55 +780,6 @@ export class Restaking {
 
     async getIntent(intent: PublicKey) {
         return Intent.fromAccountAddress(this.connection, intent);
-    }
-
-    async processIntent(
-        deposit: PublicKey,
-        signer: PublicKey
-    ) {
-        const intent = this.deriveIntent(deposit);
-        const {
-            lockup,
-        } = await this.getIntent(intent);
-
-        const {
-            user,
-            index: depositId // this has to implement index
-        } = await this.getDeposit(deposit);
-
-        const adminDatas = await this.getAdminFromPublicKey(signer);
-        const admin = adminDatas[0].pubkey;
-
-        const {
-            asset: assetMint
-        } = await this.getLockup(lockup);
-
-        const asset = this.deriveAsset(assetMint);
-
-        const userAssetAta = getAssociatedTokenAddressSync(assetMint, user);
-        const adminAssetAta = getAssociatedTokenAddressSync(assetMint, signer);
-
-        return createProcessIntentInstruction(
-            {
-                lockup,
-                deposit,
-                intent,
-                settings: this.deriveSettings(),
-                user,
-                signer,
-                admin,
-                asset,
-                assetMint,
-                userAssetAta,
-                adminAssetAta,
-                tokenProgram: TOKEN_PROGRAM_ID,
-            },
-            {
-                args: {
-                    depositId
-                }
-            }
-        );
     }
 
     private async manageFreeze(
@@ -813,7 +794,7 @@ export class Restaking {
             {
                 admin,
                 signer,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
             },
             {
                 args: {
@@ -831,209 +812,45 @@ export class Restaking {
         return this.manageFreeze(signer, false);
     }
 
-    deriveSlash(lockup: PublicKey, slashId: number | BN) {
-        const [slash] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("slash"),
-                lockup.toBuffer(),
-                (slashId instanceof BN ? slashId : new BN(slashId)).toArrayLike(Buffer, "le", 8)
-            ],
-            PROGRAM_ID
-        );
-
-        return slash;
-    }
-
-    async initializeSlash(
+    async slash(
+        amount: BN,
         signer: PublicKey,
-        lockupId: BN | number,
-        amount: BN
+        lockupId: BN,
+        destination: PublicKey,
     ) {
-        const adminDatas = this.getAdminFromPublicKey(signer);
-        const admin = adminDatas[0].pubkey;
+        const settings = Restaking.deriveSettings();
+        const admin = Restaking.deriveAdmin(signer);
+        const lockup = Restaking.deriveLockup(lockupId);
 
-        const lockup = this.deriveLockup(lockupId);
         const {
-            asset: assetMint,
-            slashState: {
-                index: slashId
-            }
+            assetMint
         } = await this.getLockup(lockup);
 
-        const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
 
-        return createInitializeSlashInstruction(
+        const ix = createSlashInstruction(
             {
-                admin,
                 signer,
+                admin,
+                settings,
                 lockup,
                 assetMint,
-                clock: SYSVAR_CLOCK_PUBKEY,
+                destination,
                 tokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: SystemProgram.programId,
-                settings: this.deriveSettings(),
-                slash: this.deriveSlash(lockup, slashId),
-                assetLockup
+                lockupColdVault,
+                lockupHotVault
             },
             {
                 args: {
                     lockupId,
                     amount
                 }
-            }
-        );
-    }
-
-    async getSlash(slash: PublicKey) {
-        return Slash.fromAccountAddress(this.connection, slash);
-    }
-
-    async slashPool(signer: PublicKey, lockupId: BN | number, destination: PublicKey) {
-
-        const adminDatas = await this.getAdminFromPublicKey(signer);
-        const admin = adminDatas[0].pubkey;
-
-        const lockup = this.deriveLockup(lockupId);
-        const { slashState: { index: slashId }, asset: assetMint } = await this.getLockup(lockup);
-        const slash = this.deriveSlash(lockup, slashId);
-
-        const asset = this.deriveAsset(assetMint);
-        const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
-
-        let destinationData: Account;
-        try {
-            destinationData = await getAccount(this.connection, destination);
-        } catch (err) {
-            throw new Error("Make sure destination account is initialized.");
-        }
-
-        if (!destinationData.mint.equals(assetMint)) throw new Error("Invalid destination SPL-Token account.");
-
-        return createSlashPoolInstruction(
-            {
-                admin,
-                lockup,
-                slash,
-                asset,
-                assetMint,
-                signer,
-                settings: this.deriveSettings(),
-                assetLockup,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                destination
             },
-            {
-                args: {
-                    lockupId,
-                    slashId
-                }
-            }
+            PROGRAM_ID
         );
-    }
 
-    async slashDepositsBatch(signer: PublicKey, lockupId: BN | number) {
-        const adminDatas = await this.getAdminFromPublicKey(signer);
-        const admin = adminDatas[0].pubkey;
-
-        const lockup = this.deriveLockup(lockupId);
-        const { slashState: { index: slashId }, asset: assetMint } = await this.getLockup(lockup);
-        const slash = this.deriveSlash(lockup, slashId);
-        const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
-
-        const {
-            targetAmount,
-            slashedAccounts,
-            targetAccounts
-        } = await this.getSlash(slash);
-
-        const deposits: PublicKey[] = [];
-        for (let i = 0; i < DEPOSITS_PER_SLASH_INSTRUCTION; i++) {
-            deposits.push(this.deriveDeposit(lockup, new BN(slashedAccounts).addn(i)));
-        }
-
-        return createSlashDepositsInstruction(
-            {
-                settings: this.deriveSettings(),
-                slash,
-                signer,
-                admin,
-                lockup,
-                assetMint,
-                assetLockup,
-                anchorRemainingAccounts: deposits.map((pubkey) => ({ pubkey, isWritable: true, isSigner: false }))
-            },
-            {
-                args: {
-                    lockupId,
-                    slashId,
-                    slashAmount: targetAmount
-                }
-            }
-        );
-    }
-
-    // Returns all remaining batches that have to be executed one by one
-    async slashAllRemainingDeposits(
-        signer: PublicKey,
-        lockupId: BN | number
-    ) {
-        const adminDatas = await this.getAdminFromPublicKey(signer);
-        const admin = adminDatas[0].pubkey;
-        const lockup = this.deriveLockup(lockupId);
-        const { slashState: { index: slashId }, asset: assetMint } = await this.getLockup(lockup);
-        const slash = this.deriveSlash(lockup, slashId);
-        const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
-
-        const {
-            targetAmount,
-            slashedAccounts,
-            targetAccounts
-        } = await this.getSlash(slash);
-
-        const remainingDeposits = new BN(targetAccounts)
-            .sub(new BN(slashedAccounts))
-            .toNumber();
-
-        const remainingBatches = remainingDeposits % DEPOSITS_PER_SLASH_INSTRUCTION
-            ? remainingDeposits % DEPOSITS_PER_SLASH_INSTRUCTION
-            : Math.floor(remainingDeposits / DEPOSITS_PER_SLASH_INSTRUCTION) + 1;
-
-        const instructions: TransactionInstruction[] = [];
-        for (let i = 0; i < remainingBatches; i++) {
-
-            const deposits: PublicKey[] = [];
-            for (let j = 0; j < DEPOSITS_PER_SLASH_INSTRUCTION; j++) {
-                deposits.push(
-                    this.deriveDeposit(
-                        lockup,
-                        new BN(slashedAccounts).addn((10 * i) + j)
-                    )
-                );
-            }
-
-            const ix = createSlashDepositsInstruction(
-                {
-                    settings: this.deriveSettings(),
-                    slash,
-                    signer,
-                    admin,
-                    lockup,
-                    assetMint,
-                    assetLockup,
-                    anchorRemainingAccounts: deposits
-                        .map((pubkey) => ({ pubkey, isWritable: true, isSigner: false }))
-                },
-                {
-                    args: {
-                        lockupId,
-                        slashId,
-                        slashAmount: targetAmount
-                    }
-                }
-            );
-
-            instructions.push(ix);
-        }
+        return ix;
     }
 
     async getAsset(asset: PublicKey) {
@@ -1044,17 +861,18 @@ export class Restaking {
     }
 
     async restake(signer: PublicKey, amount: BN, lockupId: BN) {
-        const settings = this.deriveSettings();
+        const settings = Restaking.deriveSettings();
         const {
             coldWallet
         } = await this.getSettingsData();
-        const lockup = this.deriveLockup(lockupId);
+        const lockup = Restaking.deriveLockup(lockupId);
         const {
-            asset: assetMint,
-            deposits
+            assetMint,
+            deposits,
+            receiptMint
         } = await this.getLockup(lockup);
 
-        const asset = this.deriveAsset(assetMint);
+        const asset = Restaking.deriveAsset(assetMint);
         const { oracle: { fields: [oracleAddress] } } = await this.getAsset(asset);
 
         const coldWalletVault = getAssociatedTokenAddressSync(
@@ -1065,26 +883,33 @@ export class Restaking {
             assetMint,
             signer
         );
-        const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
+        const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
 
-        const deposit = this.deriveDeposit(lockup, deposits);
+        const deposit = Restaking.deriveDeposit(lockup, deposits);
+        const depositReceiptTokenAccount = getAssociatedTokenAddressSync(
+            receiptMint,
+            deposit,
+            true
+        );
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
 
         return createRestakeInstruction(
             {
                 lockup,
                 asset,
                 assetMint,
-                clock: SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
-                coldWallet,
-                coldWalletVault,
                 deposit,
                 settings,
                 user: signer,
                 oracle: oracleAddress,
                 userAssetAta,
-                lockupAssetVault
+                receiptTokenMint: receiptMint,
+                lockupColdVault,
+                lockupHotVault,
+                depositReceiptTokenAccount
             },
             {
                 args: {
@@ -1095,7 +920,7 @@ export class Restaking {
         );
     }
 
-    deriveCooldown(deposit: PublicKey) {
+    static deriveCooldown(deposit: PublicKey) {
         const [cooldown] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("cooldown"),
@@ -1111,12 +936,14 @@ export class Restaking {
         signer: PublicKey,
         lockupId: BN | number,
         depositId: BN | number,
+        mode: "ExactIn" | "ExactOut",
         amount: BN,
         rewardBoostId?: BN | number
     ) {
-        const lockup = this.deriveLockup(lockupId);
+        const lockup = Restaking.deriveLockup(lockupId);
         const {
-            asset: assetMint
+            assetMint,
+            receiptMint
         } = await Lockup.fromAccountAddress(this.connection, lockup);
 
         const {
@@ -1124,11 +951,11 @@ export class Restaking {
                 main: rewardAsset
             }
         } = await this.getSettingsData();
-        const asset = this.deriveAsset(assetMint);
-        const deposit = this.deriveDeposit(lockup, depositId);
+        const asset = Restaking.deriveAsset(assetMint);
+        const deposit = Restaking.deriveDeposit(lockup, depositId);
 
-        const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, rewardAsset);
-        const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
+        const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, rewardAsset);
+        const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
 
         const userAssetAta = getAssociatedTokenAddressSync(
             assetMint,
@@ -1140,6 +967,15 @@ export class Restaking {
             signer
         );
 
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+        const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
+        const depositReceiptTokenAccount = getAssociatedTokenAddressSync(
+            receiptMint,
+            deposit,
+            true
+        );
+
         return createRequestWithdrawalInstruction(
             {
                 user: signer,
@@ -1147,26 +983,30 @@ export class Restaking {
                 assetMint,
                 lockup,
                 deposit,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 assetRewardPool,
-                clock: SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
-                cooldown: this.deriveCooldown(deposit),
+                cooldown: Restaking.deriveCooldown(deposit),
                 rewardMint: rewardAsset,
-                lockupAssetVault,
                 rewardBoost: rewardBoostId !== undefined
-                    ? this.deriveRewardBoost(lockup, rewardBoostId)
+                    ? Restaking.deriveRewardBoost(lockup, rewardBoostId)
                     : null,
-                userAssetAta,
-                userRewardAta
+                lockupCooldownVault,
+                receiptTokenMint: receiptMint,
+                depositReceiptTokenAccount,
+                lockupColdVault,
+                lockupHotVault
             },
             {
                 args: {
                     lockupId,
                     depositId,
-                    amount,
-                    rewardBoostId
+                    rewardBoostId,
+                    mode: {
+                        __kind: mode,
+                        fields: [amount]
+                    }
                 }
             }
         );
@@ -1176,10 +1016,11 @@ export class Restaking {
         signer: PublicKey,
         depositId: BN | number,
         lockupId: BN | number,
+        mode: "ExactIn" | "ExactOut",
         amount: BN
     ) {
-        const lockup = this.deriveLockup(lockupId);
-        const deposit = this.deriveDeposit(lockup, depositId);
+        const lockup = Restaking.deriveLockup(lockupId);
+        const deposit = Restaking.deriveDeposit(lockup, depositId);
         const {
             initialUsdValue
         } = await this.getDeposit(deposit);
@@ -1206,93 +1047,9 @@ export class Restaking {
             signer,
             lockupId,
             depositId,
+            mode,
             amount,
             preferredRewardBoost?.index
-        );
-    }
-
-    async slashColdWalletAndTransferFunds(
-        signer: PublicKey,
-        lockupId: BN | number,
-        destination: PublicKey,
-    ) {
-        const { coldWallet } = await this.getSettingsData();
-        const lockup = this.deriveLockup(lockupId);
-        const {
-            slashState: { index: slashId },
-            asset: assetMint,
-        } = await this.getLockup(lockup);
-
-        const adminDatas = await this.getAdminFromPublicKey(signer);
-        const admin = adminDatas[0].pubkey;
-
-        const slash = this.deriveSlash(lockup, slashId);
-        const asset = this.deriveAsset(assetMint);
-
-        const source = getAssociatedTokenAddressSync(
-            assetMint,
-            coldWallet,
-            true
-        );
-
-        return createSlashColdWalletInstruction(
-            {
-                admin,
-                lockup,
-                signer,
-                slash,
-                assetMint,
-                settings: this.deriveSettings(),
-                destination,
-                coldWallet,
-                source,
-                tokenProgram: TOKEN_PROGRAM_ID,
-            },
-            {
-                args: {
-                    lockupId,
-                    slashId,
-                    transferFunds: true,
-                    transferSig: ""
-                }
-            }
-        );
-    }
-
-    async slashColdWalletWithTransferSignature(
-        signer: PublicKey,
-        lockupId: BN | number,
-        transferSig: string
-    ) {
-        const { coldWallet } = await this.getSettingsData();
-        const lockup = this.deriveLockup(lockupId);
-        const {
-            slashState: { index: slashId },
-        } = await this.getLockup(lockup);
-
-        const adminDatas = await this.getAdminFromPublicKey(signer);
-        const admin = adminDatas[0].pubkey;
-
-        const slash = this.deriveSlash(lockup, slashId);
-
-        return createSlashColdWalletInstruction(
-            {
-                admin,
-                lockup,
-                signer,
-                slash,
-                settings: this.deriveSettings(),
-                coldWallet,
-                tokenProgram: TOKEN_PROGRAM_ID,
-            },
-            {
-                args: {
-                    lockupId,
-                    slashId,
-                    transferFunds: false,
-                    transferSig
-                }
-            }
         );
     }
 
@@ -1302,9 +1059,9 @@ export class Restaking {
                 main: rewardMint
             }
         } = await this.getSettingsData();
-        const lockup = this.deriveLockup(lockupId);
-        const deposit = this.deriveDeposit(lockup, depositId);
-        const cooldown = this.deriveCooldown(deposit);
+        const lockup = Restaking.deriveLockup(lockupId);
+        const deposit = Restaking.deriveDeposit(lockup, depositId);
+        const cooldown = Restaking.deriveCooldown(deposit);
         const cooldownDatas = await this.getCooldownsByDeposit(depositId);
         const {
             account: {
@@ -1315,10 +1072,11 @@ export class Restaking {
         if (!(new BN(Date.now()).gte(new BN(unlockTs)))) throw new Error("Funds still in cooldown.");
 
         const {
-            asset: assetMint
+            assetMint,
+            receiptMint
         } = await this.getLockup(lockup);
 
-        const asset = this.deriveAsset(assetMint);
+        const asset = Restaking.deriveAsset(assetMint);
 
         const userAssetAta = getAssociatedTokenAddressSync(
             assetMint,
@@ -1330,8 +1088,16 @@ export class Restaking {
             signer,
         );
 
-        const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
-        const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, rewardMint);
+        const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
+        const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, rewardMint);
+        const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
+        const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const depositReceiptTokenAccount = getAssociatedTokenAddressSync(
+            receiptMint,
+            deposit,
+            true
+        );
 
         return createWithdrawInstruction(
             {
@@ -1339,16 +1105,21 @@ export class Restaking {
                 deposit,
                 asset,
                 assetMint,
-                clock: SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: TOKEN_PROGRAM_ID,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 cooldown,
                 user: signer,
                 userAssetAta,
-                lockupAssetVault,
                 assetRewardPool,
                 rewardMint,
-                userRewardAta
+                userRewardAta,
+                lockupCooldownVault,
+                receiptTokenMint: receiptMint,
+                depositReceiptTokenAccount,
+                lockupColdVault,
+                lockupHotVault,
+                intent: null,
+                systemProgram: SystemProgram.programId
             },
             {
                 args: {

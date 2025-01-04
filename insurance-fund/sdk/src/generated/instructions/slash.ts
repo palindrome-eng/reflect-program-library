@@ -79,7 +79,7 @@ export const slashInstructionDiscriminator = [
 export function createSlashInstruction(
   accounts: SlashInstructionAccounts,
   args: SlashInstructionArgs,
-  programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')
+  programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')
 ) {
   const [data] = slashStruct.serialize({
     instructionDiscriminator: slashInstructionDiscriminator,

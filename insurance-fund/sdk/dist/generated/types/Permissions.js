@@ -38,8 +38,9 @@ const beet = __importStar(require("@metaplex-foundation/beet"));
 var Permissions;
 (function (Permissions) {
     Permissions[Permissions["Freeze"] = 0] = "Freeze";
-    Permissions[Permissions["AddAsset"] = 1] = "AddAsset";
-    Permissions[Permissions["Superadmin"] = 2] = "Superadmin";
+    Permissions[Permissions["AssetsAndLockups"] = 1] = "AssetsAndLockups";
+    Permissions[Permissions["Slashing"] = 2] = "Slashing";
+    Permissions[Permissions["Superadmin"] = 3] = "Superadmin";
 })(Permissions || (exports.Permissions = Permissions = {}));
 /**
  * @category userTypes

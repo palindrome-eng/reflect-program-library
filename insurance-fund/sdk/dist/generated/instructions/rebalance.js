@@ -29,40 +29,37 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.slashColdWalletInstructionDiscriminator = exports.slashColdWalletStruct = void 0;
-exports.createSlashColdWalletInstruction = createSlashColdWalletInstruction;
+exports.rebalanceInstructionDiscriminator = exports.rebalanceStruct = void 0;
+exports.createRebalanceInstruction = createRebalanceInstruction;
 const splToken = __importStar(require("@solana/spl-token"));
 const beet = __importStar(require("@metaplex-foundation/beet"));
 const web3 = __importStar(require("@solana/web3.js"));
-const SlashColdWalletArgs_1 = require("../types/SlashColdWalletArgs");
+const RebalanceArgs_1 = require("../types/RebalanceArgs");
 /**
  * @category Instructions
- * @category SlashColdWallet
+ * @category Rebalance
  * @category generated
  */
-exports.slashColdWalletStruct = new beet.FixableBeetArgsStruct([
+exports.rebalanceStruct = new beet.BeetArgsStruct([
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', SlashColdWalletArgs_1.slashColdWalletArgsBeet],
-], 'SlashColdWalletInstructionArgs');
-exports.slashColdWalletInstructionDiscriminator = [
-    9, 62, 9, 165, 4, 209, 107, 9,
+    ['args', RebalanceArgs_1.rebalanceArgsBeet],
+], 'RebalanceInstructionArgs');
+exports.rebalanceInstructionDiscriminator = [
+    108, 158, 77, 9, 210, 52, 88, 62,
 ];
 /**
- * Creates a _SlashColdWallet_ instruction.
- *
- * Optional accounts that are not provided default to the program ID since
- * this was indicated in the IDL from which this instruction was generated.
+ * Creates a _Rebalance_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SlashColdWallet
+ * @category Rebalance
  * @category generated
  */
-function createSlashColdWalletInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
-    var _a, _b, _c, _d;
-    const [data] = exports.slashColdWalletStruct.serialize(Object.assign({ instructionDiscriminator: exports.slashColdWalletInstructionDiscriminator }, args));
+function createRebalanceInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+    var _a;
+    const [data] = exports.rebalanceStruct.serialize(Object.assign({ instructionDiscriminator: exports.rebalanceInstructionDiscriminator }, args));
     const keys = [
         {
             pubkey: accounts.signer,
@@ -80,37 +77,32 @@ function createSlashColdWalletInstruction(accounts, args, programId = new web3.P
             isSigner: false,
         },
         {
-            pubkey: accounts.coldWallet,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
             pubkey: accounts.lockup,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: accounts.slash,
+            pubkey: accounts.assetMint,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: (_a = accounts.assetMint) !== null && _a !== void 0 ? _a : programId,
-            isWritable: accounts.assetMint != null,
+            pubkey: accounts.lockupHotVault,
+            isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: (_b = accounts.source) !== null && _b !== void 0 ? _b : programId,
-            isWritable: accounts.source != null,
+            pubkey: accounts.coldWallet,
+            isWritable: false,
             isSigner: false,
         },
         {
-            pubkey: (_c = accounts.destination) !== null && _c !== void 0 ? _c : programId,
-            isWritable: accounts.destination != null,
+            pubkey: accounts.lockupColdVault,
+            isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: (_d = accounts.tokenProgram) !== null && _d !== void 0 ? _d : splToken.TOKEN_PROGRAM_ID,
+            pubkey: (_a = accounts.tokenProgram) !== null && _a !== void 0 ? _a : splToken.TOKEN_PROGRAM_ID,
             isWritable: false,
             isSigner: false,
         },

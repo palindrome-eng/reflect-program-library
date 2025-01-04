@@ -4,9 +4,10 @@
  *
  * See: https://github.com/metaplex-foundation/solita
  */
+import * as web3 from '@solana/web3.js';
 import * as beet from '@metaplex-foundation/beet';
 export type RemoveAdminArgs = {
-    adminId: number;
+    address: web3.PublicKey;
 };
 /**
  * @category userTypes

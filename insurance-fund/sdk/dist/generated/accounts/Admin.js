@@ -39,9 +39,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminBeet = exports.Admin = exports.adminDiscriminator = void 0;
-const beet = __importStar(require("@metaplex-foundation/beet"));
 const web3 = __importStar(require("@solana/web3.js"));
 const beetSolana = __importStar(require("@metaplex-foundation/beet-solana"));
+const beet = __importStar(require("@metaplex-foundation/beet"));
 const Permissions_1 = require("../types/Permissions");
 exports.adminDiscriminator = [244, 158, 220, 65, 8, 73, 4, 65];
 /**
@@ -52,8 +52,7 @@ exports.adminDiscriminator = [244, 158, 220, 65, 8, 73, 4, 65];
  * @category generated
  */
 class Admin {
-    constructor(index, address, permissions) {
-        this.index = index;
+    constructor(address, permissions) {
         this.address = address;
         this.permissions = permissions;
     }
@@ -61,7 +60,7 @@ class Admin {
      * Creates a {@link Admin} instance from the provided args.
      */
     static fromArgs(args) {
-        return new Admin(args.index, args.address, args.permissions);
+        return new Admin(args.address, args.permissions);
     }
     /**
      * Deserializes the {@link Admin} from the data of the provided {@link web3.AccountInfo}.
@@ -91,7 +90,7 @@ class Admin {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+    static gpaBuilder(programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
         return beetSolana.GpaBuilder.fromStruct(programId, exports.adminBeet);
     }
     /**
@@ -139,18 +138,6 @@ class Admin {
      */
     pretty() {
         return {
-            index: (() => {
-                const x = this.index;
-                if (typeof x.toNumber === 'function') {
-                    try {
-                        return x.toNumber();
-                    }
-                    catch (_) {
-                        return x;
-                    }
-                }
-                return x;
-            })(),
             address: this.address.toBase58(),
             permissions: 'Permissions.' + Permissions_1.Permissions[this.permissions],
         };
@@ -163,7 +150,6 @@ exports.Admin = Admin;
  */
 exports.adminBeet = new beet.BeetStruct([
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['index', beet.u64],
     ['address', beetSolana.publicKey],
     ['permissions', Permissions_1.permissionsBeet],
 ], Admin.fromArgs, 'Admin');

@@ -6,7 +6,6 @@ export * from './Intent';
 export * from './Lockup';
 export * from './RewardBoost';
 export * from './Settings';
-export * from './Slash';
 import { Admin } from './Admin';
 import { Asset } from './Asset';
 import { Cooldown } from './Cooldown';
@@ -15,7 +14,6 @@ import { Intent } from './Intent';
 import { Lockup } from './Lockup';
 import { RewardBoost } from './RewardBoost';
 import { Settings } from './Settings';
-import { Slash } from './Slash';
 export declare const accountProviders: {
     Admin: typeof Admin;
     Asset: typeof Asset;
@@ -25,5 +23,4 @@ export declare const accountProviders: {
     Lockup: typeof Lockup;
     RewardBoost: typeof RewardBoost;
     Settings: typeof Settings;
-    Slash: typeof Slash;
 };

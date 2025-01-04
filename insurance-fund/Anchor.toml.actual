@@ -5,7 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-insurance_fund = "CPW6gyeGhh7Kt3LYwjF7yXTYgbcNfT7dYBSRDz7TH5YB"
+insurance_fund = "2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8"
 
 [registry]
 url = "https://api.apr.dev"

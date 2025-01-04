@@ -53,9 +53,9 @@ exports.settingsDiscriminator = [223, 179, 163, 190, 177, 224, 67, 173];
  * @category generated
  */
 class Settings {
-    constructor(bump, admins, coldWallet, lockups, cooldownDuration, sharesConfig, rewardConfig, frozen) {
+    constructor(bump, superadmins, coldWallet, lockups, cooldownDuration, sharesConfig, rewardConfig, frozen) {
         this.bump = bump;
-        this.admins = admins;
+        this.superadmins = superadmins;
         this.coldWallet = coldWallet;
         this.lockups = lockups;
         this.cooldownDuration = cooldownDuration;
@@ -67,7 +67,7 @@ class Settings {
      * Creates a {@link Settings} instance from the provided args.
      */
     static fromArgs(args) {
-        return new Settings(args.bump, args.admins, args.coldWallet, args.lockups, args.cooldownDuration, args.sharesConfig, args.rewardConfig, args.frozen);
+        return new Settings(args.bump, args.superadmins, args.coldWallet, args.lockups, args.cooldownDuration, args.sharesConfig, args.rewardConfig, args.frozen);
     }
     /**
      * Deserializes the {@link Settings} from the data of the provided {@link web3.AccountInfo}.
@@ -97,7 +97,7 @@ class Settings {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+    static gpaBuilder(programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
         return beetSolana.GpaBuilder.fromStruct(programId, exports.settingsBeet);
     }
     /**
@@ -146,7 +146,7 @@ class Settings {
     pretty() {
         return {
             bump: this.bump,
-            admins: this.admins,
+            superadmins: this.superadmins,
             coldWallet: this.coldWallet.toBase58(),
             lockups: (() => {
                 const x = this.lockups;
@@ -186,7 +186,7 @@ exports.Settings = Settings;
 exports.settingsBeet = new beet.BeetStruct([
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['bump', beet.u8],
-    ['admins', beet.u8],
+    ['superadmins', beet.u8],
     ['coldWallet', beetSolana.publicKey],
     ['lockups', beet.u64],
     ['cooldownDuration', beet.u64],

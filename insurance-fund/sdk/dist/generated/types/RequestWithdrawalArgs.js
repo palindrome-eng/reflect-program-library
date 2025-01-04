@@ -31,6 +31,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requestWithdrawalArgsBeet = void 0;
 const beet = __importStar(require("@metaplex-foundation/beet"));
+const RequestWithdrawalMode_1 = require("./RequestWithdrawalMode");
 /**
  * @category userTypes
  * @category generated
@@ -39,5 +40,5 @@ exports.requestWithdrawalArgsBeet = new beet.FixableBeetArgsStruct([
     ['lockupId', beet.u64],
     ['depositId', beet.u64],
     ['rewardBoostId', beet.coption(beet.u64)],
-    ['amount', beet.u64],
+    ['mode', RequestWithdrawalMode_1.requestWithdrawalModeBeet],
 ], 'RequestWithdrawalArgs');

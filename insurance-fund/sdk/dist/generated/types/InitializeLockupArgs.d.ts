@@ -10,7 +10,6 @@ export type InitializeLockupArgs = {
     minDeposit: beet.bignum;
     depositCap: beet.bignum;
     duration: beet.bignum;
-    yieldBps: beet.bignum;
     yieldMode: YieldMode;
 };
 /**

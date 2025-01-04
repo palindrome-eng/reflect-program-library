@@ -29,35 +29,37 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.slashDepositsInstructionDiscriminator = exports.slashDepositsStruct = void 0;
-exports.createSlashDepositsInstruction = createSlashDepositsInstruction;
+exports.slashInstructionDiscriminator = exports.slashStruct = void 0;
+exports.createSlashInstruction = createSlashInstruction;
+const splToken = __importStar(require("@solana/spl-token"));
 const beet = __importStar(require("@metaplex-foundation/beet"));
 const web3 = __importStar(require("@solana/web3.js"));
-const SlashDepositsArgs_1 = require("../types/SlashDepositsArgs");
+const SlashArgs_1 = require("../types/SlashArgs");
 /**
  * @category Instructions
- * @category SlashDeposits
+ * @category Slash
  * @category generated
  */
-exports.slashDepositsStruct = new beet.BeetArgsStruct([
+exports.slashStruct = new beet.BeetArgsStruct([
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', SlashDepositsArgs_1.slashDepositsArgsBeet],
-], 'SlashDepositsInstructionArgs');
-exports.slashDepositsInstructionDiscriminator = [
-    67, 60, 14, 139, 108, 69, 92, 132,
+    ['args', SlashArgs_1.slashArgsBeet],
+], 'SlashInstructionArgs');
+exports.slashInstructionDiscriminator = [
+    204, 141, 18, 161, 8, 177, 92, 142,
 ];
 /**
- * Creates a _SlashDeposits_ instruction.
+ * Creates a _Slash_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SlashDeposits
+ * @category Slash
  * @category generated
  */
-function createSlashDepositsInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
-    const [data] = exports.slashDepositsStruct.serialize(Object.assign({ instructionDiscriminator: exports.slashDepositsInstructionDiscriminator }, args));
+function createSlashInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+    var _a;
+    const [data] = exports.slashStruct.serialize(Object.assign({ instructionDiscriminator: exports.slashInstructionDiscriminator }, args));
     const keys = [
         {
             pubkey: accounts.signer,
@@ -80,18 +82,28 @@ function createSlashDepositsInstruction(accounts, args, programId = new web3.Pub
             isSigner: false,
         },
         {
-            pubkey: accounts.slash,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
             pubkey: accounts.assetMint,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: accounts.assetLockup,
+            pubkey: accounts.lockupHotVault,
             isWritable: true,
+            isSigner: false,
+        },
+        {
+            pubkey: accounts.lockupColdVault,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
+            pubkey: accounts.destination,
+            isWritable: false,
+            isSigner: false,
+        },
+        {
+            pubkey: (_a = accounts.tokenProgram) !== null && _a !== void 0 ? _a : splToken.TOKEN_PROGRAM_ID,
+            isWritable: false,
             isSigner: false,
         },
     ];

@@ -4,9 +4,11 @@
  *
  * See: https://github.com/metaplex-foundation/solita
  */
+import * as web3 from '@solana/web3.js';
 import * as beet from '@metaplex-foundation/beet';
 import { Permissions } from './Permissions';
 export type AddAdminArgs = {
+    address: web3.PublicKey;
     permissions: Permissions;
 };
 /**

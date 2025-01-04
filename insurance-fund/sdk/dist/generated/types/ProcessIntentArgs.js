@@ -35,4 +35,7 @@ const beet = __importStar(require("@metaplex-foundation/beet"));
  * @category userTypes
  * @category generated
  */
-exports.processIntentArgsBeet = new beet.BeetArgsStruct([['depositId', beet.u64]], 'ProcessIntentArgs');
+exports.processIntentArgsBeet = new beet.BeetArgsStruct([
+    ['depositId', beet.u64],
+    ['lockupId', beet.u64],
+], 'ProcessIntentArgs');

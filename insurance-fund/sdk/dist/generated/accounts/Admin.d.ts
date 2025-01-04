@@ -4,9 +4,9 @@
  *
  * See: https://github.com/metaplex-foundation/solita
  */
-import * as beet from '@metaplex-foundation/beet';
 import * as web3 from '@solana/web3.js';
 import * as beetSolana from '@metaplex-foundation/beet-solana';
+import * as beet from '@metaplex-foundation/beet';
 import { Permissions } from '../types/Permissions';
 /**
  * Arguments used to create {@link Admin}
@@ -14,7 +14,6 @@ import { Permissions } from '../types/Permissions';
  * @category generated
  */
 export type AdminArgs = {
-    index: beet.bignum;
     address: web3.PublicKey;
     permissions: Permissions;
 };
@@ -27,7 +26,6 @@ export declare const adminDiscriminator: number[];
  * @category generated
  */
 export declare class Admin implements AdminArgs {
-    readonly index: beet.bignum;
     readonly address: web3.PublicKey;
     readonly permissions: Permissions;
     private constructor();
@@ -55,7 +53,6 @@ export declare class Admin implements AdminArgs {
      */
     static gpaBuilder(programId?: web3.PublicKey): beetSolana.GpaBuilder<{
         accountDiscriminator: any;
-        index: any;
         address: any;
         permissions: any;
     }>;
@@ -91,9 +88,6 @@ export declare class Admin implements AdminArgs {
      * and can be used to convert to JSON and/or logging
      */
     pretty(): {
-        index: number | {
-            toNumber: () => number;
-        };
         address: string;
         permissions: string;
     };

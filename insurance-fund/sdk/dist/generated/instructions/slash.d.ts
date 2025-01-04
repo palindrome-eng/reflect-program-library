@@ -6,60 +6,59 @@
  */
 import * as beet from '@metaplex-foundation/beet';
 import * as web3 from '@solana/web3.js';
-import { InitializeSlashArgs } from '../types/InitializeSlashArgs';
+import { SlashArgs } from '../types/SlashArgs';
 /**
  * @category Instructions
- * @category InitializeSlash
+ * @category Slash
  * @category generated
  */
-export type InitializeSlashInstructionArgs = {
-    args: InitializeSlashArgs;
+export type SlashInstructionArgs = {
+    args: SlashArgs;
 };
 /**
  * @category Instructions
- * @category InitializeSlash
+ * @category Slash
  * @category generated
  */
-export declare const initializeSlashStruct: beet.BeetArgsStruct<InitializeSlashInstructionArgs & {
+export declare const slashStruct: beet.BeetArgsStruct<SlashInstructionArgs & {
     instructionDiscriminator: number[];
 }>;
 /**
- * Accounts required by the _initializeSlash_ instruction
+ * Accounts required by the _slash_ instruction
  *
  * @property [_writable_, **signer**] signer
  * @property [_writable_] admin
  * @property [_writable_] settings
  * @property [_writable_] lockup
  * @property [_writable_] assetMint
- * @property [_writable_] assetLockup
- * @property [_writable_] slash
- * @property [] clock
+ * @property [_writable_] lockupHotVault
+ * @property [_writable_] lockupColdVault
+ * @property [] destination
  * @category Instructions
- * @category InitializeSlash
+ * @category Slash
  * @category generated
  */
-export type InitializeSlashInstructionAccounts = {
+export type SlashInstructionAccounts = {
     signer: web3.PublicKey;
     admin: web3.PublicKey;
     settings: web3.PublicKey;
     lockup: web3.PublicKey;
     assetMint: web3.PublicKey;
-    assetLockup: web3.PublicKey;
-    slash: web3.PublicKey;
+    lockupHotVault: web3.PublicKey;
+    lockupColdVault: web3.PublicKey;
+    destination: web3.PublicKey;
     tokenProgram?: web3.PublicKey;
-    clock: web3.PublicKey;
-    systemProgram?: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
 };
-export declare const initializeSlashInstructionDiscriminator: number[];
+export declare const slashInstructionDiscriminator: number[];
 /**
- * Creates a _InitializeSlash_ instruction.
+ * Creates a _Slash_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category InitializeSlash
+ * @category Slash
  * @category generated
  */
-export declare function createInitializeSlashInstruction(accounts: InitializeSlashInstructionAccounts, args: InitializeSlashInstructionArgs, programId?: web3.PublicKey): web3.TransactionInstruction;
+export declare function createSlashInstruction(accounts: SlashInstructionAccounts, args: SlashInstructionArgs, programId?: web3.PublicKey): web3.TransactionInstruction;

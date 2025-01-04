@@ -50,8 +50,6 @@ pub fn request_withdrawal(
     let token_program = &ctx.accounts.token_program;
     let reward_boost = &ctx.accounts.reward_boost;
 
-    msg!("got variables");
-
     match reward_boost {
         Some(account) => {
             require!(
@@ -75,22 +73,16 @@ pub fn request_withdrawal(
         InsuranceFundError::LockupInForce,
     );
 
-    msg!("got clock");
-
     let total_receipts = receipt_token_mint.supply;
     let total_deposits = lockup_cold_vault.amount
         .checked_add(lockup_hot_vault.amount)
         .ok_or(InsuranceFundError::MathOverflow)?;
-
-    msg!("total_deposits: {:?}", total_deposits);
 
     let receipt_to_deposit_exchange_rate_bps = total_deposits
         .checked_mul(10_000)
         .ok_or(InsuranceFundError::MathOverflow)?
         .checked_div(total_receipts)
         .ok_or(InsuranceFundError::MathOverflow)?;
-
-    msg!("receipt_to_deposit_exchange_rate: {:?}", receipt_to_deposit_exchange_rate_bps);
 
     let (
         base_amount, 
@@ -117,9 +109,6 @@ pub fn request_withdrawal(
             )
         }
     };
-
-    msg!("base_amount: {:?}", base_amount);
-    msg!("receipt_amount: {:?}", receipt_amount);
 
     // Check if user actually owns enough receipts to process this
     require!(
@@ -148,12 +137,9 @@ pub fn request_withdrawal(
     cooldown.lockup_id = lockup.index;
 
     let rewards = deposit.compute_accrued_rewards(
-        // This should be read from lockup, since we need the accumulator here
         lockup.receipt_to_reward_exchange_rate_bps_accumulator, 
         receipt_amount
     )?;
-
-    msg!("computed_accrued_rewards: {:?}", rewards);
 
     cooldown.rewards = match lockup.yield_mode {
         YieldMode::Single => {
@@ -174,8 +160,6 @@ pub fn request_withdrawal(
         &[deposit.bump]
     ];
 
-    msg!("transferring");
-
     // Transfer receipts into cooldown vault
     // We need this to be able to still slash (since slashing is based on the total receipt supply)
     // but not influence others rewards (since reward calculation is based on the total receipt supply - cooldown vault balance)
@@ -191,8 +175,6 @@ pub fn request_withdrawal(
         ), 
         receipt_amount
     )?;
-
-    msg!("transferred");
 
     emit!(WithdrawEvent {
         asset: asset_mint.key(),

@@ -57,7 +57,7 @@ exports.restakeInstructionDiscriminator = [
  * @category Restake
  * @category generated
  */
-function createRestakeInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+function createRestakeInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
     var _a, _b;
     const [data] = exports.restakeStruct.serialize(Object.assign({ instructionDiscriminator: exports.restakeInstructionDiscriminator }, args));
     const keys = [
@@ -77,17 +77,17 @@ function createRestakeInstruction(accounts, args, programId = new web3.PublicKey
             isSigner: false,
         },
         {
+            pubkey: accounts.receiptTokenMint,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
             pubkey: accounts.deposit,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: accounts.coldWallet,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.coldWalletVault,
+            pubkey: accounts.depositReceiptTokenAccount,
             isWritable: true,
             isSigner: false,
         },
@@ -102,23 +102,23 @@ function createRestakeInstruction(accounts, args, programId = new web3.PublicKey
             isSigner: false,
         },
         {
-            pubkey: accounts.userAssetAta,
+            pubkey: accounts.lockupHotVault,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: accounts.lockupAssetVault,
+            pubkey: accounts.lockupColdVault,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
+            pubkey: accounts.userAssetAta,
             isWritable: true,
             isSigner: false,
         },
         {
             pubkey: accounts.oracle,
             isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.clock,
-            isWritable: false,
             isSigner: false,
         },
         {

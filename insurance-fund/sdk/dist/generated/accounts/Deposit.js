@@ -51,21 +51,20 @@ exports.depositDiscriminator = [148, 146, 121, 66, 207, 173, 21, 227];
  * @category generated
  */
 class Deposit {
-    constructor(index, user, amount, initialUsdValue, amountSlashed, lockup, unlockTs, lastSlashed) {
+    constructor(bump, index, user, initialUsdValue, lockup, unlockTs, initialReceiptExchangeRateBps) {
+        this.bump = bump;
         this.index = index;
         this.user = user;
-        this.amount = amount;
         this.initialUsdValue = initialUsdValue;
-        this.amountSlashed = amountSlashed;
         this.lockup = lockup;
         this.unlockTs = unlockTs;
-        this.lastSlashed = lastSlashed;
+        this.initialReceiptExchangeRateBps = initialReceiptExchangeRateBps;
     }
     /**
      * Creates a {@link Deposit} instance from the provided args.
      */
     static fromArgs(args) {
-        return new Deposit(args.index, args.user, args.amount, args.initialUsdValue, args.amountSlashed, args.lockup, args.unlockTs, args.lastSlashed);
+        return new Deposit(args.bump, args.index, args.user, args.initialUsdValue, args.lockup, args.unlockTs, args.initialReceiptExchangeRateBps);
     }
     /**
      * Deserializes the {@link Deposit} from the data of the provided {@link web3.AccountInfo}.
@@ -95,7 +94,7 @@ class Deposit {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+    static gpaBuilder(programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
         return beetSolana.GpaBuilder.fromStruct(programId, exports.depositBeet);
     }
     /**
@@ -114,27 +113,28 @@ class Deposit {
     }
     /**
      * Returns the byteSize of a {@link Buffer} holding the serialized data of
-     * {@link Deposit} for the provided args.
-     *
-     * @param args need to be provided since the byte size for this account
-     * depends on them
+     * {@link Deposit}
      */
-    static byteSize(args) {
-        const instance = Deposit.fromArgs(args);
-        return exports.depositBeet.toFixedFromValue(Object.assign({ accountDiscriminator: exports.depositDiscriminator }, instance)).byteSize;
+    static get byteSize() {
+        return exports.depositBeet.byteSize;
     }
     /**
      * Fetches the minimum balance needed to exempt an account holding
      * {@link Deposit} data from rent
      *
-     * @param args need to be provided since the byte size for this account
-     * depends on them
      * @param connection used to retrieve the rent exemption information
      */
-    static getMinimumBalanceForRentExemption(args, connection, commitment) {
+    static getMinimumBalanceForRentExemption(connection, commitment) {
         return __awaiter(this, void 0, void 0, function* () {
-            return connection.getMinimumBalanceForRentExemption(Deposit.byteSize(args), commitment);
+            return connection.getMinimumBalanceForRentExemption(Deposit.byteSize, commitment);
         });
+    }
+    /**
+     * Determines if the provided {@link Buffer} has the correct byte size to
+     * hold {@link Deposit} data.
+     */
+    static hasCorrectByteSize(buf, offset = 0) {
+        return buf.byteLength - offset === Deposit.byteSize;
     }
     /**
      * Returns a readable version of {@link Deposit} properties
@@ -142,6 +142,7 @@ class Deposit {
      */
     pretty() {
         return {
+            bump: this.bump,
             index: (() => {
                 const x = this.index;
                 if (typeof x.toNumber === 'function') {
@@ -155,32 +156,8 @@ class Deposit {
                 return x;
             })(),
             user: this.user.toBase58(),
-            amount: (() => {
-                const x = this.amount;
-                if (typeof x.toNumber === 'function') {
-                    try {
-                        return x.toNumber();
-                    }
-                    catch (_) {
-                        return x;
-                    }
-                }
-                return x;
-            })(),
             initialUsdValue: (() => {
                 const x = this.initialUsdValue;
-                if (typeof x.toNumber === 'function') {
-                    try {
-                        return x.toNumber();
-                    }
-                    catch (_) {
-                        return x;
-                    }
-                }
-                return x;
-            })(),
-            amountSlashed: (() => {
-                const x = this.amountSlashed;
                 if (typeof x.toNumber === 'function') {
                     try {
                         return x.toNumber();
@@ -204,7 +181,18 @@ class Deposit {
                 }
                 return x;
             })(),
-            lastSlashed: this.lastSlashed,
+            initialReceiptExchangeRateBps: (() => {
+                const x = this.initialReceiptExchangeRateBps;
+                if (typeof x.toNumber === 'function') {
+                    try {
+                        return x.toNumber();
+                    }
+                    catch (_) {
+                        return x;
+                    }
+                }
+                return x;
+            })(),
         };
     }
 }
@@ -213,14 +201,13 @@ exports.Deposit = Deposit;
  * @category Accounts
  * @category generated
  */
-exports.depositBeet = new beet.FixableBeetStruct([
+exports.depositBeet = new beet.BeetStruct([
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['bump', beet.u8],
     ['index', beet.u64],
     ['user', beetSolana.publicKey],
-    ['amount', beet.u64],
     ['initialUsdValue', beet.u64],
-    ['amountSlashed', beet.u64],
     ['lockup', beetSolana.publicKey],
     ['unlockTs', beet.u64],
-    ['lastSlashed', beet.coption(beet.u64)],
+    ['initialReceiptExchangeRateBps', beet.u64],
 ], Deposit.fromArgs, 'Deposit');

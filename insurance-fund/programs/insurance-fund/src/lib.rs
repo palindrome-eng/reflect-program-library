@@ -9,7 +9,7 @@ pub mod reference;
 pub mod helpers;
 use crate::instructions::*;
 
-declare_id!("EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV");
+declare_id!("2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8");
 
 #[program]
 pub mod insurance_fund {

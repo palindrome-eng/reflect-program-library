@@ -29,35 +29,35 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.manageLockupLockInstructionDiscriminator = exports.manageLockupLockStruct = void 0;
-exports.createManageLockupLockInstruction = createManageLockupLockInstruction;
+exports.updateDepositCapInstructionDiscriminator = exports.updateDepositCapStruct = void 0;
+exports.createUpdateDepositCapInstruction = createUpdateDepositCapInstruction;
 const beet = __importStar(require("@metaplex-foundation/beet"));
 const web3 = __importStar(require("@solana/web3.js"));
-const ManageLockupLockArgs_1 = require("../types/ManageLockupLockArgs");
+const UpdateDepositCapArgs_1 = require("../types/UpdateDepositCapArgs");
 /**
  * @category Instructions
- * @category ManageLockupLock
+ * @category UpdateDepositCap
  * @category generated
  */
-exports.manageLockupLockStruct = new beet.BeetArgsStruct([
+exports.updateDepositCapStruct = new beet.FixableBeetArgsStruct([
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', ManageLockupLockArgs_1.manageLockupLockArgsBeet],
-], 'ManageLockupLockInstructionArgs');
-exports.manageLockupLockInstructionDiscriminator = [
-    236, 72, 44, 71, 110, 190, 135, 139,
+    ['args', UpdateDepositCapArgs_1.updateDepositCapArgsBeet],
+], 'UpdateDepositCapInstructionArgs');
+exports.updateDepositCapInstructionDiscriminator = [
+    175, 41, 137, 203, 27, 184, 245, 164,
 ];
 /**
- * Creates a _ManageLockupLock_ instruction.
+ * Creates a _UpdateDepositCap_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category ManageLockupLock
+ * @category UpdateDepositCap
  * @category generated
  */
-function createManageLockupLockInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
-    const [data] = exports.manageLockupLockStruct.serialize(Object.assign({ instructionDiscriminator: exports.manageLockupLockInstructionDiscriminator }, args));
+function createUpdateDepositCapInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+    const [data] = exports.updateDepositCapStruct.serialize(Object.assign({ instructionDiscriminator: exports.updateDepositCapInstructionDiscriminator }, args));
     const keys = [
         {
             pubkey: accounts.signer,

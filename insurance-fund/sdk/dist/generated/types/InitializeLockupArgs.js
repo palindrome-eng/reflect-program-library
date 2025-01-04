@@ -40,6 +40,5 @@ exports.initializeLockupArgsBeet = new beet.FixableBeetArgsStruct([
     ['minDeposit', beet.u64],
     ['depositCap', beet.u64],
     ['duration', beet.u64],
-    ['yieldBps', beet.u64],
     ['yieldMode', YieldMode_1.yieldModeBeet],
 ], 'InitializeLockupArgs');

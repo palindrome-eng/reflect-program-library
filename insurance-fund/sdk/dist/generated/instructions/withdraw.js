@@ -50,6 +50,9 @@ exports.withdrawInstructionDiscriminator = [
 /**
  * Creates a _Withdraw_ instruction.
  *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
+ *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
@@ -57,8 +60,8 @@ exports.withdrawInstructionDiscriminator = [
  * @category Withdraw
  * @category generated
  */
-function createWithdrawInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
-    var _a;
+function createWithdrawInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+    var _a, _b, _c;
     const [data] = exports.withdrawStruct.serialize(Object.assign({ instructionDiscriminator: exports.withdrawInstructionDiscriminator }, args));
     const keys = [
         {
@@ -77,7 +80,17 @@ function createWithdrawInstruction(accounts, args, programId = new web3.PublicKe
             isSigner: false,
         },
         {
+            pubkey: accounts.receiptTokenMint,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
             pubkey: accounts.deposit,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
+            pubkey: accounts.depositReceiptTokenAccount,
             isWritable: true,
             isSigner: false,
         },
@@ -112,7 +125,12 @@ function createWithdrawInstruction(accounts, args, programId = new web3.PublicKe
             isSigner: false,
         },
         {
-            pubkey: accounts.lockupAssetVault,
+            pubkey: accounts.lockupHotVault,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
+            pubkey: accounts.lockupColdVault,
             isWritable: true,
             isSigner: false,
         },
@@ -122,12 +140,22 @@ function createWithdrawInstruction(accounts, args, programId = new web3.PublicKe
             isSigner: false,
         },
         {
-            pubkey: (_a = accounts.tokenProgram) !== null && _a !== void 0 ? _a : splToken.TOKEN_PROGRAM_ID,
+            pubkey: accounts.lockupCooldownVault,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
+            pubkey: (_a = accounts.intent) !== null && _a !== void 0 ? _a : programId,
+            isWritable: accounts.intent != null,
+            isSigner: false,
+        },
+        {
+            pubkey: (_b = accounts.tokenProgram) !== null && _b !== void 0 ? _b : splToken.TOKEN_PROGRAM_ID,
             isWritable: false,
             isSigner: false,
         },
         {
-            pubkey: accounts.clock,
+            pubkey: (_c = accounts.systemProgram) !== null && _c !== void 0 ? _c : programId,
             isWritable: false,
             isSigner: false,
         },

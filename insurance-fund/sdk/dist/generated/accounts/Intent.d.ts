@@ -54,8 +54,8 @@ export declare class Intent implements IntentArgs {
      */
     static gpaBuilder(programId?: web3.PublicKey): beetSolana.GpaBuilder<{
         accountDiscriminator: any;
-        amount: any;
         lockup: any;
+        amount: any;
         deposit: any;
     }>;
     /**

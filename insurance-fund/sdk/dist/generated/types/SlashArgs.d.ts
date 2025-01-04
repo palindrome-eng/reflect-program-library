@@ -5,7 +5,7 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 import * as beet from '@metaplex-foundation/beet';
-export type InitializeSlashArgs = {
+export type SlashArgs = {
     lockupId: beet.bignum;
     amount: beet.bignum;
 };
@@ -13,4 +13,4 @@ export type InitializeSlashArgs = {
  * @category userTypes
  * @category generated
  */
-export declare const initializeSlashArgsBeet: beet.BeetArgsStruct<InitializeSlashArgs>;
+export declare const slashArgsBeet: beet.BeetArgsStruct<SlashArgs>;

@@ -32,6 +32,8 @@ export declare const depositRewardsStruct: beet.BeetArgsStruct<DepositRewardsIns
  * @property [_writable_] rewardMint
  * @property [_writable_] callerRewardAta
  * @property [_writable_] assetRewardPool
+ * @property [_writable_] receiptTokenMint
+ * @property [_writable_] lockupCooldownVault
  * @category Instructions
  * @category DepositRewards
  * @category generated
@@ -43,6 +45,8 @@ export type DepositRewardsInstructionAccounts = {
     rewardMint: web3.PublicKey;
     callerRewardAta: web3.PublicKey;
     assetRewardPool: web3.PublicKey;
+    receiptTokenMint: web3.PublicKey;
+    lockupCooldownVault: web3.PublicKey;
     tokenProgram?: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
 };

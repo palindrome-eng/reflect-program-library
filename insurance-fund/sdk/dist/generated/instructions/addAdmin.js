@@ -29,37 +29,36 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processIntentInstructionDiscriminator = exports.processIntentStruct = void 0;
-exports.createProcessIntentInstruction = createProcessIntentInstruction;
-const splToken = __importStar(require("@solana/spl-token"));
+exports.addAdminInstructionDiscriminator = exports.addAdminStruct = void 0;
+exports.createAddAdminInstruction = createAddAdminInstruction;
 const beet = __importStar(require("@metaplex-foundation/beet"));
 const web3 = __importStar(require("@solana/web3.js"));
-const ProcessIntentArgs_1 = require("../types/ProcessIntentArgs");
+const AddAdminArgs_1 = require("../types/AddAdminArgs");
 /**
  * @category Instructions
- * @category ProcessIntent
+ * @category AddAdmin
  * @category generated
  */
-exports.processIntentStruct = new beet.BeetArgsStruct([
+exports.addAdminStruct = new beet.BeetArgsStruct([
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', ProcessIntentArgs_1.processIntentArgsBeet],
-], 'ProcessIntentInstructionArgs');
-exports.processIntentInstructionDiscriminator = [
-    205, 26, 207, 143, 70, 246, 24, 206,
+    ['args', AddAdminArgs_1.addAdminArgsBeet],
+], 'AddAdminInstructionArgs');
+exports.addAdminInstructionDiscriminator = [
+    177, 236, 33, 205, 124, 152, 55, 186,
 ];
 /**
- * Creates a _ProcessIntent_ instruction.
+ * Creates a _AddAdmin_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category ProcessIntent
+ * @category AddAdmin
  * @category generated
  */
-function createProcessIntentInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+function createAddAdminInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
     var _a;
-    const [data] = exports.processIntentStruct.serialize(Object.assign({ instructionDiscriminator: exports.processIntentInstructionDiscriminator }, args));
+    const [data] = exports.addAdminStruct.serialize(Object.assign({ instructionDiscriminator: exports.addAdminInstructionDiscriminator }, args));
     const keys = [
         {
             pubkey: accounts.signer,
@@ -67,12 +66,12 @@ function createProcessIntentInstruction(accounts, args, programId = new web3.Pub
             isSigner: true,
         },
         {
-            pubkey: accounts.admin,
+            pubkey: accounts.existingAdmin,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: accounts.user,
+            pubkey: accounts.newAdmin,
             isWritable: true,
             isSigner: false,
         },
@@ -82,42 +81,7 @@ function createProcessIntentInstruction(accounts, args, programId = new web3.Pub
             isSigner: false,
         },
         {
-            pubkey: accounts.deposit,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.intent,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.lockup,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.asset,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.assetMint,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.adminAssetAta,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.userAssetAta,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: (_a = accounts.tokenProgram) !== null && _a !== void 0 ? _a : splToken.TOKEN_PROGRAM_ID,
+            pubkey: (_a = accounts.systemProgram) !== null && _a !== void 0 ? _a : web3.SystemProgram.programId,
             isWritable: false,
             isSigner: false,
         },

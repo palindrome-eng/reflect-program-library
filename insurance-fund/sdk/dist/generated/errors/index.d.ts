@@ -75,6 +75,17 @@ export declare class NotEnoughFundsError extends Error {
     constructor();
 }
 /**
+ * NotEnoughReceiptTokens: 'NotEnoughReceiptTokens'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class NotEnoughReceiptTokensError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
  * NotEnoughFundsToSlash: 'NotEnoughFundsToSlash'
  *
  * @category Errors
@@ -246,6 +257,94 @@ export declare class ColdWalletNotSlashedError extends Error {
  * @category generated
  */
 export declare class PermissionsTooLowError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * WithdrawalThresholdOverflow: 'WithdrawalThresholdOverflow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class WithdrawalThresholdOverflowError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * PoolImbalance: 'PoolImbalance'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class PoolImbalanceError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * InvalidReceiptTokenSetup: 'InvalidReceiptTokenSetup'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class InvalidReceiptTokenSetupError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * MinimumSuperadminsRequired: 'MinimumSuperadminsRequired'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class MinimumSuperadminsRequiredError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * IntentValueTooLow: 'IntentValueTooLow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class IntentValueTooLowError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * WithdrawalNeedsIntent: 'WithdrawalNeedsIntent'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class WithdrawalNeedsIntentError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * PriceError: 'PriceError'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class PriceErrorError extends Error {
+    readonly code: number;
+    readonly name: string;
+    constructor();
+}
+/**
+ * CooldownInForce: 'CooldownInForce'
+ *
+ * @category Errors
+ * @category generated
+ */
+export declare class CooldownInForceError extends Error {
     readonly code: number;
     readonly name: string;
     constructor();

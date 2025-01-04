@@ -16,7 +16,8 @@ import { CooldownRewards } from '../types/CooldownRewards';
 export type CooldownArgs = {
     user: web3.PublicKey;
     depositId: beet.bignum;
-    baseAmount: beet.bignum;
+    lockupId: beet.bignum;
+    receiptAmount: beet.bignum;
     unlockTs: beet.bignum;
     rewards: CooldownRewards;
 };
@@ -31,7 +32,8 @@ export declare const cooldownDiscriminator: number[];
 export declare class Cooldown implements CooldownArgs {
     readonly user: web3.PublicKey;
     readonly depositId: beet.bignum;
-    readonly baseAmount: beet.bignum;
+    readonly lockupId: beet.bignum;
+    readonly receiptAmount: beet.bignum;
     readonly unlockTs: beet.bignum;
     readonly rewards: CooldownRewards;
     private constructor();
@@ -96,7 +98,10 @@ export declare class Cooldown implements CooldownArgs {
         depositId: number | {
             toNumber: () => number;
         };
-        baseAmount: number | {
+        lockupId: number | {
+            toNumber: () => number;
+        };
+        receiptAmount: number | {
             toNumber: () => number;
         };
         unlockTs: number | {

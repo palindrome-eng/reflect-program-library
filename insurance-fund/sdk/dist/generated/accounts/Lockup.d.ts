@@ -16,18 +16,17 @@ import { SlashState } from '../types/SlashState';
  */
 export type LockupArgs = {
     bump: number;
-    locked: boolean;
     index: beet.bignum;
-    asset: web3.PublicKey;
+    assetMint: web3.PublicKey;
+    receiptMint: web3.PublicKey;
+    receiptToRewardExchangeRateBpsAccumulator: beet.bignum;
     minDeposit: beet.bignum;
-    totalDeposits: beet.bignum;
     duration: beet.bignum;
-    yieldBps: beet.bignum;
-    yieldMode: YieldMode;
-    depositCap: beet.COption<beet.bignum>;
     deposits: beet.bignum;
-    slashState: SlashState;
     rewardBoosts: beet.bignum;
+    yieldMode: YieldMode;
+    slashState: SlashState;
+    depositCap: beet.COption<beet.bignum>;
 };
 export declare const lockupDiscriminator: number[];
 /**
@@ -39,18 +38,17 @@ export declare const lockupDiscriminator: number[];
  */
 export declare class Lockup implements LockupArgs {
     readonly bump: number;
-    readonly locked: boolean;
     readonly index: beet.bignum;
-    readonly asset: web3.PublicKey;
+    readonly assetMint: web3.PublicKey;
+    readonly receiptMint: web3.PublicKey;
+    readonly receiptToRewardExchangeRateBpsAccumulator: beet.bignum;
     readonly minDeposit: beet.bignum;
-    readonly totalDeposits: beet.bignum;
     readonly duration: beet.bignum;
-    readonly yieldBps: beet.bignum;
-    readonly yieldMode: YieldMode;
-    readonly depositCap: beet.COption<beet.bignum>;
     readonly deposits: beet.bignum;
-    readonly slashState: SlashState;
     readonly rewardBoosts: beet.bignum;
+    readonly yieldMode: YieldMode;
+    readonly slashState: SlashState;
+    readonly depositCap: beet.COption<beet.bignum>;
     private constructor();
     /**
      * Creates a {@link Lockup} instance from the provided args.
@@ -110,32 +108,29 @@ export declare class Lockup implements LockupArgs {
      */
     pretty(): {
         bump: number;
-        locked: boolean;
         index: number | {
             toNumber: () => number;
         };
-        asset: string;
-        minDeposit: number | {
+        assetMint: string;
+        receiptMint: string;
+        receiptToRewardExchangeRateBpsAccumulator: number | {
             toNumber: () => number;
         };
-        totalDeposits: number | {
+        minDeposit: number | {
             toNumber: () => number;
         };
         duration: number | {
             toNumber: () => number;
         };
-        yieldBps: number | {
-            toNumber: () => number;
-        };
-        yieldMode: "Single" | "Dual";
-        depositCap: beet.bignum;
         deposits: number | {
             toNumber: () => number;
         };
-        slashState: SlashState;
         rewardBoosts: number | {
             toNumber: () => number;
         };
+        yieldMode: "Single" | "Dual";
+        slashState: SlashState;
+        depositCap: beet.bignum;
     };
 }
 /**

@@ -29,13 +29,23 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initializeSlashArgsBeet = void 0;
+exports.requestWithdrawalModeBeet = exports.isRequestWithdrawalModeExactOut = exports.isRequestWithdrawalModeExactIn = void 0;
 const beet = __importStar(require("@metaplex-foundation/beet"));
+const isRequestWithdrawalModeExactIn = (x) => x.__kind === 'ExactIn';
+exports.isRequestWithdrawalModeExactIn = isRequestWithdrawalModeExactIn;
+const isRequestWithdrawalModeExactOut = (x) => x.__kind === 'ExactOut';
+exports.isRequestWithdrawalModeExactOut = isRequestWithdrawalModeExactOut;
 /**
  * @category userTypes
  * @category generated
  */
-exports.initializeSlashArgsBeet = new beet.BeetArgsStruct([
-    ['lockupId', beet.u64],
-    ['amount', beet.u64],
-], 'InitializeSlashArgs');
+exports.requestWithdrawalModeBeet = beet.dataEnum([
+    [
+        'ExactIn',
+        new beet.BeetArgsStruct([['fields', beet.fixedSizeTuple([beet.u64])]], 'RequestWithdrawalModeRecord["ExactIn"]'),
+    ],
+    [
+        'ExactOut',
+        new beet.BeetArgsStruct([['fields', beet.fixedSizeTuple([beet.u64])]], 'RequestWithdrawalModeRecord["ExactOut"]'),
+    ],
+]);

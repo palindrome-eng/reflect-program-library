@@ -16,7 +16,7 @@ import { RewardConfig } from '../types/RewardConfig';
  */
 export type SettingsArgs = {
     bump: number;
-    admins: number;
+    superadmins: number;
     coldWallet: web3.PublicKey;
     lockups: beet.bignum;
     cooldownDuration: beet.bignum;
@@ -34,7 +34,7 @@ export declare const settingsDiscriminator: number[];
  */
 export declare class Settings implements SettingsArgs {
     readonly bump: number;
-    readonly admins: number;
+    readonly superadmins: number;
     readonly coldWallet: web3.PublicKey;
     readonly lockups: beet.bignum;
     readonly cooldownDuration: beet.bignum;
@@ -68,7 +68,7 @@ export declare class Settings implements SettingsArgs {
         accountDiscriminator: any;
         lockups: any;
         bump: any;
-        admins: any;
+        superadmins: any;
         coldWallet: any;
         cooldownDuration: any;
         sharesConfig: any;
@@ -108,7 +108,7 @@ export declare class Settings implements SettingsArgs {
      */
     pretty(): {
         bump: number;
-        admins: number;
+        superadmins: number;
         coldWallet: string;
         lockups: number | {
             toNumber: () => number;

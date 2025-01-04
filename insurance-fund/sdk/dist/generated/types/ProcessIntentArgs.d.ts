@@ -7,6 +7,7 @@
 import * as beet from '@metaplex-foundation/beet';
 export type ProcessIntentArgs = {
     depositId: beet.bignum;
+    lockupId: beet.bignum;
 };
 /**
  * @category userTypes

@@ -29,16 +29,20 @@ export declare const withdrawStruct: beet.BeetArgsStruct<WithdrawInstructionArgs
  * @property [_writable_, **signer**] user
  * @property [_writable_] settings
  * @property [_writable_] lockup
+ * @property [_writable_] receiptTokenMint
  * @property [_writable_] deposit
+ * @property [_writable_] depositReceiptTokenAccount
  * @property [_writable_] cooldown
  * @property [_writable_] assetMint
  * @property [_writable_] asset
  * @property [_writable_] userAssetAta
  * @property [_writable_] rewardMint
  * @property [_writable_] userRewardAta
- * @property [_writable_] lockupAssetVault
+ * @property [_writable_] lockupHotVault
+ * @property [_writable_] lockupColdVault
  * @property [_writable_] assetRewardPool
- * @property [] clock
+ * @property [_writable_] lockupCooldownVault
+ * @property [_writable_] intent (optional)
  * @category Instructions
  * @category Withdraw
  * @category generated
@@ -47,22 +51,30 @@ export type WithdrawInstructionAccounts = {
     user: web3.PublicKey;
     settings: web3.PublicKey;
     lockup: web3.PublicKey;
+    receiptTokenMint: web3.PublicKey;
     deposit: web3.PublicKey;
+    depositReceiptTokenAccount: web3.PublicKey;
     cooldown: web3.PublicKey;
     assetMint: web3.PublicKey;
     asset: web3.PublicKey;
     userAssetAta: web3.PublicKey;
     rewardMint: web3.PublicKey;
     userRewardAta: web3.PublicKey;
-    lockupAssetVault: web3.PublicKey;
+    lockupHotVault: web3.PublicKey;
+    lockupColdVault: web3.PublicKey;
     assetRewardPool: web3.PublicKey;
+    lockupCooldownVault: web3.PublicKey;
+    intent?: web3.PublicKey;
     tokenProgram?: web3.PublicKey;
-    clock: web3.PublicKey;
+    systemProgram?: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
 };
 export declare const withdrawInstructionDiscriminator: number[];
 /**
  * Creates a _Withdraw_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program

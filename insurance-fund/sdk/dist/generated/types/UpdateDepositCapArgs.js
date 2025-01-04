@@ -29,13 +29,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.manageLockupLockArgsBeet = void 0;
+exports.updateDepositCapArgsBeet = void 0;
 const beet = __importStar(require("@metaplex-foundation/beet"));
 /**
  * @category userTypes
  * @category generated
  */
-exports.manageLockupLockArgsBeet = new beet.BeetArgsStruct([
+exports.updateDepositCapArgsBeet = new beet.FixableBeetArgsStruct([
     ['lockupId', beet.u64],
-    ['lock', beet.bool],
-], 'ManageLockupLockArgs');
+    ['newCap', beet.coption(beet.u64)],
+], 'UpdateDepositCapArgs');

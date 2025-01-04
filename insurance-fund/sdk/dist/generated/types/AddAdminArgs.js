@@ -30,10 +30,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addAdminArgsBeet = void 0;
+const beetSolana = __importStar(require("@metaplex-foundation/beet-solana"));
 const beet = __importStar(require("@metaplex-foundation/beet"));
 const Permissions_1 = require("./Permissions");
 /**
  * @category userTypes
  * @category generated
  */
-exports.addAdminArgsBeet = new beet.BeetArgsStruct([['permissions', Permissions_1.permissionsBeet]], 'AddAdminArgs');
+exports.addAdminArgsBeet = new beet.BeetArgsStruct([
+    ['address', beetSolana.publicKey],
+    ['permissions', Permissions_1.permissionsBeet],
+], 'AddAdminArgs');

@@ -53,26 +53,25 @@ exports.lockupDiscriminator = [1, 45, 32, 32, 57, 81, 88, 67];
  * @category generated
  */
 class Lockup {
-    constructor(bump, locked, index, asset, minDeposit, totalDeposits, duration, yieldBps, yieldMode, depositCap, deposits, slashState, rewardBoosts) {
+    constructor(bump, index, assetMint, receiptMint, receiptToRewardExchangeRateBpsAccumulator, minDeposit, duration, deposits, rewardBoosts, yieldMode, slashState, depositCap) {
         this.bump = bump;
-        this.locked = locked;
         this.index = index;
-        this.asset = asset;
+        this.assetMint = assetMint;
+        this.receiptMint = receiptMint;
+        this.receiptToRewardExchangeRateBpsAccumulator = receiptToRewardExchangeRateBpsAccumulator;
         this.minDeposit = minDeposit;
-        this.totalDeposits = totalDeposits;
         this.duration = duration;
-        this.yieldBps = yieldBps;
-        this.yieldMode = yieldMode;
-        this.depositCap = depositCap;
         this.deposits = deposits;
-        this.slashState = slashState;
         this.rewardBoosts = rewardBoosts;
+        this.yieldMode = yieldMode;
+        this.slashState = slashState;
+        this.depositCap = depositCap;
     }
     /**
      * Creates a {@link Lockup} instance from the provided args.
      */
     static fromArgs(args) {
-        return new Lockup(args.bump, args.locked, args.index, args.asset, args.minDeposit, args.totalDeposits, args.duration, args.yieldBps, args.yieldMode, args.depositCap, args.deposits, args.slashState, args.rewardBoosts);
+        return new Lockup(args.bump, args.index, args.assetMint, args.receiptMint, args.receiptToRewardExchangeRateBpsAccumulator, args.minDeposit, args.duration, args.deposits, args.rewardBoosts, args.yieldMode, args.slashState, args.depositCap);
     }
     /**
      * Deserializes the {@link Lockup} from the data of the provided {@link web3.AccountInfo}.
@@ -102,7 +101,7 @@ class Lockup {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+    static gpaBuilder(programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
         return beetSolana.GpaBuilder.fromStruct(programId, exports.lockupBeet);
     }
     /**
@@ -150,7 +149,6 @@ class Lockup {
     pretty() {
         return {
             bump: this.bump,
-            locked: this.locked,
             index: (() => {
                 const x = this.index;
                 if (typeof x.toNumber === 'function') {
@@ -163,9 +161,10 @@ class Lockup {
                 }
                 return x;
             })(),
-            asset: this.asset.toBase58(),
-            minDeposit: (() => {
-                const x = this.minDeposit;
+            assetMint: this.assetMint.toBase58(),
+            receiptMint: this.receiptMint.toBase58(),
+            receiptToRewardExchangeRateBpsAccumulator: (() => {
+                const x = (this.receiptToRewardExchangeRateBpsAccumulator);
                 if (typeof x.toNumber === 'function') {
                     try {
                         return x.toNumber();
@@ -176,8 +175,8 @@ class Lockup {
                 }
                 return x;
             })(),
-            totalDeposits: (() => {
-                const x = this.totalDeposits;
+            minDeposit: (() => {
+                const x = this.minDeposit;
                 if (typeof x.toNumber === 'function') {
                     try {
                         return x.toNumber();
@@ -200,20 +199,6 @@ class Lockup {
                 }
                 return x;
             })(),
-            yieldBps: (() => {
-                const x = this.yieldBps;
-                if (typeof x.toNumber === 'function') {
-                    try {
-                        return x.toNumber();
-                    }
-                    catch (_) {
-                        return x;
-                    }
-                }
-                return x;
-            })(),
-            yieldMode: this.yieldMode.__kind,
-            depositCap: this.depositCap,
             deposits: (() => {
                 const x = this.deposits;
                 if (typeof x.toNumber === 'function') {
@@ -226,7 +211,6 @@ class Lockup {
                 }
                 return x;
             })(),
-            slashState: this.slashState,
             rewardBoosts: (() => {
                 const x = this.rewardBoosts;
                 if (typeof x.toNumber === 'function') {
@@ -239,6 +223,9 @@ class Lockup {
                 }
                 return x;
             })(),
+            yieldMode: this.yieldMode.__kind,
+            slashState: this.slashState,
+            depositCap: this.depositCap,
         };
     }
 }
@@ -250,16 +237,15 @@ exports.Lockup = Lockup;
 exports.lockupBeet = new beet.FixableBeetStruct([
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['bump', beet.u8],
-    ['locked', beet.bool],
     ['index', beet.u64],
-    ['asset', beetSolana.publicKey],
+    ['assetMint', beetSolana.publicKey],
+    ['receiptMint', beetSolana.publicKey],
+    ['receiptToRewardExchangeRateBpsAccumulator', beet.u64],
     ['minDeposit', beet.u64],
-    ['totalDeposits', beet.u64],
     ['duration', beet.u64],
-    ['yieldBps', beet.u64],
-    ['yieldMode', YieldMode_1.yieldModeBeet],
-    ['depositCap', beet.coption(beet.u64)],
     ['deposits', beet.u64],
-    ['slashState', SlashState_1.slashStateBeet],
     ['rewardBoosts', beet.u64],
+    ['yieldMode', YieldMode_1.yieldModeBeet],
+    ['slashState', SlashState_1.slashStateBeet],
+    ['depositCap', beet.coption(beet.u64)],
 ], Lockup.fromArgs, 'Lockup');

@@ -29,37 +29,36 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initializeSlashInstructionDiscriminator = exports.initializeSlashStruct = void 0;
-exports.createInitializeSlashInstruction = createInitializeSlashInstruction;
-const splToken = __importStar(require("@solana/spl-token"));
+exports.removeAdminInstructionDiscriminator = exports.removeAdminStruct = void 0;
+exports.createRemoveAdminInstruction = createRemoveAdminInstruction;
 const beet = __importStar(require("@metaplex-foundation/beet"));
 const web3 = __importStar(require("@solana/web3.js"));
-const InitializeSlashArgs_1 = require("../types/InitializeSlashArgs");
+const RemoveAdminArgs_1 = require("../types/RemoveAdminArgs");
 /**
  * @category Instructions
- * @category InitializeSlash
+ * @category RemoveAdmin
  * @category generated
  */
-exports.initializeSlashStruct = new beet.BeetArgsStruct([
+exports.removeAdminStruct = new beet.BeetArgsStruct([
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', InitializeSlashArgs_1.initializeSlashArgsBeet],
-], 'InitializeSlashInstructionArgs');
-exports.initializeSlashInstructionDiscriminator = [
-    130, 26, 93, 222, 84, 233, 156, 7,
+    ['args', RemoveAdminArgs_1.removeAdminArgsBeet],
+], 'RemoveAdminInstructionArgs');
+exports.removeAdminInstructionDiscriminator = [
+    74, 202, 71, 106, 252, 31, 72, 183,
 ];
 /**
- * Creates a _InitializeSlash_ instruction.
+ * Creates a _RemoveAdmin_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category InitializeSlash
+ * @category RemoveAdmin
  * @category generated
  */
-function createInitializeSlashInstruction(accounts, args, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
-    var _a, _b;
-    const [data] = exports.initializeSlashStruct.serialize(Object.assign({ instructionDiscriminator: exports.initializeSlashInstructionDiscriminator }, args));
+function createRemoveAdminInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+    var _a;
+    const [data] = exports.removeAdminStruct.serialize(Object.assign({ instructionDiscriminator: exports.removeAdminInstructionDiscriminator }, args));
     const keys = [
         {
             pubkey: accounts.signer,
@@ -72,42 +71,17 @@ function createInitializeSlashInstruction(accounts, args, programId = new web3.P
             isSigner: false,
         },
         {
+            pubkey: accounts.adminToRemove,
+            isWritable: true,
+            isSigner: false,
+        },
+        {
             pubkey: accounts.settings,
             isWritable: true,
             isSigner: false,
         },
         {
-            pubkey: accounts.lockup,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.assetMint,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.assetLockup,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.slash,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: (_a = accounts.tokenProgram) !== null && _a !== void 0 ? _a : splToken.TOKEN_PROGRAM_ID,
-            isWritable: false,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.clock,
-            isWritable: false,
-            isSigner: false,
-        },
-        {
-            pubkey: (_b = accounts.systemProgram) !== null && _b !== void 0 ? _b : web3.SystemProgram.programId,
+            pubkey: (_a = accounts.systemProgram) !== null && _a !== void 0 ? _a : web3.SystemProgram.programId,
             isWritable: false,
             isSigner: false,
         },

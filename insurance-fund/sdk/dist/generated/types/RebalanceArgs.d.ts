@@ -5,14 +5,11 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 import * as beet from '@metaplex-foundation/beet';
-export type SlashColdWalletArgs = {
+export type RebalanceArgs = {
     lockupId: beet.bignum;
-    slashId: beet.bignum;
-    transferFunds: boolean;
-    transferSig: beet.COption<string>;
 };
 /**
  * @category userTypes
  * @category generated
  */
-export declare const slashColdWalletArgsBeet: beet.FixableBeetArgsStruct<SlashColdWalletArgs>;
+export declare const rebalanceArgsBeet: beet.BeetArgsStruct<RebalanceArgs>;

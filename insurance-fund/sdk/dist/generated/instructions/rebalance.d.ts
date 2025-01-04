@@ -6,61 +6,59 @@
  */
 import * as beet from '@metaplex-foundation/beet';
 import * as web3 from '@solana/web3.js';
-import { SlashPoolArgs } from '../types/SlashPoolArgs';
+import { RebalanceArgs } from '../types/RebalanceArgs';
 /**
  * @category Instructions
- * @category SlashPool
+ * @category Rebalance
  * @category generated
  */
-export type SlashPoolInstructionArgs = {
-    args: SlashPoolArgs;
+export type RebalanceInstructionArgs = {
+    args: RebalanceArgs;
 };
 /**
  * @category Instructions
- * @category SlashPool
+ * @category Rebalance
  * @category generated
  */
-export declare const slashPoolStruct: beet.BeetArgsStruct<SlashPoolInstructionArgs & {
+export declare const rebalanceStruct: beet.BeetArgsStruct<RebalanceInstructionArgs & {
     instructionDiscriminator: number[];
 }>;
 /**
- * Accounts required by the _slashPool_ instruction
+ * Accounts required by the _rebalance_ instruction
  *
  * @property [_writable_, **signer**] signer
  * @property [_writable_] admin
  * @property [_writable_] settings
  * @property [_writable_] lockup
- * @property [_writable_] slash
  * @property [_writable_] assetMint
- * @property [_writable_] asset
- * @property [_writable_] assetLockup
- * @property [_writable_] destination
+ * @property [_writable_] lockupHotVault
+ * @property [] coldWallet
+ * @property [_writable_] lockupColdVault
  * @category Instructions
- * @category SlashPool
+ * @category Rebalance
  * @category generated
  */
-export type SlashPoolInstructionAccounts = {
+export type RebalanceInstructionAccounts = {
     signer: web3.PublicKey;
     admin: web3.PublicKey;
     settings: web3.PublicKey;
     lockup: web3.PublicKey;
-    slash: web3.PublicKey;
     assetMint: web3.PublicKey;
-    asset: web3.PublicKey;
-    assetLockup: web3.PublicKey;
-    destination: web3.PublicKey;
+    lockupHotVault: web3.PublicKey;
+    coldWallet: web3.PublicKey;
+    lockupColdVault: web3.PublicKey;
     tokenProgram?: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
 };
-export declare const slashPoolInstructionDiscriminator: number[];
+export declare const rebalanceInstructionDiscriminator: number[];
 /**
- * Creates a _SlashPool_ instruction.
+ * Creates a _Rebalance_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SlashPool
+ * @category Rebalance
  * @category generated
  */
-export declare function createSlashPoolInstruction(accounts: SlashPoolInstructionAccounts, args: SlashPoolInstructionArgs, programId?: web3.PublicKey): web3.TransactionInstruction;
+export declare function createRebalanceInstruction(accounts: RebalanceInstructionAccounts, args: RebalanceInstructionArgs, programId?: web3.PublicKey): web3.TransactionInstruction;

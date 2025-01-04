@@ -5,7 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-insurance_fund = "EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV"
+insurance_fund = "2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8"
 
 [registry]
 url = "https://api.apr.dev"
@@ -17,6 +17,7 @@ wallet = "/Users/kubaplata/.config/solana/id.json"
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/insurance-fund.ts"
 test-no-slash = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/scenarios/no-slash.ts"
+test-sdk = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/restaking-sdk.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"

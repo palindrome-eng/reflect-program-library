@@ -1,6 +1,6 @@
 {
   "name": "@reflectcx/restaking",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "author": "zkchakra @ Palindrome Engineering",
   "repository": {
     "type": "git",
@@ -9,13 +9,18 @@
   "dependencies": {
     "@metaplex-foundation/beet": "0.7.2",
     "@metaplex-foundation/beet-solana": "^0.4.1",
+    "@metaplex-foundation/mpl-token-metadata": "2",
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "1.68.0",
-    "bn.js": "5.2.1",
-    "@metaplex-foundation/mpl-token-metadata": "2"
+    "bn.js": "5.2.1"
   },
   "devDependencies": {
-    "@types/bn.js": "5.1.6"
+    "@types/bn.js": "5.1.6",
+    "@types/chai": "^5.0.1",
+    "@types/mocha": "^10.0.10",
+    "bs58": "^6.0.0",
+    "chai": "^5.1.2",
+    "mocha": "^11.0.1"
   },
   "license": "MIT",
   "main": "./src/index.js",

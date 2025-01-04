@@ -5,13 +5,12 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 import * as beet from '@metaplex-foundation/beet';
-export type CreateIntentArgs = {
-    amount: beet.bignum;
+export type UpdateDepositCapArgs = {
     lockupId: beet.bignum;
-    depositId: beet.bignum;
+    newCap: beet.COption<beet.bignum>;
 };
 /**
  * @category userTypes
  * @category generated
  */
-export declare const createIntentArgsBeet: beet.BeetArgsStruct<CreateIntentArgs>;
+export declare const updateDepositCapArgsBeet: beet.FixableBeetArgsStruct<UpdateDepositCapArgs>;

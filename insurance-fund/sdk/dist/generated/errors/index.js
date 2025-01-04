@@ -6,7 +6,7 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PermissionsTooLowError = exports.ColdWalletNotSlashedError = exports.TransferSignatureRequiredError = exports.InvalidSignersError = exports.BoostNotAppliedError = exports.LockupInForceError = exports.MathOverflowError = exports.InvalidOracleError = exports.FrozenError = exports.ShareConfigOverflowError = exports.SlashAmountMismatchError = exports.AllDepositsSlashedError = exports.DepositsNotSlashedError = exports.DepositsOpenError = exports.DepositsLockedError = exports.NotEnoughFundsToSlashError = exports.NotEnoughFundsError = exports.DepositCapOverflowError = exports.DepositTooLowError = exports.AssetNotWhitelistedError = exports.InvalidInputError = exports.InvalidSignerError = void 0;
+exports.CooldownInForceError = exports.PriceErrorError = exports.WithdrawalNeedsIntentError = exports.IntentValueTooLowError = exports.MinimumSuperadminsRequiredError = exports.InvalidReceiptTokenSetupError = exports.PoolImbalanceError = exports.WithdrawalThresholdOverflowError = exports.PermissionsTooLowError = exports.ColdWalletNotSlashedError = exports.TransferSignatureRequiredError = exports.InvalidSignersError = exports.BoostNotAppliedError = exports.LockupInForceError = exports.MathOverflowError = exports.InvalidOracleError = exports.FrozenError = exports.ShareConfigOverflowError = exports.SlashAmountMismatchError = exports.AllDepositsSlashedError = exports.DepositsNotSlashedError = exports.DepositsOpenError = exports.DepositsLockedError = exports.NotEnoughFundsToSlashError = exports.NotEnoughReceiptTokensError = exports.NotEnoughFundsError = exports.DepositCapOverflowError = exports.DepositTooLowError = exports.AssetNotWhitelistedError = exports.InvalidInputError = exports.InvalidSignerError = void 0;
 exports.errorFromCode = errorFromCode;
 exports.errorFromName = errorFromName;
 const createErrorFromCodeLookup = new Map();
@@ -126,6 +126,25 @@ exports.NotEnoughFundsError = NotEnoughFundsError;
 createErrorFromCodeLookup.set(0x1775, () => new NotEnoughFundsError());
 createErrorFromNameLookup.set('NotEnoughFunds', () => new NotEnoughFundsError());
 /**
+ * NotEnoughReceiptTokens: 'NotEnoughReceiptTokens'
+ *
+ * @category Errors
+ * @category generated
+ */
+class NotEnoughReceiptTokensError extends Error {
+    constructor() {
+        super('NotEnoughReceiptTokens');
+        this.code = 0x1776;
+        this.name = 'NotEnoughReceiptTokens';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, NotEnoughReceiptTokensError);
+        }
+    }
+}
+exports.NotEnoughReceiptTokensError = NotEnoughReceiptTokensError;
+createErrorFromCodeLookup.set(0x1776, () => new NotEnoughReceiptTokensError());
+createErrorFromNameLookup.set('NotEnoughReceiptTokens', () => new NotEnoughReceiptTokensError());
+/**
  * NotEnoughFundsToSlash: 'NotEnoughFundsToSlash'
  *
  * @category Errors
@@ -134,7 +153,7 @@ createErrorFromNameLookup.set('NotEnoughFunds', () => new NotEnoughFundsError())
 class NotEnoughFundsToSlashError extends Error {
     constructor() {
         super('NotEnoughFundsToSlash');
-        this.code = 0x1776;
+        this.code = 0x1777;
         this.name = 'NotEnoughFundsToSlash';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, NotEnoughFundsToSlashError);
@@ -142,7 +161,7 @@ class NotEnoughFundsToSlashError extends Error {
     }
 }
 exports.NotEnoughFundsToSlashError = NotEnoughFundsToSlashError;
-createErrorFromCodeLookup.set(0x1776, () => new NotEnoughFundsToSlashError());
+createErrorFromCodeLookup.set(0x1777, () => new NotEnoughFundsToSlashError());
 createErrorFromNameLookup.set('NotEnoughFundsToSlash', () => new NotEnoughFundsToSlashError());
 /**
  * DepositsLocked: 'DepositsLocked'
@@ -153,7 +172,7 @@ createErrorFromNameLookup.set('NotEnoughFundsToSlash', () => new NotEnoughFundsT
 class DepositsLockedError extends Error {
     constructor() {
         super('DepositsLocked');
-        this.code = 0x1777;
+        this.code = 0x1778;
         this.name = 'DepositsLocked';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, DepositsLockedError);
@@ -161,7 +180,7 @@ class DepositsLockedError extends Error {
     }
 }
 exports.DepositsLockedError = DepositsLockedError;
-createErrorFromCodeLookup.set(0x1777, () => new DepositsLockedError());
+createErrorFromCodeLookup.set(0x1778, () => new DepositsLockedError());
 createErrorFromNameLookup.set('DepositsLocked', () => new DepositsLockedError());
 /**
  * DepositsOpen: 'DepositsOpen'
@@ -172,7 +191,7 @@ createErrorFromNameLookup.set('DepositsLocked', () => new DepositsLockedError())
 class DepositsOpenError extends Error {
     constructor() {
         super('DepositsOpen');
-        this.code = 0x1778;
+        this.code = 0x1779;
         this.name = 'DepositsOpen';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, DepositsOpenError);
@@ -180,7 +199,7 @@ class DepositsOpenError extends Error {
     }
 }
 exports.DepositsOpenError = DepositsOpenError;
-createErrorFromCodeLookup.set(0x1778, () => new DepositsOpenError());
+createErrorFromCodeLookup.set(0x1779, () => new DepositsOpenError());
 createErrorFromNameLookup.set('DepositsOpen', () => new DepositsOpenError());
 /**
  * DepositsNotSlashed: 'DepositsNotSlashed'
@@ -191,7 +210,7 @@ createErrorFromNameLookup.set('DepositsOpen', () => new DepositsOpenError());
 class DepositsNotSlashedError extends Error {
     constructor() {
         super('DepositsNotSlashed');
-        this.code = 0x1779;
+        this.code = 0x177a;
         this.name = 'DepositsNotSlashed';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, DepositsNotSlashedError);
@@ -199,7 +218,7 @@ class DepositsNotSlashedError extends Error {
     }
 }
 exports.DepositsNotSlashedError = DepositsNotSlashedError;
-createErrorFromCodeLookup.set(0x1779, () => new DepositsNotSlashedError());
+createErrorFromCodeLookup.set(0x177a, () => new DepositsNotSlashedError());
 createErrorFromNameLookup.set('DepositsNotSlashed', () => new DepositsNotSlashedError());
 /**
  * AllDepositsSlashed: 'AllDepositsSlashed'
@@ -210,7 +229,7 @@ createErrorFromNameLookup.set('DepositsNotSlashed', () => new DepositsNotSlashed
 class AllDepositsSlashedError extends Error {
     constructor() {
         super('AllDepositsSlashed');
-        this.code = 0x177a;
+        this.code = 0x177b;
         this.name = 'AllDepositsSlashed';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, AllDepositsSlashedError);
@@ -218,7 +237,7 @@ class AllDepositsSlashedError extends Error {
     }
 }
 exports.AllDepositsSlashedError = AllDepositsSlashedError;
-createErrorFromCodeLookup.set(0x177a, () => new AllDepositsSlashedError());
+createErrorFromCodeLookup.set(0x177b, () => new AllDepositsSlashedError());
 createErrorFromNameLookup.set('AllDepositsSlashed', () => new AllDepositsSlashedError());
 /**
  * SlashAmountMismatch: 'SlashAmountMismatch'
@@ -229,7 +248,7 @@ createErrorFromNameLookup.set('AllDepositsSlashed', () => new AllDepositsSlashed
 class SlashAmountMismatchError extends Error {
     constructor() {
         super('SlashAmountMismatch');
-        this.code = 0x177b;
+        this.code = 0x177c;
         this.name = 'SlashAmountMismatch';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, SlashAmountMismatchError);
@@ -237,7 +256,7 @@ class SlashAmountMismatchError extends Error {
     }
 }
 exports.SlashAmountMismatchError = SlashAmountMismatchError;
-createErrorFromCodeLookup.set(0x177b, () => new SlashAmountMismatchError());
+createErrorFromCodeLookup.set(0x177c, () => new SlashAmountMismatchError());
 createErrorFromNameLookup.set('SlashAmountMismatch', () => new SlashAmountMismatchError());
 /**
  * ShareConfigOverflow: 'ShareConfigOverflow'
@@ -248,7 +267,7 @@ createErrorFromNameLookup.set('SlashAmountMismatch', () => new SlashAmountMismat
 class ShareConfigOverflowError extends Error {
     constructor() {
         super('ShareConfigOverflow');
-        this.code = 0x177c;
+        this.code = 0x177d;
         this.name = 'ShareConfigOverflow';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, ShareConfigOverflowError);
@@ -256,7 +275,7 @@ class ShareConfigOverflowError extends Error {
     }
 }
 exports.ShareConfigOverflowError = ShareConfigOverflowError;
-createErrorFromCodeLookup.set(0x177c, () => new ShareConfigOverflowError());
+createErrorFromCodeLookup.set(0x177d, () => new ShareConfigOverflowError());
 createErrorFromNameLookup.set('ShareConfigOverflow', () => new ShareConfigOverflowError());
 /**
  * Frozen: 'Frozen'
@@ -267,7 +286,7 @@ createErrorFromNameLookup.set('ShareConfigOverflow', () => new ShareConfigOverfl
 class FrozenError extends Error {
     constructor() {
         super('Frozen');
-        this.code = 0x177d;
+        this.code = 0x177e;
         this.name = 'Frozen';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, FrozenError);
@@ -275,7 +294,7 @@ class FrozenError extends Error {
     }
 }
 exports.FrozenError = FrozenError;
-createErrorFromCodeLookup.set(0x177d, () => new FrozenError());
+createErrorFromCodeLookup.set(0x177e, () => new FrozenError());
 createErrorFromNameLookup.set('Frozen', () => new FrozenError());
 /**
  * InvalidOracle: 'InvalidOracle'
@@ -286,7 +305,7 @@ createErrorFromNameLookup.set('Frozen', () => new FrozenError());
 class InvalidOracleError extends Error {
     constructor() {
         super('InvalidOracle');
-        this.code = 0x177e;
+        this.code = 0x177f;
         this.name = 'InvalidOracle';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, InvalidOracleError);
@@ -294,7 +313,7 @@ class InvalidOracleError extends Error {
     }
 }
 exports.InvalidOracleError = InvalidOracleError;
-createErrorFromCodeLookup.set(0x177e, () => new InvalidOracleError());
+createErrorFromCodeLookup.set(0x177f, () => new InvalidOracleError());
 createErrorFromNameLookup.set('InvalidOracle', () => new InvalidOracleError());
 /**
  * MathOverflow: 'MathOverflow'
@@ -305,7 +324,7 @@ createErrorFromNameLookup.set('InvalidOracle', () => new InvalidOracleError());
 class MathOverflowError extends Error {
     constructor() {
         super('MathOverflow');
-        this.code = 0x177f;
+        this.code = 0x1780;
         this.name = 'MathOverflow';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, MathOverflowError);
@@ -313,7 +332,7 @@ class MathOverflowError extends Error {
     }
 }
 exports.MathOverflowError = MathOverflowError;
-createErrorFromCodeLookup.set(0x177f, () => new MathOverflowError());
+createErrorFromCodeLookup.set(0x1780, () => new MathOverflowError());
 createErrorFromNameLookup.set('MathOverflow', () => new MathOverflowError());
 /**
  * LockupInForce: 'LockupInForce'
@@ -324,7 +343,7 @@ createErrorFromNameLookup.set('MathOverflow', () => new MathOverflowError());
 class LockupInForceError extends Error {
     constructor() {
         super('LockupInForce');
-        this.code = 0x1780;
+        this.code = 0x1781;
         this.name = 'LockupInForce';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, LockupInForceError);
@@ -332,7 +351,7 @@ class LockupInForceError extends Error {
     }
 }
 exports.LockupInForceError = LockupInForceError;
-createErrorFromCodeLookup.set(0x1780, () => new LockupInForceError());
+createErrorFromCodeLookup.set(0x1781, () => new LockupInForceError());
 createErrorFromNameLookup.set('LockupInForce', () => new LockupInForceError());
 /**
  * BoostNotApplied: 'BoostNotApplied'
@@ -343,7 +362,7 @@ createErrorFromNameLookup.set('LockupInForce', () => new LockupInForceError());
 class BoostNotAppliedError extends Error {
     constructor() {
         super('BoostNotApplied');
-        this.code = 0x1781;
+        this.code = 0x1782;
         this.name = 'BoostNotApplied';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, BoostNotAppliedError);
@@ -351,7 +370,7 @@ class BoostNotAppliedError extends Error {
     }
 }
 exports.BoostNotAppliedError = BoostNotAppliedError;
-createErrorFromCodeLookup.set(0x1781, () => new BoostNotAppliedError());
+createErrorFromCodeLookup.set(0x1782, () => new BoostNotAppliedError());
 createErrorFromNameLookup.set('BoostNotApplied', () => new BoostNotAppliedError());
 /**
  * InvalidSigners: 'InvalidSigners'
@@ -362,7 +381,7 @@ createErrorFromNameLookup.set('BoostNotApplied', () => new BoostNotAppliedError(
 class InvalidSignersError extends Error {
     constructor() {
         super('InvalidSigners');
-        this.code = 0x1782;
+        this.code = 0x1783;
         this.name = 'InvalidSigners';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, InvalidSignersError);
@@ -370,7 +389,7 @@ class InvalidSignersError extends Error {
     }
 }
 exports.InvalidSignersError = InvalidSignersError;
-createErrorFromCodeLookup.set(0x1782, () => new InvalidSignersError());
+createErrorFromCodeLookup.set(0x1783, () => new InvalidSignersError());
 createErrorFromNameLookup.set('InvalidSigners', () => new InvalidSignersError());
 /**
  * TransferSignatureRequired: 'TransferSignatureRequired'
@@ -381,7 +400,7 @@ createErrorFromNameLookup.set('InvalidSigners', () => new InvalidSignersError())
 class TransferSignatureRequiredError extends Error {
     constructor() {
         super('TransferSignatureRequired');
-        this.code = 0x1783;
+        this.code = 0x1784;
         this.name = 'TransferSignatureRequired';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, TransferSignatureRequiredError);
@@ -389,7 +408,7 @@ class TransferSignatureRequiredError extends Error {
     }
 }
 exports.TransferSignatureRequiredError = TransferSignatureRequiredError;
-createErrorFromCodeLookup.set(0x1783, () => new TransferSignatureRequiredError());
+createErrorFromCodeLookup.set(0x1784, () => new TransferSignatureRequiredError());
 createErrorFromNameLookup.set('TransferSignatureRequired', () => new TransferSignatureRequiredError());
 /**
  * ColdWalletNotSlashed: 'ColdWalletNotSlashed'
@@ -400,7 +419,7 @@ createErrorFromNameLookup.set('TransferSignatureRequired', () => new TransferSig
 class ColdWalletNotSlashedError extends Error {
     constructor() {
         super('ColdWalletNotSlashed');
-        this.code = 0x1784;
+        this.code = 0x1785;
         this.name = 'ColdWalletNotSlashed';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, ColdWalletNotSlashedError);
@@ -408,7 +427,7 @@ class ColdWalletNotSlashedError extends Error {
     }
 }
 exports.ColdWalletNotSlashedError = ColdWalletNotSlashedError;
-createErrorFromCodeLookup.set(0x1784, () => new ColdWalletNotSlashedError());
+createErrorFromCodeLookup.set(0x1785, () => new ColdWalletNotSlashedError());
 createErrorFromNameLookup.set('ColdWalletNotSlashed', () => new ColdWalletNotSlashedError());
 /**
  * PermissionsTooLow: 'PermissionsTooLow'
@@ -419,7 +438,7 @@ createErrorFromNameLookup.set('ColdWalletNotSlashed', () => new ColdWalletNotSla
 class PermissionsTooLowError extends Error {
     constructor() {
         super('PermissionsTooLow');
-        this.code = 0x1785;
+        this.code = 0x1786;
         this.name = 'PermissionsTooLow';
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, PermissionsTooLowError);
@@ -427,8 +446,160 @@ class PermissionsTooLowError extends Error {
     }
 }
 exports.PermissionsTooLowError = PermissionsTooLowError;
-createErrorFromCodeLookup.set(0x1785, () => new PermissionsTooLowError());
+createErrorFromCodeLookup.set(0x1786, () => new PermissionsTooLowError());
 createErrorFromNameLookup.set('PermissionsTooLow', () => new PermissionsTooLowError());
+/**
+ * WithdrawalThresholdOverflow: 'WithdrawalThresholdOverflow'
+ *
+ * @category Errors
+ * @category generated
+ */
+class WithdrawalThresholdOverflowError extends Error {
+    constructor() {
+        super('WithdrawalThresholdOverflow');
+        this.code = 0x1787;
+        this.name = 'WithdrawalThresholdOverflow';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, WithdrawalThresholdOverflowError);
+        }
+    }
+}
+exports.WithdrawalThresholdOverflowError = WithdrawalThresholdOverflowError;
+createErrorFromCodeLookup.set(0x1787, () => new WithdrawalThresholdOverflowError());
+createErrorFromNameLookup.set('WithdrawalThresholdOverflow', () => new WithdrawalThresholdOverflowError());
+/**
+ * PoolImbalance: 'PoolImbalance'
+ *
+ * @category Errors
+ * @category generated
+ */
+class PoolImbalanceError extends Error {
+    constructor() {
+        super('PoolImbalance');
+        this.code = 0x1788;
+        this.name = 'PoolImbalance';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, PoolImbalanceError);
+        }
+    }
+}
+exports.PoolImbalanceError = PoolImbalanceError;
+createErrorFromCodeLookup.set(0x1788, () => new PoolImbalanceError());
+createErrorFromNameLookup.set('PoolImbalance', () => new PoolImbalanceError());
+/**
+ * InvalidReceiptTokenSetup: 'InvalidReceiptTokenSetup'
+ *
+ * @category Errors
+ * @category generated
+ */
+class InvalidReceiptTokenSetupError extends Error {
+    constructor() {
+        super('InvalidReceiptTokenSetup');
+        this.code = 0x1789;
+        this.name = 'InvalidReceiptTokenSetup';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, InvalidReceiptTokenSetupError);
+        }
+    }
+}
+exports.InvalidReceiptTokenSetupError = InvalidReceiptTokenSetupError;
+createErrorFromCodeLookup.set(0x1789, () => new InvalidReceiptTokenSetupError());
+createErrorFromNameLookup.set('InvalidReceiptTokenSetup', () => new InvalidReceiptTokenSetupError());
+/**
+ * MinimumSuperadminsRequired: 'MinimumSuperadminsRequired'
+ *
+ * @category Errors
+ * @category generated
+ */
+class MinimumSuperadminsRequiredError extends Error {
+    constructor() {
+        super('MinimumSuperadminsRequired');
+        this.code = 0x178a;
+        this.name = 'MinimumSuperadminsRequired';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, MinimumSuperadminsRequiredError);
+        }
+    }
+}
+exports.MinimumSuperadminsRequiredError = MinimumSuperadminsRequiredError;
+createErrorFromCodeLookup.set(0x178a, () => new MinimumSuperadminsRequiredError());
+createErrorFromNameLookup.set('MinimumSuperadminsRequired', () => new MinimumSuperadminsRequiredError());
+/**
+ * IntentValueTooLow: 'IntentValueTooLow'
+ *
+ * @category Errors
+ * @category generated
+ */
+class IntentValueTooLowError extends Error {
+    constructor() {
+        super('IntentValueTooLow');
+        this.code = 0x178b;
+        this.name = 'IntentValueTooLow';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, IntentValueTooLowError);
+        }
+    }
+}
+exports.IntentValueTooLowError = IntentValueTooLowError;
+createErrorFromCodeLookup.set(0x178b, () => new IntentValueTooLowError());
+createErrorFromNameLookup.set('IntentValueTooLow', () => new IntentValueTooLowError());
+/**
+ * WithdrawalNeedsIntent: 'WithdrawalNeedsIntent'
+ *
+ * @category Errors
+ * @category generated
+ */
+class WithdrawalNeedsIntentError extends Error {
+    constructor() {
+        super('WithdrawalNeedsIntent');
+        this.code = 0x178c;
+        this.name = 'WithdrawalNeedsIntent';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, WithdrawalNeedsIntentError);
+        }
+    }
+}
+exports.WithdrawalNeedsIntentError = WithdrawalNeedsIntentError;
+createErrorFromCodeLookup.set(0x178c, () => new WithdrawalNeedsIntentError());
+createErrorFromNameLookup.set('WithdrawalNeedsIntent', () => new WithdrawalNeedsIntentError());
+/**
+ * PriceError: 'PriceError'
+ *
+ * @category Errors
+ * @category generated
+ */
+class PriceErrorError extends Error {
+    constructor() {
+        super('PriceError');
+        this.code = 0x178d;
+        this.name = 'PriceError';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, PriceErrorError);
+        }
+    }
+}
+exports.PriceErrorError = PriceErrorError;
+createErrorFromCodeLookup.set(0x178d, () => new PriceErrorError());
+createErrorFromNameLookup.set('PriceError', () => new PriceErrorError());
+/**
+ * CooldownInForce: 'CooldownInForce'
+ *
+ * @category Errors
+ * @category generated
+ */
+class CooldownInForceError extends Error {
+    constructor() {
+        super('CooldownInForce');
+        this.code = 0x178e;
+        this.name = 'CooldownInForce';
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, CooldownInForceError);
+        }
+    }
+}
+exports.CooldownInForceError = CooldownInForceError;
+createErrorFromCodeLookup.set(0x178e, () => new CooldownInForceError());
+createErrorFromNameLookup.set('CooldownInForce', () => new CooldownInForceError());
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

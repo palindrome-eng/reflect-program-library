@@ -50,7 +50,7 @@ exports.addAssetInstructionDiscriminator = [
  * @category AddAsset
  * @category generated
  */
-function createAddAssetInstruction(accounts, programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+function createAddAssetInstruction(accounts, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
     var _a;
     const [data] = exports.addAssetStruct.serialize({
         instructionDiscriminator: exports.addAssetInstructionDiscriminator,

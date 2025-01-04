@@ -13,14 +13,13 @@ import * as beetSolana from '@metaplex-foundation/beet-solana';
  * @category generated
  */
 export type DepositArgs = {
+    bump: number;
     index: beet.bignum;
     user: web3.PublicKey;
-    amount: beet.bignum;
     initialUsdValue: beet.bignum;
-    amountSlashed: beet.bignum;
     lockup: web3.PublicKey;
     unlockTs: beet.bignum;
-    lastSlashed: beet.COption<beet.bignum>;
+    initialReceiptExchangeRateBps: beet.bignum;
 };
 export declare const depositDiscriminator: number[];
 /**
@@ -31,14 +30,13 @@ export declare const depositDiscriminator: number[];
  * @category generated
  */
 export declare class Deposit implements DepositArgs {
+    readonly bump: number;
     readonly index: beet.bignum;
     readonly user: web3.PublicKey;
-    readonly amount: beet.bignum;
     readonly initialUsdValue: beet.bignum;
-    readonly amountSlashed: beet.bignum;
     readonly lockup: web3.PublicKey;
     readonly unlockTs: beet.bignum;
-    readonly lastSlashed: beet.COption<beet.bignum>;
+    readonly initialReceiptExchangeRateBps: beet.bignum;
     private constructor();
     /**
      * Creates a {@link Deposit} instance from the provided args.
@@ -62,8 +60,15 @@ export declare class Deposit implements DepositArgs {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId?: web3.PublicKey): beetSolana.GpaBuilder<DepositArgs & {
-        accountDiscriminator: number[];
+    static gpaBuilder(programId?: web3.PublicKey): beetSolana.GpaBuilder<{
+        accountDiscriminator: any;
+        user: any;
+        unlockTs: any;
+        bump: any;
+        index: any;
+        initialUsdValue: any;
+        lockup: any;
+        initialReceiptExchangeRateBps: any;
     }>;
     /**
      * Deserializes the {@link Deposit} from the provided data Buffer.
@@ -77,50 +82,47 @@ export declare class Deposit implements DepositArgs {
     serialize(): [Buffer, number];
     /**
      * Returns the byteSize of a {@link Buffer} holding the serialized data of
-     * {@link Deposit} for the provided args.
-     *
-     * @param args need to be provided since the byte size for this account
-     * depends on them
+     * {@link Deposit}
      */
-    static byteSize(args: DepositArgs): number;
+    static get byteSize(): number;
     /**
      * Fetches the minimum balance needed to exempt an account holding
      * {@link Deposit} data from rent
      *
-     * @param args need to be provided since the byte size for this account
-     * depends on them
      * @param connection used to retrieve the rent exemption information
      */
-    static getMinimumBalanceForRentExemption(args: DepositArgs, connection: web3.Connection, commitment?: web3.Commitment): Promise<number>;
+    static getMinimumBalanceForRentExemption(connection: web3.Connection, commitment?: web3.Commitment): Promise<number>;
+    /**
+     * Determines if the provided {@link Buffer} has the correct byte size to
+     * hold {@link Deposit} data.
+     */
+    static hasCorrectByteSize(buf: Buffer, offset?: number): boolean;
     /**
      * Returns a readable version of {@link Deposit} properties
      * and can be used to convert to JSON and/or logging
      */
     pretty(): {
+        bump: number;
         index: number | {
             toNumber: () => number;
         };
         user: string;
-        amount: number | {
-            toNumber: () => number;
-        };
         initialUsdValue: number | {
-            toNumber: () => number;
-        };
-        amountSlashed: number | {
             toNumber: () => number;
         };
         lockup: string;
         unlockTs: number | {
             toNumber: () => number;
         };
-        lastSlashed: beet.bignum;
+        initialReceiptExchangeRateBps: number | {
+            toNumber: () => number;
+        };
     };
 }
 /**
  * @category Accounts
  * @category generated
  */
-export declare const depositBeet: beet.FixableBeetStruct<Deposit, DepositArgs & {
+export declare const depositBeet: beet.BeetStruct<Deposit, DepositArgs & {
     accountDiscriminator: number[];
 }>;

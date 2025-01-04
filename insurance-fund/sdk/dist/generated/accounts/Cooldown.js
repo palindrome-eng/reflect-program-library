@@ -52,10 +52,11 @@ exports.cooldownDiscriminator = [50, 166, 94, 192, 234, 64, 152, 208];
  * @category generated
  */
 class Cooldown {
-    constructor(user, depositId, baseAmount, unlockTs, rewards) {
+    constructor(user, depositId, lockupId, receiptAmount, unlockTs, rewards) {
         this.user = user;
         this.depositId = depositId;
-        this.baseAmount = baseAmount;
+        this.lockupId = lockupId;
+        this.receiptAmount = receiptAmount;
         this.unlockTs = unlockTs;
         this.rewards = rewards;
     }
@@ -63,7 +64,7 @@ class Cooldown {
      * Creates a {@link Cooldown} instance from the provided args.
      */
     static fromArgs(args) {
-        return new Cooldown(args.user, args.depositId, args.baseAmount, args.unlockTs, args.rewards);
+        return new Cooldown(args.user, args.depositId, args.lockupId, args.receiptAmount, args.unlockTs, args.rewards);
     }
     /**
      * Deserializes the {@link Cooldown} from the data of the provided {@link web3.AccountInfo}.
@@ -93,7 +94,7 @@ class Cooldown {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId = new web3.PublicKey('EiMoMLXBCKpxTdBwK2mBBaGFWH1v2JdT5nAhiyJdF3pV')) {
+    static gpaBuilder(programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
         return beetSolana.GpaBuilder.fromStruct(programId, exports.cooldownBeet);
     }
     /**
@@ -153,8 +154,20 @@ class Cooldown {
                 }
                 return x;
             })(),
-            baseAmount: (() => {
-                const x = this.baseAmount;
+            lockupId: (() => {
+                const x = this.lockupId;
+                if (typeof x.toNumber === 'function') {
+                    try {
+                        return x.toNumber();
+                    }
+                    catch (_) {
+                        return x;
+                    }
+                }
+                return x;
+            })(),
+            receiptAmount: (() => {
+                const x = this.receiptAmount;
                 if (typeof x.toNumber === 'function') {
                     try {
                         return x.toNumber();
@@ -190,7 +203,8 @@ exports.cooldownBeet = new beet.FixableBeetStruct([
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['user', beetSolana.publicKey],
     ['depositId', beet.u64],
-    ['baseAmount', beet.u64],
+    ['lockupId', beet.u64],
+    ['receiptAmount', beet.u64],
     ['unlockTs', beet.u64],
     ['rewards', CooldownRewards_1.cooldownRewardsBeet],
 ], Cooldown.fromArgs, 'Cooldown');

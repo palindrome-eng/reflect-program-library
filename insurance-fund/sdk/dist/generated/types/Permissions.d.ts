@@ -11,8 +11,9 @@ import * as beet from '@metaplex-foundation/beet';
  */
 export declare enum Permissions {
     Freeze = 0,
-    AddAsset = 1,
-    Superadmin = 2
+    AssetsAndLockups = 1,
+    Slashing = 2,
+    Superadmin = 3
 }
 /**
  * @category userTypes

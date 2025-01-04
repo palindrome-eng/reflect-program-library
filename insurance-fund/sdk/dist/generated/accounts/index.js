@@ -23,7 +23,6 @@ __exportStar(require("./Intent"), exports);
 __exportStar(require("./Lockup"), exports);
 __exportStar(require("./RewardBoost"), exports);
 __exportStar(require("./Settings"), exports);
-__exportStar(require("./Slash"), exports);
 const Admin_1 = require("./Admin");
 const Asset_1 = require("./Asset");
 const Cooldown_1 = require("./Cooldown");
@@ -32,7 +31,6 @@ const Intent_1 = require("./Intent");
 const Lockup_1 = require("./Lockup");
 const RewardBoost_1 = require("./RewardBoost");
 const Settings_1 = require("./Settings");
-const Slash_1 = require("./Slash");
 exports.accountProviders = {
     Admin: Admin_1.Admin,
     Asset: Asset_1.Asset,
@@ -42,5 +40,4 @@ exports.accountProviders = {
     Lockup: Lockup_1.Lockup,
     RewardBoost: RewardBoost_1.RewardBoost,
     Settings: Settings_1.Settings,
-    Slash: Slash_1.Slash,
 };

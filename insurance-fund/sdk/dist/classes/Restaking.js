@@ -12,13 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.InsuranceFund = void 0;
+exports.Restaking = void 0;
 const web3_js_1 = require("@solana/web3.js");
 const generated_1 = require("../generated");
 const bn_js_1 = __importDefault(require("bn.js"));
 const spl_token_1 = require("@solana/spl-token");
-const DEPOSITS_PER_SLASH_INSTRUCTION = 10;
-class InsuranceFund {
+const mpl_token_metadata_1 = require("@metaplex-foundation/mpl-token-metadata");
+class Restaking {
     constructor(connection) {
         this.connection = connection;
     }
@@ -34,12 +34,12 @@ class InsuranceFund {
             return lockups.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer(generated_1.Lockup, account) }));
         });
     }
-    getLockupsByAsset(asset) {
+    getLockupsByAsset(assetMint) {
         return __awaiter(this, void 0, void 0, function* () {
             const lockups = yield generated_1.Lockup
                 .gpaBuilder()
                 .addFilter("accountDiscriminator", generated_1.lockupDiscriminator)
-                .addFilter("asset", asset)
+                .addFilter("assetMint", assetMint)
                 .run(this.connection);
             return lockups.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer(generated_1.Lockup, account) }));
         });
@@ -132,10 +132,10 @@ class InsuranceFund {
             return intents.map(({ pubkey, account }) => ({ pubkey, account: this.accountFromBuffer(generated_1.Intent, account) }));
         });
     }
-    deriveAdmin(index) {
+    static deriveAdmin(address) {
         const [admin] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("admin"),
-            (index instanceof bn_js_1.default ? index : new bn_js_1.default(index)).toArrayLike(Buffer, "le", 1)
+            address.toBuffer()
         ], generated_1.PROGRAM_ID);
         return admin;
     }
@@ -148,19 +148,14 @@ class InsuranceFund {
             return admins.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer(generated_1.Admin, account) }));
         });
     }
-    // Technically program allows for multiple admin accounts under the same signer public key.
-    // Program may require small rework that will ensure there's one Admin instance per publickey, i.e via using pubkey instead of index in seeds
     getAdminFromPublicKey(address) {
         return __awaiter(this, void 0, void 0, function* () {
-            const admins = yield generated_1.Admin
-                .gpaBuilder()
-                .addFilter("accountDiscriminator", generated_1.adminDiscriminator)
-                .addFilter("address", address)
-                .run(this.connection);
-            return admins.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer(generated_1.Admin, account) }));
+            const admin = Restaking.deriveAdmin(address);
+            const adminData = yield generated_1.Admin.fromAccountAddress(this.connection, admin);
+            return { pubkey: admin, account: adminData };
         });
     }
-    deriveSettings() {
+    static deriveSettings() {
         const [settings] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("settings"),
         ], generated_1.PROGRAM_ID);
@@ -169,8 +164,8 @@ class InsuranceFund {
     initializeInsuranceFund(admin, args) {
         return __awaiter(this, void 0, void 0, function* () {
             return (0, generated_1.createInitializeInsuranceFundInstruction)({
-                admin: this.deriveAdmin(0),
-                settings: this.deriveSettings(),
+                admin: Restaking.deriveAdmin(admin),
+                settings: Restaking.deriveSettings(),
                 signer: admin,
                 systemProgram: web3_js_1.SystemProgram.programId
             }, {
@@ -180,24 +175,24 @@ class InsuranceFund {
     }
     getSettingsData() {
         return __awaiter(this, void 0, void 0, function* () {
-            return generated_1.Settings.fromAccountAddress(this.connection, this.deriveSettings());
+            return generated_1.Settings.fromAccountAddress(this.connection, Restaking.deriveSettings());
         });
     }
-    deriveLockup(index) {
+    static deriveLockup(index) {
         const [lockup] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("lockup"),
             (index instanceof bn_js_1.default ? index : new bn_js_1.default(index)).toArrayLike(Buffer, "le", 8)
         ], generated_1.PROGRAM_ID);
         return lockup;
     }
-    deriveAsset(mint) {
+    static deriveAsset(mint) {
         const [asset] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("asset"),
             mint.toBuffer()
         ], generated_1.PROGRAM_ID);
         return asset;
     }
-    deriveAssetPool(type, lockup, assetMint) {
+    static deriveAssetPool(type, lockup, assetMint) {
         const [vault] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from(type),
             lockup.toBuffer(),
@@ -205,54 +200,152 @@ class InsuranceFund {
         ], generated_1.PROGRAM_ID);
         return vault;
     }
+    static deriveLockupColdVault(lockup, assetMint) {
+        const [coldVault] = web3_js_1.PublicKey.findProgramAddressSync([
+            Buffer.from("cold_vault"),
+            lockup.toBuffer(),
+            assetMint.toBuffer()
+        ], generated_1.PROGRAM_ID);
+        return coldVault;
+    }
+    getLockupColdVault(address) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (0, spl_token_1.getAccount)(this.connection, address, "confirmed");
+        });
+    }
+    static deriveLockupHotVault(lockup, assetMint) {
+        const [hotVault] = web3_js_1.PublicKey.findProgramAddressSync([
+            Buffer.from("hot_vault"),
+            lockup.toBuffer(),
+            assetMint.toBuffer()
+        ], generated_1.PROGRAM_ID);
+        return hotVault;
+    }
+    getLockupHotVault(address) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (0, spl_token_1.getAccount)(this.connection, address, "confirmed");
+        });
+    }
+    static deriveLockupCooldownVault(lockup, receiptMint) {
+        const [cooldownVault] = web3_js_1.PublicKey.findProgramAddressSync([
+            Buffer.from("cooldown_vault"),
+            lockup.toBuffer(),
+            receiptMint.toBuffer()
+        ], generated_1.PROGRAM_ID);
+        return cooldownVault;
+    }
+    getLockupCooldownVault(address) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (0, spl_token_1.getAccount)(this.connection, address, "confirmed");
+        });
+    }
+    createToken(signer, lockup, depositToken, withMetadata) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { decimals } = yield (0, spl_token_1.getMint)(this.connection, depositToken, "confirmed");
+            const tokenKeypair = web3_js_1.Keypair.generate();
+            const instructions = [];
+            const createAccountIx = web3_js_1.SystemProgram.createAccount({
+                lamports: yield this.connection.getMinimumBalanceForRentExemption(spl_token_1.MINT_SIZE),
+                space: spl_token_1.MINT_SIZE,
+                fromPubkey: signer,
+                newAccountPubkey: tokenKeypair.publicKey,
+                programId: spl_token_1.TOKEN_PROGRAM_ID
+            });
+            instructions.push(createAccountIx);
+            const createMintIx = (0, spl_token_1.createInitializeMint2Instruction)(tokenKeypair.publicKey, decimals, signer, null);
+            instructions.push(createMintIx);
+            if (withMetadata) {
+                const metadataData = {
+                    name: "Reflect | Insurance Fund Receipt",
+                    symbol: "RECEIPT",
+                    uri: "",
+                    sellerFeeBasisPoints: 0,
+                    creators: null,
+                    collection: null,
+                    uses: null,
+                };
+                const [metadata] = web3_js_1.PublicKey.findProgramAddressSync([
+                    Buffer.from("metadata"),
+                    mpl_token_metadata_1.PROGRAM_ID.toBuffer(),
+                    tokenKeypair.publicKey.toBuffer(),
+                ], mpl_token_metadata_1.PROGRAM_ID);
+                const createMetadataIx = (0, mpl_token_metadata_1.createCreateMetadataAccountV3Instruction)({
+                    metadata,
+                    mint: tokenKeypair.publicKey,
+                    mintAuthority: signer,
+                    payer: signer,
+                    updateAuthority: signer,
+                }, {
+                    createMetadataAccountArgsV3: {
+                        data: metadataData,
+                        isMutable: true,
+                        collectionDetails: null
+                    }
+                });
+                instructions.push(createMetadataIx);
+            }
+            const setAuthorityIx = (0, spl_token_1.createSetAuthorityInstruction)(tokenKeypair.publicKey, signer, spl_token_1.AuthorityType.MintTokens, lockup);
+            instructions.push(setAuthorityIx);
+            return {
+                instructions,
+                mint: tokenKeypair.publicKey
+            };
+        });
+    }
     initializeLockup(signer, assetMint, rewardMint, depositCap, minDeposit, duration, governanceYield) {
         return __awaiter(this, void 0, void 0, function* () {
             const settingsData = yield this.getSettingsData();
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = this.deriveAdmin(adminDatas[0].account.index);
-            const asset = this.deriveAsset(assetMint);
-            const lockup = this.deriveLockup(settingsData.lockups);
-            const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
-            const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, assetMint);
-            return (0, generated_1.createInitializeLockupInstruction)({
-                settings: this.deriveSettings(),
+            const asset = Restaking.deriveAsset(assetMint);
+            const lockup = Restaking.deriveLockup(settingsData.lockups);
+            const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
+            const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, assetMint);
+            const admin = Restaking.deriveAdmin(signer);
+            const { instructions: preInstructions, mint: receiptMint } = yield this.createToken(signer, lockup, assetMint, true);
+            const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+            const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+            const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
+            const initializeLockupIx = (0, generated_1.createInitializeLockupInstruction)({
+                settings: Restaking.deriveSettings(),
                 lockup,
                 admin,
                 asset,
                 assetMint,
                 signer,
                 rewardMint,
-                lockupAssetVault,
                 assetRewardPool,
                 tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
                 systemProgram: web3_js_1.SystemProgram.programId,
+                poolShareReceipt: receiptMint,
+                coldWallet: settingsData.coldWallet,
+                lockupColdVault,
+                lockupHotVault,
+                lockupCooldownVault
             }, {
                 args: {
                     yieldMode: governanceYield ? { __kind: "Single" } : { __kind: "Dual", fields: [governanceYield] },
                     depositCap,
                     duration,
-                    yieldBps: 0, // this field is useless, remove in v2
                     minDeposit
                 }
             }, generated_1.PROGRAM_ID);
+            return [...preInstructions, initializeLockupIx];
         });
     }
     addAsset(signer, assetMint, oracle) {
         return __awaiter(this, void 0, void 0, function* () {
-            const asset = this.deriveAsset(assetMint);
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = this.deriveAdmin(adminDatas[0].account.index);
+            const asset = Restaking.deriveAsset(assetMint);
+            const { pubkey: admin } = yield this.getAdminFromPublicKey(signer);
             return (0, generated_1.createAddAssetInstruction)({
                 assetMint,
                 asset,
                 admin,
                 oracle,
                 signer,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
             }, generated_1.PROGRAM_ID);
         });
     }
-    deriveRewardBoost(lockup, boostId) {
+    static deriveRewardBoost(lockup, boostId) {
         const [rewardBoost] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("reward_boost"),
             lockup.toBuffer(),
@@ -265,17 +358,32 @@ class InsuranceFund {
             return generated_1.Lockup.fromAccountAddress(this.connection, lockup);
         });
     }
+    getReceiptToDepositsExchangeRateBps(lockup) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { assetMint, receiptMint } = yield generated_1.Lockup.fromAccountAddress(this.connection, lockup);
+            const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+            const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+            const { amount: hotAmount } = yield this.getLockupHotVault(lockupHotVault);
+            const { amount: coldAmount } = yield this.getLockupColdVault(lockupColdVault);
+            const { supply: receiptSupply } = yield (0, spl_token_1.getMint)(this.connection, receiptMint);
+            const totalDeposit = new bn_js_1.default(hotAmount.toString()).add(new bn_js_1.default(coldAmount.toString()));
+            const exchangeRateBps = totalDeposit
+                .muln(10000)
+                .div(new bn_js_1.default(receiptSupply.toString()));
+            return exchangeRateBps;
+        });
+    }
     boostRewards(signer, lockupId, minUsdValue, boostBps) {
         return __awaiter(this, void 0, void 0, function* () {
             const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = this.deriveAdmin(adminDatas[0].account.index);
-            const lockup = this.deriveLockup(lockupId);
+            const admin = Restaking.deriveAdmin(adminDatas[0].account.index);
+            const lockup = Restaking.deriveLockup(lockupId);
             const { rewardBoosts } = yield this.getLockup(lockup);
-            const rewardBoost = this.deriveRewardBoost(lockup, rewardBoosts);
+            const rewardBoost = Restaking.deriveRewardBoost(lockup, rewardBoosts);
             return (0, generated_1.createBoostRewardsInstruction)({
                 admin,
                 lockup,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 signer,
                 rewardBoost,
                 systemProgram: web3_js_1.SystemProgram.programId,
@@ -290,16 +398,20 @@ class InsuranceFund {
     }
     depositRewards(lockupId, amount, signer) {
         return __awaiter(this, void 0, void 0, function* () {
-            const lockup = this.deriveLockup(lockupId);
+            const lockup = Restaking.deriveLockup(lockupId);
             const { rewardConfig: { main: rewardMint } } = yield this.getSettingsData();
+            const { receiptMint } = yield this.getLockup(lockup);
+            const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
             const callerRewardAta = (0, spl_token_1.getAssociatedTokenAddressSync)(rewardMint, signer, false);
             return (0, generated_1.createDepositRewardsInstruction)({
                 caller: signer,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 rewardMint,
                 lockup,
                 callerRewardAta,
-                assetRewardPool: this.deriveAssetPool("reward_pool", lockup, rewardMint)
+                assetRewardPool: Restaking.deriveAssetPool("reward_pool", lockup, rewardMint),
+                lockupCooldownVault,
+                receiptTokenMint: receiptMint
             }, {
                 args: {
                     lockupId,
@@ -308,14 +420,14 @@ class InsuranceFund {
             });
         });
     }
-    deriveIntent(deposit) {
+    static deriveIntent(deposit) {
         const [intent] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("intent"),
             deposit.toBuffer()
         ], generated_1.PROGRAM_ID);
         return intent;
     }
-    deriveDeposit(lockup, depositId) {
+    static deriveDeposit(lockup, depositId) {
         const [deposit] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("deposit"),
             lockup.toBuffer(),
@@ -328,34 +440,70 @@ class InsuranceFund {
             return generated_1.Deposit.fromAccountAddress(this.connection, deposit);
         });
     }
+    static deriveDepositReceiptVault(deposit, receiptToken) {
+        const [depositReceiptVault] = web3_js_1.PublicKey.findProgramAddressSync([
+            Buffer.from("deposit_receipt_vault"),
+            deposit.toBuffer(),
+            receiptToken.toBuffer()
+        ], generated_1.PROGRAM_ID);
+        return depositReceiptVault;
+    }
+    getDepositReceiptVault(address) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (0, spl_token_1.getAccount)(this.connection, address, "confirmed");
+        });
+    }
     createIntent(lockupId, depositId, amount) {
         return __awaiter(this, void 0, void 0, function* () {
-            const lockup = this.deriveLockup(lockupId);
-            const { asset: assetMint } = yield this.getLockup(lockup);
-            const deposit = this.deriveDeposit(lockup, depositId);
-            const { user, amount: depositAmount } = yield this.getDeposit(deposit);
-            if (amount.gt(depositAmount instanceof bn_js_1.default ? depositAmount : new bn_js_1.default(depositAmount)))
+            const settings = Restaking.deriveSettings();
+            const { rewardConfig: { main: rewardMint } } = yield generated_1.Settings.fromAccountAddress(this.connection, settings);
+            const lockup = Restaking.deriveLockup(lockupId);
+            const { assetMint, receiptMint, } = yield this.getLockup(lockup);
+            const asset = Restaking.deriveAsset(assetMint);
+            const deposit = Restaking.deriveDeposit(lockup, depositId);
+            const { user, } = yield this.getDeposit(deposit);
+            const depositReceiptVault = Restaking.deriveDepositReceiptVault(deposit, receiptMint);
+            const { amount: receiptAmount } = yield this.getDepositReceiptVault(depositReceiptVault);
+            const exchangeRateBps = yield this.getReceiptToDepositsExchangeRateBps(lockup);
+            const depositAmount = new bn_js_1.default(receiptAmount.toString())
+                .mul(exchangeRateBps)
+                .divn(10000);
+            if (amount.gt(depositAmount))
                 throw new Error("Cannot withdraw more funds than deposited");
-            const intent = this.deriveIntent(deposit);
-            const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
+            const intent = Restaking.deriveIntent(deposit);
+            const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
             const userAssetAta = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, user);
-            return (0, generated_1.createCreateIntentInstruction)({
+            const userRewardAta = (0, spl_token_1.getAssociatedTokenAddressSync)(rewardMint, user);
+            const depositReceiptTokenAccount = (0, spl_token_1.getAssociatedTokenAddressSync)(receiptMint, deposit, true);
+            const cooldown = Restaking.deriveCooldown(deposit);
+            const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+            const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+            const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, assetMint);
+            const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, assetMint);
+            return (0, generated_1.createWithdrawInstruction)({
                 lockup,
                 assetMint,
                 intent,
-                settings: this.deriveSettings(),
+                settings,
                 user,
                 deposit,
-                clock: web3_js_1.SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
                 systemProgram: web3_js_1.SystemProgram.programId,
-                lockupAssetVault,
                 userAssetAta,
+                rewardMint,
+                asset,
+                userRewardAta,
+                cooldown,
+                lockupHotVault,
+                lockupColdVault,
+                lockupCooldownVault,
+                receiptTokenMint: receiptMint,
+                assetRewardPool,
+                depositReceiptTokenAccount
             }, {
                 args: {
                     lockupId,
-                    amount,
-                    depositId
+                    depositId,
                 }
             });
         });
@@ -365,38 +513,6 @@ class InsuranceFund {
             return generated_1.Intent.fromAccountAddress(this.connection, intent);
         });
     }
-    processIntent(deposit, signer) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const intent = this.deriveIntent(deposit);
-            const { lockup, } = yield this.getIntent(intent);
-            const { user, index: depositId // this has to implement index
-             } = yield this.getDeposit(deposit);
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = adminDatas[0].pubkey;
-            const { asset: assetMint } = yield this.getLockup(lockup);
-            const asset = this.deriveAsset(assetMint);
-            const userAssetAta = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, user);
-            const adminAssetAta = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, signer);
-            return (0, generated_1.createProcessIntentInstruction)({
-                lockup,
-                deposit,
-                intent,
-                settings: this.deriveSettings(),
-                user,
-                signer,
-                admin,
-                asset,
-                assetMint,
-                userAssetAta,
-                adminAssetAta,
-                tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
-            }, {
-                args: {
-                    depositId
-                }
-            });
-        });
-    }
     manageFreeze(signer, freeze) {
         return __awaiter(this, void 0, void 0, function* () {
             const adminDatas = yield this.getAdminFromPublicKey(signer);
@@ -404,7 +520,7 @@ class InsuranceFund {
             (0, generated_1.createManageFreezeInstruction)({
                 admin,
                 signer,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
             }, {
                 args: {
                     freeze
@@ -422,154 +538,31 @@ class InsuranceFund {
             return this.manageFreeze(signer, false);
         });
     }
-    deriveSlash(lockup, slashId) {
-        const [slash] = web3_js_1.PublicKey.findProgramAddressSync([
-            Buffer.from("slash"),
-            lockup.toBuffer(),
-            (slashId instanceof bn_js_1.default ? slashId : new bn_js_1.default(slashId)).toArrayLike(Buffer, "le", 8)
-        ], generated_1.PROGRAM_ID);
-        return slash;
-    }
-    initializeSlash(signer, lockupId, amount) {
+    slash(amount, signer, lockupId, destination) {
         return __awaiter(this, void 0, void 0, function* () {
-            const adminDatas = this.getAdminFromPublicKey(signer);
-            const admin = adminDatas[0].pubkey;
-            const lockup = this.deriveLockup(lockupId);
-            const { asset: assetMint, slashState: { index: slashId } } = yield this.getLockup(lockup);
-            const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
-            return (0, generated_1.createInitializeSlashInstruction)({
-                admin,
+            const settings = Restaking.deriveSettings();
+            const admin = Restaking.deriveAdmin(signer);
+            const lockup = Restaking.deriveLockup(lockupId);
+            const { assetMint } = yield this.getLockup(lockup);
+            const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+            const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+            const ix = (0, generated_1.createSlashInstruction)({
                 signer,
+                admin,
+                settings,
                 lockup,
                 assetMint,
-                clock: web3_js_1.SYSVAR_CLOCK_PUBKEY,
+                destination,
                 tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
-                systemProgram: web3_js_1.SystemProgram.programId,
-                settings: this.deriveSettings(),
-                slash: this.deriveSlash(lockup, slashId),
-                assetLockup
+                lockupColdVault,
+                lockupHotVault
             }, {
                 args: {
                     lockupId,
                     amount
                 }
-            });
-        });
-    }
-    getSlash(slash) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return generated_1.Slash.fromAccountAddress(this.connection, slash);
-        });
-    }
-    slashPool(signer, lockupId, destination) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = adminDatas[0].pubkey;
-            const lockup = this.deriveLockup(lockupId);
-            const { slashState: { index: slashId }, asset: assetMint } = yield this.getLockup(lockup);
-            const slash = this.deriveSlash(lockup, slashId);
-            const asset = this.deriveAsset(assetMint);
-            const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
-            let destinationData;
-            try {
-                destinationData = yield (0, spl_token_1.getAccount)(this.connection, destination);
-            }
-            catch (err) {
-                throw new Error("Make sure destination account is initialized.");
-            }
-            if (!destinationData.mint.equals(assetMint))
-                throw new Error("Invalid destination SPL-Token account.");
-            return (0, generated_1.createSlashPoolInstruction)({
-                admin,
-                lockup,
-                slash,
-                asset,
-                assetMint,
-                signer,
-                settings: this.deriveSettings(),
-                assetLockup,
-                tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
-                destination
-            }, {
-                args: {
-                    lockupId,
-                    slashId
-                }
-            });
-        });
-    }
-    slashDepositsBatch(signer, lockupId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = adminDatas[0].pubkey;
-            const lockup = this.deriveLockup(lockupId);
-            const { slashState: { index: slashId }, asset: assetMint } = yield this.getLockup(lockup);
-            const slash = this.deriveSlash(lockup, slashId);
-            const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
-            const { targetAmount, slashedAccounts, targetAccounts } = yield this.getSlash(slash);
-            const deposits = [];
-            for (let i = 0; i < DEPOSITS_PER_SLASH_INSTRUCTION; i++) {
-                deposits.push(this.deriveDeposit(lockup, new bn_js_1.default(slashedAccounts).addn(i)));
-            }
-            return (0, generated_1.createSlashDepositsInstruction)({
-                settings: this.deriveSettings(),
-                slash,
-                signer,
-                admin,
-                lockup,
-                assetMint,
-                assetLockup,
-                anchorRemainingAccounts: deposits.map((pubkey) => ({ pubkey, isWritable: true, isSigner: false }))
-            }, {
-                args: {
-                    lockupId,
-                    slashId,
-                    slashAmount: targetAmount
-                }
-            });
-        });
-    }
-    // Returns all remaining batches that have to be executed one by one
-    slashAllRemainingDeposits(signer, lockupId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = adminDatas[0].pubkey;
-            const lockup = this.deriveLockup(lockupId);
-            const { slashState: { index: slashId }, asset: assetMint } = yield this.getLockup(lockup);
-            const slash = this.deriveSlash(lockup, slashId);
-            const assetLockup = this.deriveAssetPool("vault", lockup, assetMint);
-            const { targetAmount, slashedAccounts, targetAccounts } = yield this.getSlash(slash);
-            const remainingDeposits = new bn_js_1.default(targetAccounts)
-                .sub(new bn_js_1.default(slashedAccounts))
-                .toNumber();
-            const remainingBatches = remainingDeposits % DEPOSITS_PER_SLASH_INSTRUCTION
-                ? remainingDeposits % DEPOSITS_PER_SLASH_INSTRUCTION
-                : Math.floor(remainingDeposits / DEPOSITS_PER_SLASH_INSTRUCTION) + 1;
-            const instructions = [];
-            for (let i = 0; i < remainingBatches; i++) {
-                const deposits = [];
-                for (let j = 0; j < DEPOSITS_PER_SLASH_INSTRUCTION; j++) {
-                    deposits.push(this.deriveDeposit(lockup, new bn_js_1.default(slashedAccounts).addn((10 * i) + j)));
-                }
-                const ix = (0, generated_1.createSlashDepositsInstruction)({
-                    settings: this.deriveSettings(),
-                    slash,
-                    signer,
-                    admin,
-                    lockup,
-                    assetMint,
-                    assetLockup,
-                    anchorRemainingAccounts: deposits
-                        .map((pubkey) => ({ pubkey, isWritable: true, isSigner: false }))
-                }, {
-                    args: {
-                        lockupId,
-                        slashId,
-                        slashAmount: targetAmount
-                    }
-                });
-                instructions.push(ix);
-            }
+            }, generated_1.PROGRAM_ID);
+            return ix;
         });
     }
     getAsset(asset) {
@@ -579,31 +572,34 @@ class InsuranceFund {
     }
     restake(signer, amount, lockupId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const settings = this.deriveSettings();
+            const settings = Restaking.deriveSettings();
             const { coldWallet } = yield this.getSettingsData();
-            const lockup = this.deriveLockup(lockupId);
-            const { asset: assetMint, deposits } = yield this.getLockup(lockup);
-            const asset = this.deriveAsset(assetMint);
+            const lockup = Restaking.deriveLockup(lockupId);
+            const { assetMint, deposits, receiptMint } = yield this.getLockup(lockup);
+            const asset = Restaking.deriveAsset(assetMint);
             const { oracle: { fields: [oracleAddress] } } = yield this.getAsset(asset);
             const coldWalletVault = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, coldWallet);
             const userAssetAta = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, signer);
-            const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
-            const deposit = this.deriveDeposit(lockup, deposits);
+            const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
+            const deposit = Restaking.deriveDeposit(lockup, deposits);
+            const depositReceiptTokenAccount = (0, spl_token_1.getAssociatedTokenAddressSync)(receiptMint, deposit, true);
+            const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+            const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
             return (0, generated_1.createRestakeInstruction)({
                 lockup,
                 asset,
                 assetMint,
-                clock: web3_js_1.SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
                 systemProgram: web3_js_1.SystemProgram.programId,
-                coldWallet,
-                coldWalletVault,
                 deposit,
                 settings,
                 user: signer,
                 oracle: oracleAddress,
                 userAssetAta,
-                lockupAssetVault
+                receiptTokenMint: receiptMint,
+                lockupColdVault,
+                lockupHotVault,
+                depositReceiptTokenAccount
             }, {
                 args: {
                     lockupId,
@@ -612,57 +608,65 @@ class InsuranceFund {
             });
         });
     }
-    deriveCooldown(deposit) {
+    static deriveCooldown(deposit) {
         const [cooldown] = web3_js_1.PublicKey.findProgramAddressSync([
             Buffer.from("cooldown"),
             deposit.toBuffer()
         ], generated_1.PROGRAM_ID);
         return cooldown;
     }
-    requestWithdrawal(signer, lockupId, depositId, amount, rewardBoostId) {
+    requestWithdrawal(signer, lockupId, depositId, mode, amount, rewardBoostId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const lockup = this.deriveLockup(lockupId);
-            const { asset: assetMint } = yield generated_1.Lockup.fromAccountAddress(this.connection, lockup);
+            const lockup = Restaking.deriveLockup(lockupId);
+            const { assetMint, receiptMint } = yield generated_1.Lockup.fromAccountAddress(this.connection, lockup);
             const { rewardConfig: { main: rewardAsset } } = yield this.getSettingsData();
-            const asset = this.deriveAsset(assetMint);
-            const deposit = this.deriveDeposit(lockup, depositId);
-            const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, rewardAsset);
-            const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
+            const asset = Restaking.deriveAsset(assetMint);
+            const deposit = Restaking.deriveDeposit(lockup, depositId);
+            const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, rewardAsset);
+            const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
             const userAssetAta = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, signer);
             const userRewardAta = (0, spl_token_1.getAssociatedTokenAddressSync)(rewardAsset, signer);
+            const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+            const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+            const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
+            const depositReceiptTokenAccount = (0, spl_token_1.getAssociatedTokenAddressSync)(receiptMint, deposit, true);
             return (0, generated_1.createRequestWithdrawalInstruction)({
                 user: signer,
                 asset,
                 assetMint,
                 lockup,
                 deposit,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 assetRewardPool,
-                clock: web3_js_1.SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
                 systemProgram: web3_js_1.SystemProgram.programId,
-                cooldown: this.deriveCooldown(deposit),
+                cooldown: Restaking.deriveCooldown(deposit),
                 rewardMint: rewardAsset,
-                lockupAssetVault,
                 rewardBoost: rewardBoostId !== undefined
-                    ? this.deriveRewardBoost(lockup, rewardBoostId)
+                    ? Restaking.deriveRewardBoost(lockup, rewardBoostId)
                     : null,
-                userAssetAta,
-                userRewardAta
+                lockupCooldownVault,
+                receiptTokenMint: receiptMint,
+                depositReceiptTokenAccount,
+                lockupColdVault,
+                lockupHotVault
             }, {
                 args: {
                     lockupId,
                     depositId,
-                    amount,
-                    rewardBoostId
+                    rewardBoostId,
+                    mode: {
+                        __kind: mode,
+                        fields: [amount]
+                    }
                 }
             });
         });
     }
-    requestWithdrawalWithAutoBoostDetection(signer, depositId, lockupId, amount) {
+    requestWithdrawalWithAutoBoostDetection(signer, depositId, lockupId, mode, amount) {
         return __awaiter(this, void 0, void 0, function* () {
-            const lockup = this.deriveLockup(lockupId);
-            const deposit = this.deriveDeposit(lockup, depositId);
+            const lockup = Restaking.deriveLockup(lockupId);
+            const deposit = Restaking.deriveDeposit(lockup, depositId);
             const { initialUsdValue } = yield this.getDeposit(deposit);
             const rewardBoosts = yield this.getRewardBoostsForLockup(lockup);
             let preferredRewardBoost;
@@ -675,97 +679,49 @@ class InsuranceFund {
                     preferredRewardBoost = account;
                 }
             }
-            return this.requestWithdrawal(signer, lockupId, depositId, amount, preferredRewardBoost === null || preferredRewardBoost === void 0 ? void 0 : preferredRewardBoost.index);
-        });
-    }
-    slashColdWalletAndTransferFunds(signer, lockupId, destination) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const { coldWallet } = yield this.getSettingsData();
-            const lockup = this.deriveLockup(lockupId);
-            const { slashState: { index: slashId }, asset: assetMint, } = yield this.getLockup(lockup);
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = adminDatas[0].pubkey;
-            const slash = this.deriveSlash(lockup, slashId);
-            const asset = this.deriveAsset(assetMint);
-            const source = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, coldWallet, true);
-            return (0, generated_1.createSlashColdWalletInstruction)({
-                admin,
-                lockup,
-                signer,
-                slash,
-                assetMint,
-                settings: this.deriveSettings(),
-                destination,
-                coldWallet,
-                source,
-                tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
-            }, {
-                args: {
-                    lockupId,
-                    slashId,
-                    transferFunds: true,
-                    transferSig: ""
-                }
-            });
-        });
-    }
-    slashColdWalletWithTransferSignature(signer, lockupId, transferSig) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const { coldWallet } = yield this.getSettingsData();
-            const lockup = this.deriveLockup(lockupId);
-            const { slashState: { index: slashId }, } = yield this.getLockup(lockup);
-            const adminDatas = yield this.getAdminFromPublicKey(signer);
-            const admin = adminDatas[0].pubkey;
-            const slash = this.deriveSlash(lockup, slashId);
-            return (0, generated_1.createSlashColdWalletInstruction)({
-                admin,
-                lockup,
-                signer,
-                slash,
-                settings: this.deriveSettings(),
-                coldWallet,
-                tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
-            }, {
-                args: {
-                    lockupId,
-                    slashId,
-                    transferFunds: false,
-                    transferSig
-                }
-            });
+            return this.requestWithdrawal(signer, lockupId, depositId, mode, amount, preferredRewardBoost === null || preferredRewardBoost === void 0 ? void 0 : preferredRewardBoost.index);
         });
     }
     withdrawCooldown(signer, lockupId, depositId) {
         return __awaiter(this, void 0, void 0, function* () {
             const { rewardConfig: { main: rewardMint } } = yield this.getSettingsData();
-            const lockup = this.deriveLockup(lockupId);
-            const deposit = this.deriveDeposit(lockup, depositId);
-            const cooldown = this.deriveCooldown(deposit);
+            const lockup = Restaking.deriveLockup(lockupId);
+            const deposit = Restaking.deriveDeposit(lockup, depositId);
+            const cooldown = Restaking.deriveCooldown(deposit);
             const cooldownDatas = yield this.getCooldownsByDeposit(depositId);
             const { account: { unlockTs } } = cooldownDatas[0];
             if (!(new bn_js_1.default(Date.now()).gte(new bn_js_1.default(unlockTs))))
                 throw new Error("Funds still in cooldown.");
-            const { asset: assetMint } = yield this.getLockup(lockup);
-            const asset = this.deriveAsset(assetMint);
+            const { assetMint, receiptMint } = yield this.getLockup(lockup);
+            const asset = Restaking.deriveAsset(assetMint);
             const userAssetAta = (0, spl_token_1.getAssociatedTokenAddressSync)(assetMint, signer);
             const userRewardAta = (0, spl_token_1.getAssociatedTokenAddressSync)(rewardMint, signer);
-            const lockupAssetVault = this.deriveAssetPool("vault", lockup, assetMint);
-            const assetRewardPool = this.deriveAssetPool("reward_pool", lockup, rewardMint);
+            const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
+            const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, rewardMint);
+            const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
+            const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
+            const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+            const depositReceiptTokenAccount = (0, spl_token_1.getAssociatedTokenAddressSync)(receiptMint, deposit, true);
             return (0, generated_1.createWithdrawInstruction)({
                 lockup,
                 deposit,
                 asset,
                 assetMint,
-                clock: web3_js_1.SYSVAR_CLOCK_PUBKEY,
                 tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
-                settings: this.deriveSettings(),
+                settings: Restaking.deriveSettings(),
                 cooldown,
                 user: signer,
                 userAssetAta,
-                lockupAssetVault,
                 assetRewardPool,
                 rewardMint,
-                userRewardAta
+                userRewardAta,
+                lockupCooldownVault,
+                receiptTokenMint: receiptMint,
+                depositReceiptTokenAccount,
+                lockupColdVault,
+                lockupHotVault,
+                intent: null,
+                systemProgram: web3_js_1.SystemProgram.programId
             }, {
                 args: {
                     lockupId,
@@ -775,4 +731,4 @@ class InsuranceFund {
         });
     }
 }
-exports.InsuranceFund = InsuranceFund;
+exports.Restaking = Restaking;
