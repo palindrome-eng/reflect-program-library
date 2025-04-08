@@ -19,12 +19,40 @@ pub fn initialize_lockup(
     ctx: Context<InitializeLockup>,
     args: InitializeLockupArgs
 ) -> Result<()> {
+    msg!("check 0");
+    
     let settings = &mut ctx.accounts.settings;
     let lockup = &mut ctx.accounts.lockup;
     let asset_mint = &ctx.accounts.asset_mint;
     let asset = &mut ctx.accounts.asset;
-    let signer = &ctx.accounts.signer;
     let receipt_mint = &mut ctx.accounts.pool_share_receipt;
+    let signer = &ctx.accounts.signer;
+
+    msg!("check 1");
+
+    msg!("check 2");
+
+    // lockup.initialize_hot_vault(
+    //     &signer, 
+    //     &lockup, 
+    //     &asset_mint, 
+    //     &lockup_hot_vault, 
+    //     &token_program, 
+    //     &system_program, 
+    //     ctx.bumps.lockup_hot_vault, 
+    //     lamports
+    // )?;
+
+    // lockup.initialize_cold_vault(
+    //     &signer, 
+    //     &lockup, 
+    //     &asset_mint, 
+    //     &lockup_cold_vault, 
+    //     &token_program, 
+    //     &system_program, 
+    //     ctx.bumps.lockup_cold_vault, 
+    //     lamports
+    // )?;
 
     let InitializeLockupArgs {
         duration,
@@ -81,7 +109,7 @@ pub struct InitializeLockup<'info> {
         bump,
         constraint = admin.has_permissions(Permissions::AssetsAndLockups) @ InsuranceFundError::InvalidSigner,
     )]
-    pub admin: Account<'info, Admin>,
+    pub admin: Box<Account<'info, Admin>>,
 
     #[account(
         mut,
@@ -91,7 +119,7 @@ pub struct InitializeLockup<'info> {
         bump,
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         init,
@@ -103,7 +131,7 @@ pub struct InitializeLockup<'info> {
         payer = signer,
         space = Lockup::SIZE,
     )]
-    pub lockup: Account<'info, Lockup>,
+    pub lockup: Box<Account<'info, Lockup>>,
 
     #[account(
         mut,
@@ -113,7 +141,7 @@ pub struct InitializeLockup<'info> {
         ],
         bump,
     )]
-    pub asset: Account<'info, Asset>,
+    pub asset: Box<Account<'info, Asset>>,
 
     #[account(
         mut,
@@ -127,53 +155,11 @@ pub struct InitializeLockup<'info> {
     )]
     pub reward_mint: Box<Account<'info, Mint>>,
 
-    #[account(
-        init,
-        payer = signer,
-        seeds = [
-            HOT_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
-        ],
-        bump,
-        token::mint = asset_mint,
-        token::authority = lockup,
-    )]
-    pub lockup_hot_vault: Box<Account<'info, TokenAccount>>,
-
     /// CHECK: Directly checking the address.
     #[account(
         address = settings.cold_wallet
     )]
     pub cold_wallet: AccountInfo<'info>,
-
-    #[account(
-        init,
-        payer = signer,
-        seeds = [
-            COLD_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
-        ],
-        bump,
-        token::mint = asset_mint,
-        token::authority = cold_wallet,
-    )]
-    pub lockup_cold_vault: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        init,
-        payer = signer,
-        seeds = [
-            REWARD_POOL_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            reward_mint.key().as_ref(),
-        ],
-        bump,
-        token::mint = reward_mint,
-        token::authority = lockup,
-    )]
-    pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,

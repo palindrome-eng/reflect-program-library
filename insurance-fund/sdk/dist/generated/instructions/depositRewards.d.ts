@@ -48,6 +48,7 @@ export type DepositRewardsInstructionAccounts = {
     receiptTokenMint: web3.PublicKey;
     lockupCooldownVault: web3.PublicKey;
     tokenProgram?: web3.PublicKey;
+    systemProgram?: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
 };
 export declare const depositRewardsInstructionDiscriminator: number[];

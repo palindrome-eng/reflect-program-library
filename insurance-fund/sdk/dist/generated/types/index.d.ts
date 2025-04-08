@@ -2,6 +2,7 @@ export * from './AddAdminArgs';
 export * from './BoostRewardsArgs';
 export * from './CooldownRewards';
 export * from './DepositRewardsArgs';
+export * from './GetUserBalanceAndRewardArgs';
 export * from './InitializeInsuranceFundArgs';
 export * from './InitializeLockupArgs';
 export * from './ManageFreezeArgs';

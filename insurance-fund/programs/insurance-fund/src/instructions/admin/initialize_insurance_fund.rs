@@ -52,6 +52,7 @@ pub fn initialize_insurance_fund(
     };
     settings.frozen = false;
     settings.superadmins = 1;
+    settings.debt_records = 0;
 
     emit!(InitializeInsuranceFundEvent {
         new_admin: signer.key()

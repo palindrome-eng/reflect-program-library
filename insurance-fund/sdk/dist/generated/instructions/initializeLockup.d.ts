@@ -33,10 +33,7 @@ export declare const initializeLockupStruct: beet.FixableBeetArgsStruct<Initiali
  * @property [_writable_] asset
  * @property [_writable_] assetMint
  * @property [_writable_] rewardMint
- * @property [_writable_] lockupHotVault
  * @property [] coldWallet
- * @property [_writable_] lockupColdVault
- * @property [_writable_] assetRewardPool
  * @property [_writable_] poolShareReceipt
  * @property [_writable_] lockupCooldownVault
  * @category Instructions
@@ -51,10 +48,7 @@ export type InitializeLockupInstructionAccounts = {
     asset: web3.PublicKey;
     assetMint: web3.PublicKey;
     rewardMint: web3.PublicKey;
-    lockupHotVault: web3.PublicKey;
     coldWallet: web3.PublicKey;
-    lockupColdVault: web3.PublicKey;
-    assetRewardPool: web3.PublicKey;
     poolShareReceipt: web3.PublicKey;
     lockupCooldownVault: web3.PublicKey;
     tokenProgram?: web3.PublicKey;

@@ -62,6 +62,7 @@ export type DepositRewardsInstructionAccounts = {
   receiptTokenMint: web3.PublicKey
   lockupCooldownVault: web3.PublicKey
   tokenProgram?: web3.PublicKey
+  systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -82,7 +83,7 @@ export const depositRewardsInstructionDiscriminator = [
 export function createDepositRewardsInstruction(
   accounts: DepositRewardsInstructionAccounts,
   args: DepositRewardsInstructionArgs,
-  programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')
+  programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')
 ) {
   const [data] = depositRewardsStruct.serialize({
     instructionDiscriminator: depositRewardsInstructionDiscriminator,
@@ -131,6 +132,11 @@ export function createDepositRewardsInstruction(
     },
     {
       pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },

@@ -16,6 +16,7 @@ import * as web3 from '@solana/web3.js'
  */
 export type WithdrawInstructionArgs = {
   lockupId: beet.bignum
+  vaultId: beet.bignum
 }
 /**
  * @category Instructions
@@ -30,6 +31,7 @@ export const withdrawStruct = new beet.BeetArgsStruct<
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['lockupId', beet.u64],
+    ['vaultId', beet.u64],
   ],
   'WithdrawInstructionArgs'
 )

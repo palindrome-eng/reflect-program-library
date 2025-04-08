@@ -101,7 +101,7 @@ class Lockup {
      *
      * @param programId - the program that owns the accounts we are filtering
      */
-    static gpaBuilder(programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+    static gpaBuilder(programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
         return beetSolana.GpaBuilder.fromStruct(programId, exports.lockupBeet);
     }
     /**

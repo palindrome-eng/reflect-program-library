@@ -56,7 +56,7 @@ exports.initializeInsuranceFundInstructionDiscriminator = [
  * @category InitializeInsuranceFund
  * @category generated
  */
-function createInitializeInsuranceFundInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+function createInitializeInsuranceFundInstruction(accounts, args, programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
     var _a;
     const [data] = exports.initializeInsuranceFundStruct.serialize(Object.assign({ instructionDiscriminator: exports.initializeInsuranceFundInstructionDiscriminator }, args));
     const keys = [

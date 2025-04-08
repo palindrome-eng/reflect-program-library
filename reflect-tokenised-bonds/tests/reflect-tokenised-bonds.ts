@@ -23,7 +23,7 @@ import {
     Transaction
 } from "@solana/web3.js";
 import BN, {min} from "bn.js";
-import {LockupState, RTBProtocol, Vault} from "../sdk";
+import {LockupState, RTBProtocol, Vault} from "../sdk/src";
 import {expect, use} from "chai";
 
 async function createToken(

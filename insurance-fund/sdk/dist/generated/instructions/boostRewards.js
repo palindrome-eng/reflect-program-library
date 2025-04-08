@@ -56,7 +56,7 @@ exports.boostRewardsInstructionDiscriminator = [
  * @category BoostRewards
  * @category generated
  */
-function createBoostRewardsInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+function createBoostRewardsInstruction(accounts, args, programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
     var _a;
     const [data] = exports.boostRewardsStruct.serialize(Object.assign({ instructionDiscriminator: exports.boostRewardsInstructionDiscriminator }, args));
     const keys = [

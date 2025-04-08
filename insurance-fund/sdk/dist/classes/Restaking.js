@@ -288,11 +288,11 @@ class Restaking {
             instructions.push(setAuthorityIx);
             return {
                 instructions,
-                mint: tokenKeypair.publicKey
+                mint: tokenKeypair
             };
         });
     }
-    initializeLockup(signer, assetMint, rewardMint, depositCap, minDeposit, duration, governanceYield) {
+    initializeLockup(signer, assetMint, depositCap, minDeposit, duration, governanceYield) {
         return __awaiter(this, void 0, void 0, function* () {
             const settingsData = yield this.getSettingsData();
             const asset = Restaking.deriveAsset(assetMint);
@@ -300,10 +300,10 @@ class Restaking {
             const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
             const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, assetMint);
             const admin = Restaking.deriveAdmin(signer);
-            const { instructions: preInstructions, mint: receiptMint } = yield this.createToken(signer, lockup, assetMint, true);
+            const { instructions: preInstructions, mint: receiptMint } = yield this.createToken(signer, lockup, assetMint, false);
             const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
             const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
-            const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
+            const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint.publicKey);
             const initializeLockupIx = (0, generated_1.createInitializeLockupInstruction)({
                 settings: Restaking.deriveSettings(),
                 lockup,
@@ -311,15 +311,12 @@ class Restaking {
                 asset,
                 assetMint,
                 signer,
-                rewardMint,
-                assetRewardPool,
+                rewardMint: settingsData.rewardConfig.main,
                 tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
                 systemProgram: web3_js_1.SystemProgram.programId,
-                poolShareReceipt: receiptMint,
+                poolShareReceipt: receiptMint.publicKey,
                 coldWallet: settingsData.coldWallet,
-                lockupColdVault,
-                lockupHotVault,
-                lockupCooldownVault
+                lockupCooldownVault,
             }, {
                 args: {
                     yieldMode: governanceYield ? { __kind: "Single" } : { __kind: "Dual", fields: [governanceYield] },
@@ -328,7 +325,25 @@ class Restaking {
                     minDeposit
                 }
             }, generated_1.PROGRAM_ID);
-            return [...preInstructions, initializeLockupIx];
+            const initializeLockupVaultsIx = (0, generated_1.createInitializeLockupVaultsInstruction)({
+                admin,
+                signer,
+                lockup,
+                assetMint,
+                lockupColdVault,
+                lockupHotVault,
+                settings: Restaking.deriveSettings(),
+                systemProgram: web3_js_1.SystemProgram.programId,
+                tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
+                rewardMint: settingsData.rewardConfig.main,
+                assetRewardPool
+            }, {
+                lockupId: settingsData.lockups
+            }, generated_1.PROGRAM_ID);
+            return {
+                instructions: [web3_js_1.ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 200000 }), ...preInstructions, initializeLockupIx, initializeLockupVaultsIx],
+                signer: receiptMint
+            };
         });
     }
     addAsset(signer, assetMint, oracle) {

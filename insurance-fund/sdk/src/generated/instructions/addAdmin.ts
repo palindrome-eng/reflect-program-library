@@ -70,7 +70,7 @@ export const addAdminInstructionDiscriminator = [
 export function createAddAdminInstruction(
   accounts: AddAdminInstructionAccounts,
   args: AddAdminInstructionArgs,
-  programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')
+  programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')
 ) {
   const [data] = addAdminStruct.serialize({
     instructionDiscriminator: addAdminInstructionDiscriminator,

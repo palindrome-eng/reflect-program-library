@@ -57,7 +57,7 @@ exports.rebalanceInstructionDiscriminator = [
  * @category Rebalance
  * @category generated
  */
-function createRebalanceInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+function createRebalanceInstruction(accounts, args, programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
     var _a;
     const [data] = exports.rebalanceStruct.serialize(Object.assign({ instructionDiscriminator: exports.rebalanceInstructionDiscriminator }, args));
     const keys = [

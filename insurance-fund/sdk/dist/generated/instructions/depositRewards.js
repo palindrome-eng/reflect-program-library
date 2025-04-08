@@ -57,8 +57,8 @@ exports.depositRewardsInstructionDiscriminator = [
  * @category DepositRewards
  * @category generated
  */
-function createDepositRewardsInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
-    var _a;
+function createDepositRewardsInstruction(accounts, args, programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
+    var _a, _b;
     const [data] = exports.depositRewardsStruct.serialize(Object.assign({ instructionDiscriminator: exports.depositRewardsInstructionDiscriminator }, args));
     const keys = [
         {
@@ -103,6 +103,11 @@ function createDepositRewardsInstruction(accounts, args, programId = new web3.Pu
         },
         {
             pubkey: (_a = accounts.tokenProgram) !== null && _a !== void 0 ? _a : splToken.TOKEN_PROGRAM_ID,
+            isWritable: false,
+            isSigner: false,
+        },
+        {
+            pubkey: (_b = accounts.systemProgram) !== null && _b !== void 0 ? _b : web3.SystemProgram.programId,
             isWritable: false,
             isSigner: false,
         },

@@ -70,7 +70,7 @@ export const removeAdminInstructionDiscriminator = [
 export function createRemoveAdminInstruction(
   accounts: RemoveAdminInstructionAccounts,
   args: RemoveAdminInstructionArgs,
-  programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')
+  programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')
 ) {
   const [data] = removeAdminStruct.serialize({
     instructionDiscriminator: removeAdminInstructionDiscriminator,

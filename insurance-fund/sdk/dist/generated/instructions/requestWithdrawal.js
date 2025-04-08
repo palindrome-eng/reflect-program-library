@@ -60,7 +60,7 @@ exports.requestWithdrawalInstructionDiscriminator = [
  * @category RequestWithdrawal
  * @category generated
  */
-function createRequestWithdrawalInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+function createRequestWithdrawalInstruction(accounts, args, programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
     var _a, _b, _c;
     const [data] = exports.requestWithdrawalStruct.serialize(Object.assign({ instructionDiscriminator: exports.requestWithdrawalInstructionDiscriminator }, args));
     const keys = [

@@ -56,7 +56,7 @@ exports.updateDepositCapInstructionDiscriminator = [
  * @category UpdateDepositCap
  * @category generated
  */
-function createUpdateDepositCapInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+function createUpdateDepositCapInstruction(accounts, args, programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
     const [data] = exports.updateDepositCapStruct.serialize(Object.assign({ instructionDiscriminator: exports.updateDepositCapInstructionDiscriminator }, args));
     const keys = [
         {

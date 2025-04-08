@@ -1,4 +1,4 @@
-import { AccountInfo, Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { AccountInfo, Connection, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { Admin, Asset, Cooldown, Deposit, InitializeInsuranceFundArgs, Intent, Lockup, RewardBoost, Settings } from "../generated";
 import BN from "bn.js";
 import { Account } from "@solana/spl-token";
@@ -40,9 +40,12 @@ export declare class Restaking {
     getLockupCooldownVault(address: PublicKey): Promise<Account>;
     createToken(signer: PublicKey, lockup: PublicKey, depositToken: PublicKey, withMetadata?: boolean): Promise<{
         instructions: TransactionInstruction[];
-        mint: PublicKey;
+        mint: Keypair;
     }>;
-    initializeLockup(signer: PublicKey, assetMint: PublicKey, rewardMint: PublicKey, depositCap: BN, minDeposit: BN, duration: BN, governanceYield?: BN): Promise<TransactionInstruction[]>;
+    initializeLockup(signer: PublicKey, assetMint: PublicKey, depositCap: BN, minDeposit: BN, duration: BN, governanceYield?: BN): Promise<{
+        instructions: TransactionInstruction[];
+        signer: Keypair;
+    }>;
     addAsset(signer: PublicKey, assetMint: PublicKey, oracle: PublicKey): Promise<TransactionInstruction>;
     static deriveRewardBoost(lockup: PublicKey, boostId: number | BN): PublicKey;
     getLockup(lockup: PublicKey): Promise<Lockup>;

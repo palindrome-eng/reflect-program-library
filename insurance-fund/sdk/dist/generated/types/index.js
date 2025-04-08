@@ -18,6 +18,7 @@ __exportStar(require("./AddAdminArgs"), exports);
 __exportStar(require("./BoostRewardsArgs"), exports);
 __exportStar(require("./CooldownRewards"), exports);
 __exportStar(require("./DepositRewardsArgs"), exports);
+__exportStar(require("./GetUserBalanceAndRewardArgs"), exports);
 __exportStar(require("./InitializeInsuranceFundArgs"), exports);
 __exportStar(require("./InitializeLockupArgs"), exports);
 __exportStar(require("./ManageFreezeArgs"), exports);

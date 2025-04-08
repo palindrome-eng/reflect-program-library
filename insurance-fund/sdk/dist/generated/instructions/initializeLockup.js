@@ -57,7 +57,7 @@ exports.initializeLockupInstructionDiscriminator = [
  * @category InitializeLockup
  * @category generated
  */
-function createInitializeLockupInstruction(accounts, args, programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')) {
+function createInitializeLockupInstruction(accounts, args, programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')) {
     var _a, _b;
     const [data] = exports.initializeLockupStruct.serialize(Object.assign({ instructionDiscriminator: exports.initializeLockupInstructionDiscriminator }, args));
     const keys = [
@@ -97,23 +97,8 @@ function createInitializeLockupInstruction(accounts, args, programId = new web3.
             isSigner: false,
         },
         {
-            pubkey: accounts.lockupHotVault,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
             pubkey: accounts.coldWallet,
             isWritable: false,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.lockupColdVault,
-            isWritable: true,
-            isSigner: false,
-        },
-        {
-            pubkey: accounts.assetRewardPool,
-            isWritable: true,
             isSigner: false,
         },
         {

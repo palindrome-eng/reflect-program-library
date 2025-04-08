@@ -301,23 +301,8 @@
           "isSigner": false
         },
         {
-          "name": "lockupHotVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "coldWallet",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "lockupColdVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "assetRewardPool",
-          "isMut": true,
           "isSigner": false
         },
         {
@@ -347,6 +332,72 @@
           "type": {
             "defined": "InitializeLockupArgs"
           }
+        }
+      ]
+    },
+    {
+      "name": "initializeLockupVaults",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupColdVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupHotVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetRewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "lockupId",
+          "type": "u64"
         }
       ]
     },
@@ -881,6 +932,11 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -891,6 +947,108 @@
           }
         }
       ]
+    },
+    {
+      "name": "getUserBalanceAndReward",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "receiptTokenMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deposit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "depositReceiptTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "cooldown",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardBoost",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "asset",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rewardMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupHotVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupColdVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetRewardPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupCooldownVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "GetUserBalanceAndRewardArgs"
+          }
+        }
+      ],
+      "returns": {
+        "defined": "(u64,u64)"
+      }
     }
   ],
   "accounts": [
@@ -1306,6 +1464,32 @@
             "type": {
               "option": "u64"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GetUserBalanceAndRewardArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockupId",
+            "type": "u64"
+          },
+          {
+            "name": "depositId",
+            "type": "u64"
+          },
+          {
+            "name": "rewardBoostId",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "receiptTokens",
+            "type": "u64"
           }
         ]
       }
@@ -1994,7 +2178,7 @@
     }
   ],
   "metadata": {
-    "address": "2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8",
+    "address": "rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D",
     "origin": "anchor",
     "binaryVersion": "0.29.0",
     "libVersion": "0.29.0"

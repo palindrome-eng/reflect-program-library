@@ -7,6 +7,9 @@ pub use initialize_insurance_fund::*;
 pub mod initialize_lockup;
 pub use initialize_lockup::*;
 
+pub mod initialize_lockup_vaults;
+pub use initialize_lockup_vaults::*;
+
 pub mod boost_rewards;
 pub use boost_rewards::*;
 

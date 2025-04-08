@@ -5,11 +5,11 @@ pub mod constants;
 pub mod errors;
 pub mod instructions;
 pub mod events;
-pub mod reference;
 pub mod helpers;
+
 use crate::instructions::*;
 
-declare_id!("2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8");
+declare_id!("rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D");
 
 #[program]
 pub mod insurance_fund {
@@ -57,6 +57,13 @@ pub mod insurance_fund {
         args: InitializeLockupArgs
     ) -> Result<()> {
         instructions::initialize_lockup(ctx, args)
+    }
+
+    pub fn initialize_lockup_vaults(
+        ctx: Context<InitializeLockupVaults>,
+        lockup_id: u64
+    ) -> Result<()> {
+        instructions::initialize_lockup_vaults(ctx, lockup_id)
     }
 
     pub fn update_deposit_cap(
@@ -117,4 +124,32 @@ pub mod insurance_fund {
     ) -> Result<()> {
         instructions::deposit_rewards(ctx, args)
     }
+
+    pub fn get_user_balance_and_reward(
+        ctx: Context<GetUserBalanceAndReward>,
+        args: GetUserBalanceAndRewardArgs
+    ) -> Result<(u64, u64)> {
+        instructions::get_user_balance_and_reward(ctx, args)
+    }
+
+    pub fn swap(
+        ctx: Context<Swap>,
+        args: SwapArgs
+    ) -> Result<()> {
+        instructions::swap(ctx, args)
+    }
+
+    // pub fn borrow(
+    //     ctx: Context<Borrow>,
+    //     args: BorrowArgs
+    // ) -> Result<()> {
+    //     instructions::borrow(ctx, args)
+    // }
+
+    // pub fn repay(
+    //     ctx: Context<Repay>,
+    //     args: Repay
+    // ) -> Result<()> {
+    //     instructions::repay(ctx, args)
+    // }
 }
