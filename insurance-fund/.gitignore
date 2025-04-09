@@ -6,4 +6,7 @@ target
 node_modules
 test-ledger
 .yarn
-./sdk/dist
+sdk/dist
+.env
+.idea
+.crates

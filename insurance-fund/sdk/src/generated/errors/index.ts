@@ -695,6 +695,29 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * SlippageExceeded: 'SlippageExceeded'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SlippageExceededError extends Error {
+  readonly code: number = 0x178f
+  readonly name: string = 'SlippageExceeded'
+  constructor() {
+    super('SlippageExceeded')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SlippageExceededError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x178f, () => new SlippageExceededError())
+createErrorFromNameLookup.set(
+  'SlippageExceeded',
+  () => new SlippageExceededError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

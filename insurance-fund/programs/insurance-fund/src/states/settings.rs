@@ -31,6 +31,7 @@ pub struct Settings {
     pub shares_config: SharesConfig,
     pub reward_config: RewardConfig,
     pub frozen: bool,
+    pub debt_records: u64,
 }
 
 impl Settings {

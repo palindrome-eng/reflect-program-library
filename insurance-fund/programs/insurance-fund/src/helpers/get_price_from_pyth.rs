@@ -1,9 +1,9 @@
 use anchor_lang::prelude::*;
 use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
-use switchboard_solana::AccountDeserialize;
 use super::OraclePrice;
 use crate::constants::*;
 use crate::errors::InsuranceFundError;
+use anchor_lang::AccountDeserialize;
 
 #[inline(never)]
 pub fn get_price_from_pyth(
@@ -12,8 +12,7 @@ pub fn get_price_from_pyth(
 ) -> Result<OraclePrice> {
     let oracle_account_data = oracle_account.try_borrow_mut_data()?;
     let oracle = PriceUpdateV2
-        ::try_deserialize(&mut oracle_account_data.as_ref())
-        .map_err(|_| InsuranceFundError::PriceError)?;
+        ::try_deserialize(&mut oracle_account_data.as_ref())?;
 
     let price = oracle.get_price_no_older_than(
         &clock, 

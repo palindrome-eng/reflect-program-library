@@ -1,0 +1,21 @@
+{
+  "name": "@reflectcx/tokenised-bond",
+  "version": "1.0.1",
+  "author": "zkchakra @ Palindrome Engineering",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/palindrome-eng/reflect-program-library.git"
+  },
+  "dependencies": {
+    "@metaplex-foundation/beet": "^0.7.2",
+    "@metaplex-foundation/beet-solana": "^0.4.1",
+    "@solana/web3.js": "1.97.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "/dist"
+  ]
+}

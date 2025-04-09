@@ -17,10 +17,6 @@ pub struct DepositRewardsArgs {
     pub amount: u64
 }
 
-// Entire rewards logic is a bit fucked up, since it requires the reward to be in the same currency
-// as the deposit, which won't be the case on production.
-// TODO: Rework this to be less fucked up
-
 pub fn deposit_rewards(
     ctx: Context<DepositRewards>,
     args: DepositRewardsArgs
@@ -122,7 +118,8 @@ pub struct DepositRewards<'info> {
     pub caller_reward_ata: Account<'info, TokenAccount>,
 
     #[account(
-        mut,
+        init_if_needed,
+        payer = caller,
         seeds = [
             REWARD_POOL_SEED.as_bytes(),
             lockup.key().as_ref(),
@@ -155,4 +152,7 @@ pub struct DepositRewards<'info> {
 
     #[account()]
     pub token_program: Program<'info, Token>,
+
+    #[account()]
+    pub system_program: Program<'info, System>
 }

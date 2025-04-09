@@ -1,5 +1,5 @@
 import {
-    AccountInfo,
+    AccountInfo, ComputeBudgetInstruction, ComputeBudgetProgram,
     Connection,
     Keypair,
     PublicKey,
@@ -18,7 +18,7 @@ import {
     createBoostRewardsInstruction,
     createDepositRewardsInstruction,
     createInitializeInsuranceFundInstruction,
-    createInitializeLockupInstruction,
+    createInitializeLockupInstruction, createInitializeLockupVaultsInstruction,
     createManageFreezeInstruction,
     createRequestWithdrawalInstruction,
     createRestakeInstruction, createSlashInstruction,
@@ -412,14 +412,13 @@ export class Restaking {
 
         return {
             instructions,
-            mint: tokenKeypair.publicKey
+            mint: tokenKeypair
         }
     }
 
     async initializeLockup(
         signer: PublicKey,
         assetMint: PublicKey,
-        rewardMint: PublicKey,
         depositCap: BN,
         minDeposit: BN,
         duration: BN,
@@ -428,8 +427,9 @@ export class Restaking {
         const settingsData = await this.getSettingsData();
         const asset = Restaking.deriveAsset(assetMint);
         const lockup = Restaking.deriveLockup(settingsData.lockups);
-        const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint)
-        const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, assetMint);
+        const lockupAssetVault = Restaking.deriveAssetPool("vault", lockup, assetMint);
+        const rewardMint = settingsData.rewardConfig.main;
+        const assetRewardPool = Restaking.deriveAssetPool("reward_pool", lockup, rewardMint);
         const admin = Restaking.deriveAdmin(signer);
 
         const {
@@ -439,12 +439,12 @@ export class Restaking {
             signer,
             lockup,
             assetMint,
-            true
+            false
         );
 
         const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
         const lockupColdVault = Restaking.deriveLockupColdVault(lockup, assetMint);
-        const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint);
+        const lockupCooldownVault = Restaking.deriveLockupCooldownVault(lockup, receiptMint.publicKey);
 
         const initializeLockupIx = createInitializeLockupInstruction(
             {
@@ -454,15 +454,12 @@ export class Restaking {
                 asset,
                 assetMint,
                 signer,
-                rewardMint,
-                assetRewardPool,
+                rewardMint: settingsData.rewardConfig.main,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
-                poolShareReceipt: receiptMint,
+                poolShareReceipt: receiptMint.publicKey,
                 coldWallet: settingsData.coldWallet,
-                lockupColdVault,
-                lockupHotVault,
-                lockupCooldownVault
+                lockupCooldownVault,
             },
             {
                 args: {
@@ -475,7 +472,30 @@ export class Restaking {
             PROGRAM_ID
         );
 
-        return [...preInstructions, initializeLockupIx];
+        const initializeLockupVaultsIx = createInitializeLockupVaultsInstruction(
+            {
+                admin,
+                signer,
+                lockup,
+                assetMint,
+                lockupColdVault,
+                lockupHotVault,
+                settings: Restaking.deriveSettings(),
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                rewardMint,
+                assetRewardPool
+            },
+            {
+                lockupId: settingsData.lockups
+            },
+            PROGRAM_ID
+        );
+
+        return {
+            instructions: [ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 200_000 }), ...preInstructions, initializeLockupIx, initializeLockupVaultsIx],
+            signer: receiptMint
+        };
     }
 
     async addAsset(

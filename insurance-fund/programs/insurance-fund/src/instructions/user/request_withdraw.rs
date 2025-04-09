@@ -136,6 +136,7 @@ pub fn request_withdrawal(
     cooldown.user = user.key();
     cooldown.lockup_id = lockup.index;
 
+    // Does not take reward boost into account. Fix.
     let rewards = deposit.compute_accrued_rewards(
         lockup.receipt_to_reward_exchange_rate_bps_accumulator, 
         receipt_amount

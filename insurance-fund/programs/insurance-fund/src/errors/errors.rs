@@ -94,4 +94,7 @@ pub enum InsuranceFundError {
 
     #[msg("CooldownInForce")]
     CooldownInForce,
+
+    #[msg("SlippageExceeded")]
+    SlippageExceeded,
 }

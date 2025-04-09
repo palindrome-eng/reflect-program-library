@@ -9,3 +9,9 @@ pub use user::*;
 
 pub mod crank;
 pub use crank::*;
+
+pub mod cpi;
+pub use cpi::*;
+
+pub mod swap;
+pub use swap::*;
