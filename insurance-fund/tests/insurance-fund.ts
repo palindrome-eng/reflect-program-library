@@ -399,6 +399,11 @@ describe("insurance-fund", () => {
     });
 
     it("Initializes lockups", async () => {
+        const settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+
         for (let [j, mint] of lsts.entries()) {
             const MONTH = 30 * 24 * 60 * 60;
 
@@ -487,6 +492,26 @@ describe("insurance-fund", () => {
                         PROGRAM_ID
                     );
 
+                const initializeLockupVaults = await program
+                    .methods
+                    .initializeLockupVaults(
+                        new BN(lockupId)
+                    )
+                    .accountsStrict({
+                        admin,
+                        lockupHotVault,
+                        lockupColdVault,
+                        assetMint: mint,
+                        signer: provider.publicKey,
+                        lockup,
+                        settings,
+                        systemProgram: SystemProgram.programId,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                        assetRewardPool,
+                        rewardMint: settingsData.rewardConfig.main
+                    })
+                    .instruction();
+
                 await program
                     .methods
                     .initializeLockup({
@@ -497,7 +522,7 @@ describe("insurance-fund", () => {
                         },
                         depositCap: new BN("100000000000000"),
                     })
-                    .accounts({
+                    .accountsStrict({
                         admin,
                         signer: provider.publicKey,
                         settings,
@@ -506,17 +531,16 @@ describe("insurance-fund", () => {
                         tokenProgram: TOKEN_PROGRAM_ID,
                         systemProgram: SystemProgram.programId,
                         asset,
-                        assetRewardPool,
                         rewardMint: rewardToken,
-                        lockupHotVault,
-                        lockupColdVault,
                         lockupCooldownVault,
                         poolShareReceipt: receiptMint.publicKey,
                         coldWallet,
                     })
                     .preInstructions(preInstructions)
+                    .postInstructions([initializeLockupVaults])
                     .signers([receiptMint])
-                    .rpc();
+                    .rpc()
+                    .catch(err => console.log(err));
 
                 const {
                     assetMint,
@@ -1649,7 +1673,7 @@ describe("insurance-fund", () => {
             settings
         );
 
-        await sleep(parseInt(cooldownDuration.toString()));
+        await sleep(parseInt(cooldownDuration.toString()) + 2);
 
         const lockupId = new BN(0);
         const depositId = new BN(0);

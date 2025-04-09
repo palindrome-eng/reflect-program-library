@@ -5,6 +5,14 @@ use anchor_spl::token::{
 };
 use crate::constants::*;
 use super::Settings;
+use anchor_spl::token::{
+    initialize_account3,
+    InitializeAccount3
+};
+use anchor_lang::system_program::{
+    create_account,
+    CreateAccount
+};
 
 // Arrays are holding rates at which users are rewarded per 1 unit per lockup duration.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
@@ -116,6 +124,30 @@ impl Lockup {
     }
 
     #[inline(never)]
+    pub fn deposit_hot_wallet<'info>(
+        &self,
+        amount: u64,
+        user: &Signer<'info>,
+        user_asset_ata: &Account<'info, TokenAccount>,
+        lockup_hot_vault: &Account<'info, TokenAccount>,
+        token_program: &Program<'info, Token>,
+    ) -> Result<()> {
+        transfer(
+            CpiContext::new(
+                token_program.to_account_info(), 
+                Transfer {
+                    from: user_asset_ata.to_account_info(),
+                    to: lockup_hot_vault.to_account_info(),
+                    authority: user.to_account_info()
+                }
+            ), 
+            amount
+        )?;
+
+        Ok(())
+    }
+
+    #[inline(never)]
     pub fn mint_receipts<'info>(
         &self,
         amount: u64,
@@ -130,17 +162,6 @@ impl Lockup {
             &[self.bump]
         ];
 
-        msg!("we got seeds.");
-
-        token_program.to_account_info();
-        msg!("token program");
-
-        receipt_token_mint.to_account_info();
-        msg!("receipt_token_mint");
-
-        lockup.to_account_info();
-        msg!("lockup");
-
         mint_to(
             CpiContext::new_with_signer(
                 token_program.to_account_info(), 
@@ -154,8 +175,139 @@ impl Lockup {
             amount
         )?;
 
-        msg!("minted this bad boy");
+        Ok(())
+    }
+
+    #[inline(never)]
+    pub fn initialize_hot_vault<'info>(
+        &self,
+        payer: &Signer<'info>,
+        lockup: &Account<'info, Lockup>,
+        asset_mint: &AccountInfo<'info>,
+        vault: &AccountInfo<'info>,
+        token_program: &Program<'info, Token>,
+        system_program: &Program<'info, System>,
+        bump: u8,
+        lamports: u64
+    ) -> Result<()> {
+        let lockup_key = lockup.key();
+        let asset_mint_key = asset_mint.key();
+
+        let signer_seeds = &[
+            HOT_VAULT_SEED.as_bytes(),
+            lockup_key.as_ref(),
+            asset_mint_key.as_ref(),
+            &[bump]
+        ];
+
+        create_account(
+            CpiContext::new_with_signer(
+                system_program.to_account_info(), 
+                CreateAccount {
+                    from: payer.to_account_info(),
+                    to: vault.to_account_info()
+                }, 
+                &[signer_seeds]
+            ), 
+            lamports, 
+            165, 
+            &token_program.key()
+        )?;
+
+        initialize_account3(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(), 
+                InitializeAccount3 {
+                    mint: asset_mint.to_account_info(),
+                    account: vault.to_account_info(),
+                    authority: lockup.to_account_info()
+                },
+                 &[signer_seeds]
+            )
+        )?;
 
         Ok(())
     }
+
+    #[inline(never)]
+    pub fn initialize_cold_vault<'info>(
+        &self,
+        payer: &Signer<'info>,
+        lockup: &Account<'info, Lockup>,
+        asset_mint: &AccountInfo<'info>,
+        vault: &AccountInfo<'info>,
+        token_program: &Program<'info, Token>,
+        system_program: &Program<'info, System>,
+        bump: u8,
+        lamports: u64
+    ) -> Result<()> {
+        let lockup_key = lockup.key();
+        let asset_mint_key = asset_mint.key();
+
+        let signer_seeds = &[
+            COLD_VAULT_SEED.as_bytes(),
+            lockup_key.as_ref(),
+            asset_mint_key.as_ref(),
+            &[bump]
+        ];
+
+        create_account(
+            CpiContext::new_with_signer(
+                system_program.to_account_info(), 
+                CreateAccount {
+                    from: payer.to_account_info(),
+                    to: vault.to_account_info()
+                }, 
+                &[signer_seeds]
+            ), 
+            lamports, 
+            165, 
+            &token_program.key()
+        )?;
+
+        initialize_account3(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(), 
+                InitializeAccount3 {
+                    mint: asset_mint.to_account_info(),
+                    account: vault.to_account_info(),
+                    authority: lockup.to_account_info()
+                },
+                 &[signer_seeds]
+            )
+        )?;
+
+        Ok(())
+    }
+
+    pub fn withdraw_hot_vault<'info>(
+        &self,
+        amount: u64,
+        lockup_hot_vault: &Account<'info, TokenAccount>,
+        lockup: &Account<'info, Lockup>,
+        recipient: &Account<'info, TokenAccount>,
+        token_program: &Program<'info, Token>,
+    ) -> Result<()> {
+        let seeds = &[
+            LOCKUP_SEED.as_bytes(),
+            &self.index.to_le_bytes(),
+            &[self.bump]
+        ];
+
+        transfer(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(), 
+                Transfer { 
+                    from: lockup_hot_vault.to_account_info(), 
+                    to: recipient.to_account_info(), 
+                    authority: lockup.to_account_info()
+                }, 
+                &[seeds]
+            ), 
+            amount
+        )?;
+
+        Ok(())
+    }
+    
 }

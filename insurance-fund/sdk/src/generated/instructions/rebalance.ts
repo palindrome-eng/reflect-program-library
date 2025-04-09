@@ -79,7 +79,7 @@ export const rebalanceInstructionDiscriminator = [
 export function createRebalanceInstruction(
   accounts: RebalanceInstructionAccounts,
   args: RebalanceInstructionArgs,
-  programId = new web3.PublicKey('2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8')
+  programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')
 ) {
   const [data] = rebalanceStruct.serialize({
     instructionDiscriminator: rebalanceInstructionDiscriminator,

@@ -46,4 +46,7 @@ pub const HOT_VAULT_SEED: &str = "hot_vault";
 pub const DEPOSIT_RECEIPT_VAULT_SEED: &str = "deposit_receipt_vault";
 
 #[constant]
+pub const DEBT_RECORD_SEED: &str = "debt_record";
+
+#[constant]
 pub const ORACLE_MAXIMUM_AGE: u64 = 60;

@@ -21,3 +21,6 @@ pub use cooldown::*;
 
 pub mod admin;
 pub use admin::*;
+
+pub mod debt_record;
+pub use debt_record::*;

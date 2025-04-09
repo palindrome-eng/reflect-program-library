@@ -25,6 +25,7 @@ export type SettingsArgs = {
   sharesConfig: SharesConfig
   rewardConfig: RewardConfig
   frozen: boolean
+  debtRecords: beet.bignum
 }
 
 export const settingsDiscriminator = [223, 179, 163, 190, 177, 224, 67, 173]
@@ -44,7 +45,8 @@ export class Settings implements SettingsArgs {
     readonly cooldownDuration: beet.bignum,
     readonly sharesConfig: SharesConfig,
     readonly rewardConfig: RewardConfig,
-    readonly frozen: boolean
+    readonly frozen: boolean,
+    readonly debtRecords: beet.bignum
   ) {}
 
   /**
@@ -59,7 +61,8 @@ export class Settings implements SettingsArgs {
       args.cooldownDuration,
       args.sharesConfig,
       args.rewardConfig,
-      args.frozen
+      args.frozen,
+      args.debtRecords
     )
   }
 
@@ -103,7 +106,7 @@ export class Settings implements SettingsArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      '2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8'
+      'rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, settingsBeet)
@@ -194,6 +197,17 @@ export class Settings implements SettingsArgs {
       sharesConfig: this.sharesConfig,
       rewardConfig: this.rewardConfig,
       frozen: this.frozen,
+      debtRecords: (() => {
+        const x = <{ toNumber: () => number }>this.debtRecords
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -218,6 +232,7 @@ export const settingsBeet = new beet.BeetStruct<
     ['sharesConfig', sharesConfigBeet],
     ['rewardConfig', rewardConfigBeet],
     ['frozen', beet.bool],
+    ['debtRecords', beet.u64],
   ],
   Settings.fromArgs,
   'Settings'

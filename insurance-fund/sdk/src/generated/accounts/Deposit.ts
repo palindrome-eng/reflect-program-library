@@ -98,7 +98,7 @@ export class Deposit implements DepositArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      '2MN1Dbnu7zM9Yj4ougn6ZCNNKevrSvi9AR56iawzkye8'
+      'rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, depositBeet)

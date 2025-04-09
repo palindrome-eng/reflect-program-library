@@ -1,6 +1,7 @@
 export * from './Admin'
 export * from './Asset'
 export * from './Cooldown'
+export * from './DebtRecord'
 export * from './Deposit'
 export * from './Intent'
 export * from './Lockup'
@@ -10,6 +11,7 @@ export * from './Settings'
 import { Admin } from './Admin'
 import { Asset } from './Asset'
 import { Cooldown } from './Cooldown'
+import { DebtRecord } from './DebtRecord'
 import { Deposit } from './Deposit'
 import { Intent } from './Intent'
 import { Lockup } from './Lockup'
@@ -20,6 +22,7 @@ export const accountProviders = {
   Admin,
   Asset,
   Cooldown,
+  DebtRecord,
   Deposit,
   Intent,
   Lockup,
