@@ -35,7 +35,7 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub const SIZE: usize = 8 + 1 + 1 + 32 + 8 + 8 + 1 + RewardConfig::SIZE + SharesConfig::SIZE;
+    pub const SIZE: usize = 8 + 1 + 1 + 32 + 8 + 8 + 1 + 8 + RewardConfig::SIZE + SharesConfig::SIZE;
 
     pub fn freeze(&mut self) {
         self.frozen = true;

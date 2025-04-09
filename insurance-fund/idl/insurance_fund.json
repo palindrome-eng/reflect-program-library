@@ -1147,6 +1147,132 @@
           }
         }
       ]
+    },
+    {
+      "name": "borrow",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fromToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "fromLockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fromAsset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "fromOracle",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "fromHotVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "reflectFromTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "debtRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "BorrowArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "repay",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "debtRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockup",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "asset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lockupHotVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "reflectTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RepayArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [

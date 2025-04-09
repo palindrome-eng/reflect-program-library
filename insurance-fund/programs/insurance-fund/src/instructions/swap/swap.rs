@@ -48,7 +48,9 @@ pub fn swap(
     let clock = Clock::get()?;
 
     let from_price = from_asset.get_price(from_oracle, &clock)?;
+    msg!("from_price: {:?}", from_price.price);
     let to_price = to_asset.get_price(to_oracle, &clock)?;
+    msg!("to_price: {:?}", to_price.price);
 
     let out_amount: u64 = from_price
         .mul(amount_in)?

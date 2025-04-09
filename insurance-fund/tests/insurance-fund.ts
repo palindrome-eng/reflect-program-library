@@ -14,6 +14,7 @@ import {
     Admin,
     Asset, Cooldown,
     createDepositRewardsInstruction,
+    DebtRecord,
     Deposit,
     Intent,
     Lockup, Permissions,
@@ -25,6 +26,7 @@ import createToken from "./helpers/createToken";
 import BN from "bn.js";
 import {
     AuthorityType,
+    createAssociatedTokenAccountIdempotentInstruction,
     createAssociatedTokenAccountInstruction, createInitializeAccount3Instruction,
     createInitializeMint2Instruction,
     createSetAuthorityInstruction,
@@ -36,13 +38,13 @@ import {
 } from "@solana/spl-token";
 import mintTokens from "./helpers/mintTokens";
 import signAndSendTransaction from "./helpers/signAndSendTransaction";
-import getOraclePrice from "./helpers/getOraclePrice";
 import sleep from "./helpers/sleep";
 import {
     PROGRAM_ID as METAPLEX_PROGRAM_ID,
     createCreateMetadataAccountV3Instruction
 } from "@metaplex-foundation/mpl-token-metadata";
 import {Restaking} from "../sdk/src";
+import getOraclePriceFromAccount from "./helpers/getOraclePriceFromAccount";
 
 async function createReceiptToken(
     signer: PublicKey,
@@ -141,8 +143,6 @@ describe("insurance-fund", () => {
     let settings: PublicKey;
     let user: Keypair;
     let rewardToken: PublicKey;
-    let price: BN;
-    let pricePrecision: BN;
     let admin: PublicKey;
     let receiptTokenMint: PublicKey;
 
@@ -349,6 +349,8 @@ describe("insurance-fund", () => {
         const assets: PublicKey[] = [];
 
         for (let i = 0; i < 3; i ++) {
+            const oracleString = i % 2 ? "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" : "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
+
             const token = await createToken(
                 provider.connection,
                 provider
@@ -377,7 +379,7 @@ describe("insurance-fund", () => {
                     signer: provider.publicKey,
                     admin,
                     // Just to pass the test
-                    oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
+                    oracle: new PublicKey(oracleString),
                 })
                 .rpc();
         }
@@ -389,10 +391,12 @@ describe("insurance-fund", () => {
                 asset,
             );
 
+            const oracleString = i % 2 ? "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" : "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
+
             expect(lsts[i].toString()).eq(assetData.mint.toString());
             expect(assetData.tvl.toString()).eq("0");
             expect(assetData.oracle.__kind).eq("Pyth");
-            expect(assetData.oracle.fields[0].toString()).eq("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE");
+            expect(assetData.oracle.fields[0].toString()).eq(oracleString);
             expect(assetData.deposits.toString()).eq("0");
             expect(assetData.lockups.toString()).eq("0");
         }
@@ -648,14 +652,6 @@ describe("insurance-fund", () => {
             lockupData.assetMint
         );
 
-        const {
-            price: assetPrice,
-            precision
-        } = await getOraclePrice();
-
-        price = assetPrice;
-        pricePrecision = precision;
-
         const [lockupHotVault] = PublicKey
             .findProgramAddressSync(
                 [
@@ -710,6 +706,15 @@ describe("insurance-fund", () => {
             program.programId
         );
 
+        let assetData = await Asset.fromAccountAddress(
+            provider.connection,
+            asset
+        );
+
+        const {
+            price,
+            precision: pricePrecision
+        } = await getOraclePriceFromAccount(assetData.oracle.fields[0].toString());
 
         const transactionTimestamp = Math.floor(Date.now() / 1000);
         await program
@@ -725,7 +730,7 @@ describe("insurance-fund", () => {
                 deposit,
                 assetMint: lockupData.assetMint,
                 userAssetAta,
-                oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
+                oracle: assetData.oracle.fields[0],
                 tokenProgram: TOKEN_PROGRAM_ID,
                 asset,
                 systemProgram: SystemProgram.programId,
@@ -754,7 +759,7 @@ describe("insurance-fund", () => {
             settings
         );
 
-        const assetData = await Asset.fromAccountAddress(
+        assetData = await Asset.fromAccountAddress(
             provider.connection,
             asset
         );
@@ -1146,14 +1151,6 @@ describe("insurance-fund", () => {
             alice.publicKey
         );
 
-        const {
-            price: assetPrice,
-            precision
-        } = await getOraclePrice();
-
-        price = assetPrice;
-        pricePrecision = precision;
-
         const [lockupHotVault] = PublicKey
             .findProgramAddressSync(
                 [
@@ -1223,6 +1220,11 @@ describe("insurance-fund", () => {
                 asset
             );
 
+        const {
+            price,
+            precision: pricePrecision
+        } = await getOraclePriceFromAccount(assetDataPre.oracle.fields[0].toString());
+
         await program
             .methods
             .restake({
@@ -1236,7 +1238,7 @@ describe("insurance-fund", () => {
                 deposit,
                 assetMint: lockupData.assetMint,
                 userAssetAta,
-                oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
+                oracle: assetDataPre.oracle.fields[0],
                 tokenProgram: TOKEN_PROGRAM_ID,
                 asset,
                 systemProgram: SystemProgram.programId,
@@ -1850,5 +1852,228 @@ describe("insurance-fund", () => {
         expect(
             userRewardAtaPost.amount.toString()
         ).eq(cooldownData.rewards.fields[0].toString());
+    });
+
+    it("Borrows asset from the insurance fund", async () => {
+        const amount = new BN(1 * LAMPORTS_PER_SOL);
+        const fromLockupId = new BN(0);
+
+        const {
+            debtRecords
+        } = await Settings
+            .fromAccountAddress(provider.connection, settings);
+
+        const fromLockup = Restaking.deriveLockup(fromLockupId);
+        const {
+            assetMint,
+        } = await Lockup.fromAccountAddress(provider.connection, fromLockup);
+        const asset = Restaking.deriveAsset(assetMint);
+        const {
+            oracle
+        } = await Asset.fromAccountAddress(provider.connection, asset);
+        const fromHotVault = Restaking.deriveLockupHotVault(fromLockup, assetMint);
+
+        const [debtRecord] = PublicKey
+            .findProgramAddressSync(
+                [
+                    Buffer.from("debt_record"),
+                    new BN(debtRecords).toArrayLike(Buffer, "le", 8)
+                ],
+                program.programId
+            );
+
+        const reflectFromTokenAccount = getAssociatedTokenAddressSync(
+            assetMint,
+            provider.publicKey,
+            true
+        );
+
+        const ataIx = createAssociatedTokenAccountInstruction(
+            provider.publicKey,
+            reflectFromTokenAccount,
+            provider.publicKey,
+            assetMint
+        );
+
+        const txTimestamp = Math.floor(Date.now() / 1000);
+        await program
+            .methods
+            .borrow({
+                amount,
+                fromLockupId
+            })
+            .accounts({
+                admin,
+                debtRecord,
+                fromAsset: asset,
+                fromHotVault,
+                fromLockup,
+                fromOracle: oracle.fields[0],
+                fromToken: assetMint,
+                reflectFromTokenAccount,
+                settings,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID
+            })
+            .preInstructions([ataIx])
+            .rpc();
+
+        const {
+            amount: borrowedAmount,
+            asset: borrowedAsset,
+            timestamp,
+            lockup
+        } = await DebtRecord
+            .fromAccountAddress(provider.connection, debtRecord);
+
+        const {
+            amount: postReflectFromTokenAccountBalance
+        } = await getAccount(provider.connection, reflectFromTokenAccount);
+
+        expect(postReflectFromTokenAccountBalance.toString()).eq(amount.toString());
+        expect(borrowedAmount.toString()).eq(amount.toString());
+        expect(borrowedAsset.toString()).eq(assetMint.toString());
+        expect(parseInt(timestamp.toString()))
+            .approximately(txTimestamp, 5, "Invalid timestamp");
+        expect(lockup.toString()).eq(fromLockupId.toString());
+    });
+
+    it("Locks-up asset in second pool and performs a swap between two lockups", async () => {
+        const amountIn = new BN(1000 * LAMPORTS_PER_SOL);
+
+        const fromLockupId = new BN(0);
+        const toLockupId = new BN(1);
+
+        const fromLockup = Restaking.deriveLockup(fromLockupId);
+        const toLockup = Restaking.deriveLockup(toLockupId);
+
+        const {
+            assetMint: fromToken,
+        } = await Lockup.fromAccountAddress(provider.connection, fromLockup);
+
+        const {
+            assetMint: toToken,
+            deposits: toDepositId,
+            receiptMint: toReceiptMint
+        } = await Lockup.fromAccountAddress(provider.connection, toLockup);
+
+        const fromAsset = Restaking.deriveAsset(fromToken);
+        const toAsset = Restaking.deriveAsset(toToken);
+
+        const {
+            oracle: fromOracle
+        } = await Asset.fromAccountAddress(provider.connection, fromAsset);
+
+        const {
+            oracle: toOracle
+        } = await Asset.fromAccountAddress(provider.connection, toAsset);
+
+        const fromHotVault = Restaking.deriveLockupHotVault(fromLockup, fromToken);
+        const toHotVault = Restaking.deriveLockupHotVault(toLockup, toToken);
+        const toColdVault = Restaking.deriveLockupColdVault(toLockup, toToken);
+
+        const reflectFromTokenAccount = getAssociatedTokenAddressSync(
+            fromToken,
+            provider.publicKey,
+            true
+        );
+
+        const reflectToTokenAccount = getAssociatedTokenAddressSync(
+            toToken,
+            provider.publicKey,
+            true
+        );
+
+        const reflectToTokenAccountIx = createAssociatedTokenAccountIdempotentInstruction(
+            provider.publicKey,
+            reflectToTokenAccount,
+            provider.publicKey,
+            toToken
+        );
+
+        await mintTokens(
+            fromToken,
+            provider,
+            10000 * LAMPORTS_PER_SOL,
+            provider.publicKey
+        );
+
+        await mintTokens(
+            toToken,
+            provider,
+            100000 * LAMPORTS_PER_SOL,
+            provider.publicKey
+        );
+
+        const admin = Restaking.deriveAdmin(provider.publicKey);
+
+        const deposit = Restaking.deriveDeposit(toLockup, toDepositId);
+        const depositReceiptTokenAccount = Restaking.deriveDepositReceiptVault(deposit, toReceiptMint);
+
+        await program
+            .methods
+            .restake({
+                amount: new BN(20000 * LAMPORTS_PER_SOL),
+                lockupId: toLockupId
+            })
+            .accounts({
+                asset: toAsset,
+                assetMint: toToken,
+                deposit,
+                depositReceiptTokenAccount,
+                lockup: toLockup,
+                lockupColdVault: toColdVault,
+                lockupHotVault: toHotVault,
+                oracle: toOracle.fields[0],
+                receiptTokenMint: toReceiptMint,
+                settings,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                user: provider.publicKey,
+                userAssetAta: reflectToTokenAccount
+            })
+            .rpc();
+
+        const {
+            price: fromTokenPrice,
+            precision: fromTokenPrecision
+        } = await getOraclePriceFromAccount(fromOracle.fields[0].toString());
+
+        const {
+            price: toTokenPrice,
+            precision: toTokenPrecision
+        } = await getOraclePriceFromAccount(toOracle.fields[0].toString());
+
+        await program
+            .methods
+            .swap({
+                amountIn,
+                fromLockupId,
+                minAmountOut: null,
+                toLockupId
+            })
+            .preInstructions([reflectToTokenAccountIx])
+            .accounts({
+                admin,
+                settings,
+                signer: provider.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                fromToken,
+                toToken,
+                toLockup,
+                fromLockup,
+                toAsset,
+                fromAsset,
+                toOracle: toOracle.fields[0],
+                fromOracle: fromOracle.fields[0],
+                fromHotVault,
+                toHotVault,
+                reflectFromTokenAccount,
+                reflectToTokenAccount,
+            })
+            .rpc();
+
+        
     });
 });

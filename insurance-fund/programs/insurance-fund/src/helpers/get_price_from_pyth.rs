@@ -10,6 +10,7 @@ pub fn get_price_from_pyth(
     oracle_account: &AccountInfo,
     clock: &Clock
 ) -> Result<OraclePrice> {
+    msg!("getting price from pyth");
     let oracle_account_data = oracle_account.try_borrow_mut_data()?;
     let oracle = PriceUpdateV2
         ::try_deserialize(&mut oracle_account_data.as_ref())?;
@@ -18,7 +19,7 @@ pub fn get_price_from_pyth(
         &clock, 
         ORACLE_MAXIMUM_AGE, 
         &oracle.price_message.feed_id
-    ).map_err(|_| InsuranceFundError::PriceError)?;
+    )?;
 
     let exponent = price.exponent;
 

@@ -139,17 +139,17 @@ pub mod insurance_fund {
         instructions::swap(ctx, args)
     }
 
-    // pub fn borrow(
-    //     ctx: Context<Borrow>,
-    //     args: BorrowArgs
-    // ) -> Result<()> {
-    //     instructions::borrow(ctx, args)
-    // }
+    pub fn borrow(
+        ctx: Context<Borrow>,
+        args: BorrowArgs
+    ) -> Result<()> {
+        instructions::borrow(ctx, args)
+    }
 
-    // pub fn repay(
-    //     ctx: Context<Repay>,
-    //     args: Repay
-    // ) -> Result<()> {
-    //     instructions::repay(ctx, args)
-    // }
+    pub fn repay(
+        ctx: Context<Repay>,
+        args: RepayArgs
+    ) -> Result<()> {
+        instructions::repay(ctx, args)
+    }
 }

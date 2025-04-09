@@ -27,6 +27,7 @@ pub fn borrow(
     let debt_record = &mut ctx.accounts.debt_record;
     let from_lockup = &ctx.accounts.from_lockup;
     let from_asset = &ctx.accounts.from_asset;
+    let from_token = &ctx.accounts.from_token;
     let from_hot_vault = &ctx.accounts.from_hot_vault;
     let reflect_from_token_account = &ctx.accounts.reflect_from_token_account;
     let token_program = &ctx.accounts.token_program;
@@ -43,7 +44,7 @@ pub fn borrow(
 
     debt_record.set_inner(DebtRecord { 
         amount,
-        asset: from_asset.key(), 
+        asset: from_token.key(), 
         lockup: from_lockup.index, 
         timestamp: clock
             .unix_timestamp
@@ -128,7 +129,7 @@ pub struct Borrow<'info> {
     #[account(
         init,
         payer = signer,
-        space = DebtRecord::INIT_SPACE,
+        space = 8 + DebtRecord::INIT_SPACE,
         seeds = [
             DEBT_RECORD_SEED.as_bytes(),
             &settings.debt_records.to_le_bytes()

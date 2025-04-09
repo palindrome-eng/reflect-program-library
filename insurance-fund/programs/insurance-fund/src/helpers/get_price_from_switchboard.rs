@@ -15,6 +15,8 @@ pub fn get_price_from_switchboard(
         ::new_from_bytes(&account_data.as_ref())
         .map_err(|_| InsuranceFundError::PriceError)?;
 
+    msg!("read oracle data");
+
     let unix_timestamp = clock.unix_timestamp;
 
     oracle_data.check_staleness(
@@ -22,9 +24,13 @@ pub fn get_price_from_switchboard(
         ORACLE_MAXIMUM_AGE as i64
     ).map_err(|_| InsuranceFundError::PriceError)?;
 
+    msg!("checked staleness");
+
     let result = oracle_data
         .get_result()
         .map_err(|_| InsuranceFundError::PriceError)?;
+
+    msg!("got result");
 
     Ok(OraclePrice {
         price: result.try_into().map_err(|_| InsuranceFundError::PriceError)?,
