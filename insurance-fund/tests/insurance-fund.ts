@@ -1939,11 +1939,94 @@ describe("insurance-fund", () => {
         expect(lockup.toString()).eq(fromLockupId.toString());
     });
 
+    it("Repays previously created debt record.", async () => {
+        const debtRecordId = new BN(0);
+
+        const [debtRecord] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("debt_record"),
+                debtRecordId.toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const {
+            asset: assetMint,
+            lockup: lockupId,
+            amount: debtAmount
+        } = await DebtRecord.fromAccountAddress(provider.connection, debtRecord);
+
+        const asset = Restaking.deriveAsset(assetMint);
+        const lockup = Restaking.deriveLockup(lockupId);
+        const lockupHotVault = Restaking.deriveLockupHotVault(lockup, assetMint);
+        const reflectTokenAccount = getAssociatedTokenAddressSync(
+            assetMint,
+            provider.publicKey,
+            true
+        );
+
+        const {
+            amount: lockupHotVaultBalancePre
+        } = await getAccount(provider.connection, lockupHotVault);
+
+        const {
+            amount: reflectTokenAccountBalancePre
+        } = await getAccount(provider.connection, reflectTokenAccount);
+
+        await program
+            .methods
+            .repay({
+                debtRecordId
+            })
+            .accounts({
+                asset,
+                assetMint,
+                debtRecord,
+                lockup,
+                lockupHotVault,
+                reflectTokenAccount,
+                signer: provider.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID
+            })
+            .rpc();
+
+        const {
+            amount: lockupHotVaultBalancePost
+        } = await getAccount(provider.connection, lockupHotVault);
+
+        const {
+            amount: reflectTokenAccountBalancePost
+        } = await getAccount(provider.connection, reflectTokenAccount);
+
+        expect(
+            new BN(lockupHotVaultBalancePost.toString())
+                .sub(new BN(lockupHotVaultBalancePre.toString()))
+                .abs()
+                .toNumber()
+        )
+            .eq(parseInt(debtAmount.toString()))
+            .eq(
+                new BN(reflectTokenAccountBalancePost.toString())
+                .sub(new BN(reflectTokenAccountBalancePre.toString()))
+                .abs()
+                .toNumber()
+            );
+
+        let debtRecordFetchFailed = false;
+        try {
+            await DebtRecord.fromAccountAddress(provider.connection, debtRecord);
+        } catch (err) {
+            debtRecordFetchFailed = true;
+        }
+
+        expect(debtRecordFetchFailed).eq(true);
+    });
+
     it("Locks-up asset in second pool and performs a swap between two lockups", async () => {
         const amountIn = new BN(1000 * LAMPORTS_PER_SOL);
 
         const fromLockupId = new BN(0);
-        const toLockupId = new BN(1);
+        const toLockupId = new BN(5);
 
         const fromLockup = Restaking.deriveLockup(fromLockupId);
         const toLockup = Restaking.deriveLockup(toLockupId);
@@ -1983,13 +2066,6 @@ describe("insurance-fund", () => {
             toToken,
             provider.publicKey,
             true
-        );
-
-        const reflectToTokenAccountIx = createAssociatedTokenAccountIdempotentInstruction(
-            provider.publicKey,
-            reflectToTokenAccount,
-            provider.publicKey,
-            toToken
         );
 
         await mintTokens(
@@ -2045,6 +2121,19 @@ describe("insurance-fund", () => {
             precision: toTokenPrecision
         } = await getOraclePriceFromAccount(toOracle.fields[0].toString());
 
+        const {
+            amount: fromHotVaultBalancePre
+        } = await getAccount(provider.connection, fromHotVault);
+        const {
+            amount: toHotVaultBalancePre
+        } = await getAccount(provider.connection, toHotVault);
+        const {
+            amount: reflectFromTokenAccountBalancePre
+        } = await getAccount(provider.connection, reflectFromTokenAccount);
+        const {
+            amount: reflectToTokenAccountBalancePre
+        } = await getAccount(provider.connection, reflectToTokenAccount);
+
         await program
             .methods
             .swap({
@@ -2053,7 +2142,7 @@ describe("insurance-fund", () => {
                 minAmountOut: null,
                 toLockupId
             })
-            .preInstructions([reflectToTokenAccountIx])
+            .preInstructions([createAssociatedTokenAccountIdempotentInstruction(provider.publicKey, reflectToTokenAccount, provider.publicKey, toToken)])
             .accounts({
                 admin,
                 settings,
@@ -2074,6 +2163,63 @@ describe("insurance-fund", () => {
             })
             .rpc();
 
-        
+        const {
+            amount: fromHotVaultBalancePost
+        } = await getAccount(provider.connection, fromHotVault);
+
+        const {
+            amount: toHotVaultBalancePost
+        } = await getAccount(provider.connection, toHotVault);
+
+        const {
+            amount: reflectFromTokenAccountBalancePost
+        } = await getAccount(provider.connection, reflectFromTokenAccount);
+
+        const {
+            amount: reflectToTokenAccountBalancePost
+        } = await getAccount(provider.connection, reflectToTokenAccount);
+
+        const fromUsdValue = amountIn
+            .mul(fromTokenPrice)
+            .div(
+                new BN(10)
+                    .pow(fromTokenPrecision)
+            );
+
+        const toAmount = fromUsdValue
+            .mul(new BN(10).pow(toTokenPrecision))
+            .div(toTokenPrice);
+
+        expect(toAmount.toNumber())
+            .approximately(
+                new BN(reflectToTokenAccountBalancePost.toString())
+                    .sub(new BN(reflectToTokenAccountBalancePre.toString()))
+                    .abs()
+                    .toNumber(),
+                0.25 * LAMPORTS_PER_SOL
+            );
+
+        expect(toAmount.toNumber())
+            .approximately(
+                new BN(toHotVaultBalancePost.toString())
+                    .sub(new BN(toHotVaultBalancePre.toString()))
+                    .abs()
+                    .toNumber(),
+                0.25 * LAMPORTS_PER_SOL
+            );
+
+        expect(amountIn.toNumber())
+            .eq(
+                new BN(reflectFromTokenAccountBalancePost.toString())
+                    .sub(new BN(reflectFromTokenAccountBalancePre.toString()))
+                    .abs()
+                    .toNumber()
+            )
+            .eq(
+                new BN(fromHotVaultBalancePost.toString())
+                    .sub(new BN(fromHotVaultBalancePre.toString()))
+                    .abs()
+                    .toNumber()
+            );
     });
 });
