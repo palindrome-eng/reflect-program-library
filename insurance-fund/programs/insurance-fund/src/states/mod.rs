@@ -24,3 +24,6 @@ pub use admin::*;
 
 pub mod debt_record;
 pub use debt_record::*;
+
+pub mod lp;
+pub use lp::*;
