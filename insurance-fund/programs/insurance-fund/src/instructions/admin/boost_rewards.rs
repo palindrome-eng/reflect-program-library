@@ -79,7 +79,7 @@ pub struct BoostRewards<'info> {
             &lockup.reward_boosts.to_le_bytes()
         ],
         bump,
-        space = RewardBoost::SIZE
+        space = 8 + RewardBoost::INIT_SPACE
     )]
     pub reward_boost: Account<'info, RewardBoost>,
 

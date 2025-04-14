@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
-
 use crate::errors::InsuranceFundError;
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, PartialEq)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, PartialEq, InitSpace)]
 pub struct SharesConfig {
     pub hot_wallet_share_bps: u64,
     pub cold_wallet_share_bps: u64
@@ -12,7 +11,7 @@ impl SharesConfig {
     pub const SIZE: usize = 2 * 8;
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, PartialEq)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, PartialEq, InitSpace)]
 pub struct RewardConfig {
     pub main: Pubkey,
 }
@@ -22,6 +21,7 @@ impl RewardConfig {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct Settings {
     pub bump: u8,
     pub superadmins: u8,
@@ -35,8 +35,6 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub const SIZE: usize = 8 + 1 + 1 + 32 + 8 + 8 + 1 + 8 + RewardConfig::SIZE + SharesConfig::SIZE;
-
     pub fn freeze(&mut self) {
         self.frozen = true;
     }

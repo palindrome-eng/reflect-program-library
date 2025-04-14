@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, PartialOrd, InitSpace)]
 pub enum Permissions {
     // Only gives ability to freeze the protocol.
     // This should be used for team members' wallets who can easily execute freeze of the protocol in case of emergency.
@@ -14,14 +14,13 @@ pub enum Permissions {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct Admin {
     pub address: Pubkey,
     pub permissions: Permissions
 }
 
 impl Admin {
-    pub const SIZE: usize = 8 + 32 + (1 + 1);
-
     pub fn has_permissions(&self, activity: Permissions) -> bool {
         self.permissions >= activity
     }

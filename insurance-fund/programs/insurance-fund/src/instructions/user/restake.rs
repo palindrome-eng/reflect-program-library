@@ -186,7 +186,7 @@ pub struct Restake<'info> {
             &lockup.deposits.to_le_bytes()
         ],
         bump,
-        space = Deposit::LEN
+        space = Deposit::INIT_SPACE
     )]
     pub deposit: Account<'info, Deposit>,
 

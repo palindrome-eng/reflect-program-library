@@ -81,7 +81,7 @@ pub struct AddAsset<'info> {
             &asset_mint.key().to_bytes()
         ],
         bump,
-        space = Asset::SIZE
+        space = 8 + Asset::INIT_SPACE
     )]
     pub asset: Account<'info, Asset>,
 

@@ -6,4 +6,5 @@ pub struct LpLockup {
     pub duration: u64,
     pub deposits: u64,
     // pub lp_token: u64, // not essential
+    pub receipt_token: Pubkey,
 }

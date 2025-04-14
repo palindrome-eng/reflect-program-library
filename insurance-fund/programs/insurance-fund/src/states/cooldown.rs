@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+#[derive(InitSpace)]
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub enum CooldownRewards {
     Single(u64),
@@ -10,6 +11,7 @@ impl CooldownRewards {
     pub const SIZE: usize = 1 + (2 * 8);
 }
 
+#[derive(InitSpace)]
 #[account]
 pub struct Cooldown {
     pub user: Pubkey,
@@ -21,8 +23,6 @@ pub struct Cooldown {
 }
 
 impl Cooldown {
-    pub const SIZE: usize = 8 + 32 + (4 * 8) + CooldownRewards::SIZE;
-
     pub fn is_cooled(&self) -> Result<bool> {
         let clock = Clock::get()?;
         Ok(clock.unix_timestamp as u64 >= self.unlock_ts)

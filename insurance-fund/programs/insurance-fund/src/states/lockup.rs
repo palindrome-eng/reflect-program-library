@@ -15,14 +15,14 @@ use anchor_lang::system_program::{
 };
 
 // Arrays are holding rates at which users are rewarded per 1 unit per lockup duration.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace)]
 pub enum YieldMode {
     Single, // Only offers rUSD yield.
     Dual(u64) // Offers both rUSD and $R yields. 
     // The u64 stores rate at which $R should be minted per 1 unit of deposit per lockup duration.
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace)]
 pub struct SlashState {
     // How many times was this lockup slashed
     pub index: u64,
@@ -31,6 +31,7 @@ pub struct SlashState {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct Lockup {
     pub bump: u8,
     pub index: u64,
@@ -47,8 +48,6 @@ pub struct Lockup {
 }
 
 impl Lockup {
-    pub const SIZE: usize = 8 + 1 + 8 * 6 + 2 * 32 + (1 + 8) + (1 + 8) + (2 * 8);
-
     pub fn slash(
         &mut self,
         amount: u64

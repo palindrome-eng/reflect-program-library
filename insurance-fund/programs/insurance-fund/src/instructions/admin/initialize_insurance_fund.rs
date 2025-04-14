@@ -76,7 +76,7 @@ pub struct InitializeInsuranceFund<'info> {
             signer.key().as_ref()
         ],
         bump,
-        space = Admin::SIZE
+        space = 8 + Admin::INIT_SPACE
     )]
     pub admin: Account<'info, Admin>,
 
@@ -87,7 +87,7 @@ pub struct InitializeInsuranceFund<'info> {
         ],
         bump,
         payer = signer,
-        space = Settings::SIZE,
+        space = 8 + Settings::INIT_SPACE,
     )]
     pub settings: Account<'info, Settings>,
 

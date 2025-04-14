@@ -13,6 +13,7 @@ use anchor_spl::token::{
 };
 
 #[account]
+#[derive(InitSpace)]
 pub struct Deposit {
     pub bump: u8,
     pub index: u64,
@@ -24,15 +25,6 @@ pub struct Deposit {
 }
 
 impl Deposit {
-    pub const LEN: usize = 8
-        + 1
-        + 8
-        + 32
-        + 8
-        + 32
-        + 8
-        + 8;
-
     #[inline(never)]
     pub fn compute_accrued_rewards(
         &self, 

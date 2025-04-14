@@ -5,7 +5,7 @@ use crate::helpers::{
 };
 use crate::errors::InsuranceFundError;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug, InitSpace)]
 pub enum Oracle {
     Pyth(Pubkey),
     Switchboard(Pubkey)
@@ -22,6 +22,7 @@ impl Oracle {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct Asset {
     pub mint: Pubkey,
     pub oracle: Oracle,
@@ -32,8 +33,6 @@ pub struct Asset {
 }
 
 impl Asset {
-    pub const SIZE: usize = 8 + 32 + 3 * 8 + Oracle::SIZE;
-
     #[inline(never)]
     pub fn increase_tvl(
         &mut self,

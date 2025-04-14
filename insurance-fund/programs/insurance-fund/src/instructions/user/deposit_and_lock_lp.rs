@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount, Token};
-use crate::states::{liquidity_pool, Asset, LiquidityPool};
+use crate::states::{liquidity_pool, Asset, Deposit, LiquidityPool, LpLockup};
 use crate::constants::*;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -27,6 +27,11 @@ pub fn deposit_and_lock_lp(
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let lp_token = &ctx.accounts.lp_token;
     let token_program = &ctx.accounts.token_program;
+    let system_program = &ctx.accounts.system_program;
+
+    let deposit = &ctx.accounts.position;
+    let receipt_token = &ctx.accounts.receipt_token;
+    let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
 
     let clock = &Clock::get()?;
 
@@ -59,12 +64,22 @@ pub fn deposit_and_lock_lp(
         token_b_price
     )?;
 
+    deposit.create_deposit_receipt_token_account(
+        signer, 
+        deposit_receipt_token_account, 
+        ctx.bumps.deposit_receipt_token_account, 
+        deposit, 
+        receipt_token, 
+        token_program, 
+        system_program
+    )?;
+
     liquidity_pool.mint_lp_token(
         lp_tokens, 
         liquidity_pool, 
         lp_token, 
         // TODO: Add creation of per-user specific deposit accounts
-        lp_token_lockup_deposit, 
+        deposit_receipt_token_account, 
         token_program
     )?;
 
@@ -73,11 +88,52 @@ pub fn deposit_and_lock_lp(
 
 #[derive(Accounts)]
 pub struct DepositAndLockLp<'info> {
-    #[account()]
+    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account()]
     pub liquidity_pool: Account<'info, LiquidityPool>,
+
+    #[account(
+        mut,
+        seeds = [
+            LIQUIDITY_POOL_LOCKUP_SEED.as_bytes(),
+            liquidity_pool.key().as_ref(),
+            &lp_lockup.duration.to_le_bytes(),
+        ],
+        bump
+    )]
+    pub lp_lockup: Account<'info, LpLockup>,
+
+    #[account(
+        init,
+        payer = signer,
+        seeds = [
+            DEPOSIT_SEED.as_bytes(),
+            lp_lockup.key().as_ref(),
+            &lp_lockup.deposits.to_le_bytes()
+        ],
+        bump,
+        space = 8 + Deposit::INIT_SPACE
+    )]
+    pub position: Account<'info, Deposit>,
+
+    #[account(
+        address = lp_lockup.receipt_token
+    )]
+    pub receipt_token: Account<'info, Mint>,
+
+    /// CHECK: initializing this manually
+    #[account(
+        mut,
+        seeds = [
+            DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
+            position.key().as_ref(),
+            receipt_token.key().as_ref(),
+        ],
+        bump
+    )]
+    pub deposit_receipt_token_account: AccountInfo<'info>,
 
     #[account(
         address = liquidity_pool.lp_token
@@ -154,4 +210,7 @@ pub struct DepositAndLockLp<'info> {
 
     #[account()]
     pub token_program: Program<'info, Token>,
+
+    #[account()]
+    pub system_program: Program<'info, System>,
 }

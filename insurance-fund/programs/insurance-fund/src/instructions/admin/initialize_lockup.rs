@@ -129,7 +129,7 @@ pub struct InitializeLockup<'info> {
         ],
         bump,
         payer = signer,
-        space = Lockup::SIZE,
+        space = 8 + Lockup::INIT_SPACE,
     )]
     pub lockup: Box<Account<'info, Lockup>>,
 

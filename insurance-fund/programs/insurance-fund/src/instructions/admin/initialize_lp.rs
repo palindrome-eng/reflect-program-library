@@ -49,7 +49,7 @@ pub struct InitializeLiquidityPool<'info> {
             // TODO: Sort out seeds
         ],
         bump,
-        space = LiquidityPool::INIT_SPACE
+        space = 8 + LiquidityPool::INIT_SPACE
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 

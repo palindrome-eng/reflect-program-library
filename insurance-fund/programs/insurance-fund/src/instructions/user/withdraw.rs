@@ -318,7 +318,7 @@ pub struct Withdraw<'info> {
             deposit.key().as_ref()
         ],
         bump,
-        space = Intent::LEN,
+        space = Intent::INIT_SPACE,
     )]
     pub intent: Option<Account<'info, Intent>>,
 

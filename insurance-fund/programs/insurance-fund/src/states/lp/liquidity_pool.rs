@@ -104,7 +104,7 @@ impl LiquidityPool {
         amount: u64,
         liquidity_pool: &Account<'info, LiquidityPool>,
         lp_token: &Account<'info, Mint>,
-        lp_token_lockup_deposit: &Account<'info, TokenAccount>,
+        lp_token_lockup_deposit: &AccountInfo<'info>,
         token_program: &Program<'info, Token>,
     ) -> Result<()> {
         mint_to(
