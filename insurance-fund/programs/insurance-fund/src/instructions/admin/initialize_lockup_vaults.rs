@@ -12,8 +12,6 @@ pub fn initialize_lockup_vaults(
     ctx: Context<InitializeLockupVaults>,
     lockup_id: u64
 ) -> Result<()> {
-    msg!("check 0");
-    
     let settings = &mut ctx.accounts.settings;
     let lockup = &mut ctx.accounts.lockup;
     let asset_mint = &ctx.accounts.asset_mint;
@@ -24,12 +22,8 @@ pub fn initialize_lockup_vaults(
     let token_program = &ctx.accounts.token_program;
     let system_program = &ctx.accounts.system_program;
 
-    msg!("check 1");
-
     let rent = Rent::get()?;
     let lamports = rent.minimum_balance(165);
-
-    msg!("check 2");
 
     lockup.initialize_hot_vault(
         &signer, 

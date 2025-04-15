@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::*;
-use anchor_spl::token::{Mint};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeLpLockupArgs {
@@ -48,6 +49,11 @@ pub struct InitializeLpLockup<'info> {
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
+        address = liquidity_pool.lp_token
+    )]
+    pub lp_token: Account<'info, Mint>,
+
+    #[account(
         init,
         space = 8 + LpLockup::INIT_SPACE,
         payer = signer,
@@ -61,14 +67,28 @@ pub struct InitializeLpLockup<'info> {
     pub lp_lockup: Account<'info, LpLockup>,
 
     #[account(
-        constraint = lockup_receipt_token.supply == 0 &&
-            lockup_receipt_token.mint_authority.unwrap() == liquidity_pool.key() &&
-            lockup_receipt_token.freeze_authority.is_none() &&
-            lockup_receipt_token.is_initialized &&
-            lockup_receipt_token.decimals == 9 @ InsuranceFundError::InvalidReceiptTokenSetup
+        constraint = lockup_receipt_token.supply == 0 @ InsuranceFundError::InvalidReceiptTokenSupply,
+        constraint = lockup_receipt_token.mint_authority.unwrap() == lp_lockup.key() @ InsuranceFundError::InvalidReceiptTokenMintAuthority,
+        constraint = lockup_receipt_token.freeze_authority.is_none() @ InsuranceFundError::InvalidReceiptTokenFreezeAuthority,
+        constraint = lockup_receipt_token.is_initialized @ InsuranceFundError::InvalidReceiptTokenSetup,
+        constraint = lockup_receipt_token.decimals == 9 @ InsuranceFundError::InvalidReceiptTokenDecimals
     )]
     pub lockup_receipt_token: Account<'info, Mint>,
 
+    #[account(
+        init,
+        payer = signer,
+        associated_token::mint = lp_token,
+        associated_token::authority = lp_lockup
+    )]
+    pub lockup_lp_token_vault: Account<'info, TokenAccount>,
+
     #[account()]
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
+
+    #[account()]
+    pub token_program: Program<'info, Token>,
+
+    #[account()]
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }

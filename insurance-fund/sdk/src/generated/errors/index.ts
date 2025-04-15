@@ -580,13 +580,117 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * InvalidReceiptTokenDecimals: 'InvalidReceiptTokenDecimals'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidReceiptTokenDecimalsError extends Error {
+  readonly code: number = 0x178a
+  readonly name: string = 'InvalidReceiptTokenDecimals'
+  constructor() {
+    super('InvalidReceiptTokenDecimals')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidReceiptTokenDecimalsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x178a,
+  () => new InvalidReceiptTokenDecimalsError()
+)
+createErrorFromNameLookup.set(
+  'InvalidReceiptTokenDecimals',
+  () => new InvalidReceiptTokenDecimalsError()
+)
+
+/**
+ * InvalidReceiptTokenMintAuthority: 'InvalidReceiptTokenMintAuthority'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidReceiptTokenMintAuthorityError extends Error {
+  readonly code: number = 0x178b
+  readonly name: string = 'InvalidReceiptTokenMintAuthority'
+  constructor() {
+    super('InvalidReceiptTokenMintAuthority')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidReceiptTokenMintAuthorityError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x178b,
+  () => new InvalidReceiptTokenMintAuthorityError()
+)
+createErrorFromNameLookup.set(
+  'InvalidReceiptTokenMintAuthority',
+  () => new InvalidReceiptTokenMintAuthorityError()
+)
+
+/**
+ * InvalidReceiptTokenSupply: 'InvalidReceiptTokenSupply'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidReceiptTokenSupplyError extends Error {
+  readonly code: number = 0x178c
+  readonly name: string = 'InvalidReceiptTokenSupply'
+  constructor() {
+    super('InvalidReceiptTokenSupply')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidReceiptTokenSupplyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x178c,
+  () => new InvalidReceiptTokenSupplyError()
+)
+createErrorFromNameLookup.set(
+  'InvalidReceiptTokenSupply',
+  () => new InvalidReceiptTokenSupplyError()
+)
+
+/**
+ * InvalidReceiptTokenFreezeAuthority: 'InvalidReceiptTokenFreezeAuthority'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidReceiptTokenFreezeAuthorityError extends Error {
+  readonly code: number = 0x178d
+  readonly name: string = 'InvalidReceiptTokenFreezeAuthority'
+  constructor() {
+    super('InvalidReceiptTokenFreezeAuthority')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidReceiptTokenFreezeAuthorityError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x178d,
+  () => new InvalidReceiptTokenFreezeAuthorityError()
+)
+createErrorFromNameLookup.set(
+  'InvalidReceiptTokenFreezeAuthority',
+  () => new InvalidReceiptTokenFreezeAuthorityError()
+)
+
+/**
  * MinimumSuperadminsRequired: 'MinimumSuperadminsRequired'
  *
  * @category Errors
  * @category generated
  */
 export class MinimumSuperadminsRequiredError extends Error {
-  readonly code: number = 0x178a
+  readonly code: number = 0x178e
   readonly name: string = 'MinimumSuperadminsRequired'
   constructor() {
     super('MinimumSuperadminsRequired')
@@ -597,7 +701,7 @@ export class MinimumSuperadminsRequiredError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x178a,
+  0x178e,
   () => new MinimumSuperadminsRequiredError()
 )
 createErrorFromNameLookup.set(
@@ -612,7 +716,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class IntentValueTooLowError extends Error {
-  readonly code: number = 0x178b
+  readonly code: number = 0x178f
   readonly name: string = 'IntentValueTooLow'
   constructor() {
     super('IntentValueTooLow')
@@ -622,7 +726,7 @@ export class IntentValueTooLowError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x178b, () => new IntentValueTooLowError())
+createErrorFromCodeLookup.set(0x178f, () => new IntentValueTooLowError())
 createErrorFromNameLookup.set(
   'IntentValueTooLow',
   () => new IntentValueTooLowError()
@@ -635,7 +739,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class WithdrawalNeedsIntentError extends Error {
-  readonly code: number = 0x178c
+  readonly code: number = 0x1790
   readonly name: string = 'WithdrawalNeedsIntent'
   constructor() {
     super('WithdrawalNeedsIntent')
@@ -645,7 +749,7 @@ export class WithdrawalNeedsIntentError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x178c, () => new WithdrawalNeedsIntentError())
+createErrorFromCodeLookup.set(0x1790, () => new WithdrawalNeedsIntentError())
 createErrorFromNameLookup.set(
   'WithdrawalNeedsIntent',
   () => new WithdrawalNeedsIntentError()
@@ -658,7 +762,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PriceErrorError extends Error {
-  readonly code: number = 0x178d
+  readonly code: number = 0x1791
   readonly name: string = 'PriceError'
   constructor() {
     super('PriceError')
@@ -668,7 +772,7 @@ export class PriceErrorError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x178d, () => new PriceErrorError())
+createErrorFromCodeLookup.set(0x1791, () => new PriceErrorError())
 createErrorFromNameLookup.set('PriceError', () => new PriceErrorError())
 
 /**
@@ -678,7 +782,7 @@ createErrorFromNameLookup.set('PriceError', () => new PriceErrorError())
  * @category generated
  */
 export class CooldownInForceError extends Error {
-  readonly code: number = 0x178e
+  readonly code: number = 0x1792
   readonly name: string = 'CooldownInForce'
   constructor() {
     super('CooldownInForce')
@@ -688,7 +792,7 @@ export class CooldownInForceError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x178e, () => new CooldownInForceError())
+createErrorFromCodeLookup.set(0x1792, () => new CooldownInForceError())
 createErrorFromNameLookup.set(
   'CooldownInForce',
   () => new CooldownInForceError()
@@ -701,7 +805,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SlippageExceededError extends Error {
-  readonly code: number = 0x178f
+  readonly code: number = 0x1793
   readonly name: string = 'SlippageExceeded'
   constructor() {
     super('SlippageExceeded')
@@ -711,10 +815,33 @@ export class SlippageExceededError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x178f, () => new SlippageExceededError())
+createErrorFromCodeLookup.set(0x1793, () => new SlippageExceededError())
 createErrorFromNameLookup.set(
   'SlippageExceeded',
   () => new SlippageExceededError()
+)
+
+/**
+ * InvalidTokenOrder: 'InvalidTokenOrder'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidTokenOrderError extends Error {
+  readonly code: number = 0x1794
+  readonly name: string = 'InvalidTokenOrder'
+  constructor() {
+    super('InvalidTokenOrder')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidTokenOrderError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1794, () => new InvalidTokenOrderError())
+createErrorFromNameLookup.set(
+  'InvalidTokenOrder',
+  () => new InvalidTokenOrderError()
 )
 
 /**

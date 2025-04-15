@@ -83,9 +83,19 @@
       "value": "\"debt_record\""
     },
     {
+      "name": "LIQUIDITY_POOL_SEED",
+      "type": "string",
+      "value": "\"liquidity_pool\""
+    },
+    {
+      "name": "LIQUIDITY_POOL_LOCKUP_SEED",
+      "type": "string",
+      "value": "\"lp_lockup\""
+    },
+    {
       "name": "ORACLE_MAXIMUM_AGE",
       "type": "u64",
-      "value": "60"
+      "value": "60 * 60"
     }
   ],
   "instructions": [
@@ -1273,6 +1283,253 @@
           }
         }
       ]
+    },
+    {
+      "name": "initializeLp",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidityPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenA",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenB",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAAsset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBAsset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lpTokenMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeLpLockup",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidityPool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lpToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lpLockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupReceiptToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lockupLpTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "InitializeLpLockupArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "depositAndLockLp",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "liquidityPool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lpLockup",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "position",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "receiptToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositReceiptTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockupLpTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenA",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAAsset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAOracle",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBAsset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBOracle",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenB",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userTokenAAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userTokenBAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "DepositAndLockLpArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1501,6 +1758,50 @@
       }
     },
     {
+      "name": "LiquidityPool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "tokenA",
+            "type": "publicKey"
+          },
+          {
+            "name": "tokenB",
+            "type": "publicKey"
+          },
+          {
+            "name": "lpToken",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LpLockup",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duration",
+            "type": "u64"
+          },
+          {
+            "name": "deposits",
+            "type": "u64"
+          },
+          {
+            "name": "receiptToken",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
       "name": "RewardBoost",
       "type": {
         "kind": "struct",
@@ -1667,6 +1968,18 @@
       }
     },
     {
+      "name": "InitializeLpLockupArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "durationSeconds",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "ManageFreezeArgs",
       "type": {
         "kind": "struct",
@@ -1828,6 +2141,22 @@
             "type": {
               "option": "u64"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositAndLockLpArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tokenAAmount",
+            "type": "u64"
+          },
+          {
+            "name": "tokenBAmount",
+            "type": "u64"
           }
         ]
       }
@@ -2459,33 +2788,58 @@
     },
     {
       "code": 6026,
+      "name": "InvalidReceiptTokenDecimals",
+      "msg": "InvalidReceiptTokenDecimals"
+    },
+    {
+      "code": 6027,
+      "name": "InvalidReceiptTokenMintAuthority",
+      "msg": "InvalidReceiptTokenMintAuthority"
+    },
+    {
+      "code": 6028,
+      "name": "InvalidReceiptTokenSupply",
+      "msg": "InvalidReceiptTokenSupply"
+    },
+    {
+      "code": 6029,
+      "name": "InvalidReceiptTokenFreezeAuthority",
+      "msg": "InvalidReceiptTokenFreezeAuthority"
+    },
+    {
+      "code": 6030,
       "name": "MinimumSuperadminsRequired",
       "msg": "MinimumSuperadminsRequired"
     },
     {
-      "code": 6027,
+      "code": 6031,
       "name": "IntentValueTooLow",
       "msg": "IntentValueTooLow"
     },
     {
-      "code": 6028,
+      "code": 6032,
       "name": "WithdrawalNeedsIntent",
       "msg": "WithdrawalNeedsIntent"
     },
     {
-      "code": 6029,
+      "code": 6033,
       "name": "PriceError",
       "msg": "PriceError"
     },
     {
-      "code": 6030,
+      "code": 6034,
       "name": "CooldownInForce",
       "msg": "CooldownInForce"
     },
     {
-      "code": 6031,
+      "code": 6035,
       "name": "SlippageExceeded",
       "msg": "SlippageExceeded"
+    },
+    {
+      "code": 6036,
+      "name": "InvalidTokenOrder",
+      "msg": "InvalidTokenOrder"
     }
   ],
   "metadata": {

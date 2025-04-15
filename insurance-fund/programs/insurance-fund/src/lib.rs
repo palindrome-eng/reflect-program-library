@@ -152,4 +152,24 @@ pub mod insurance_fund {
     ) -> Result<()> {
         instructions::repay(ctx, args)
     }
+
+    pub fn initialize_lp(
+        ctx: Context<InitializeLiquidityPool>
+    ) -> Result<()> {
+        instructions::initialize_lp(ctx)
+    }
+
+    pub fn initialize_lp_lockup(
+        ctx: Context<InitializeLpLockup>,
+        args: InitializeLpLockupArgs
+    ) -> Result<()> {
+        instructions::initialize_lp_lockup(ctx, args)
+    }
+
+    pub fn deposit_and_lock_lp(
+        ctx: Context<DepositAndLockLp>,
+        args: DepositAndLockLpArgs
+    ) -> Result<()> {
+        instructions::deposit_and_lock_lp(ctx, args)
+    }
 }

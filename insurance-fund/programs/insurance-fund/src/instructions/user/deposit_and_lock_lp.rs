@@ -28,7 +28,8 @@ pub fn deposit_and_lock_lp(
     let lp_token = &ctx.accounts.lp_token;
     let token_program = &ctx.accounts.token_program;
     let system_program = &ctx.accounts.system_program;
-
+    let lockup_lp_token_vault = &ctx.accounts.lockup_lp_token_vault;
+    
     let deposit = &ctx.accounts.position;
     let receipt_token = &ctx.accounts.receipt_token;
     let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
@@ -64,22 +65,21 @@ pub fn deposit_and_lock_lp(
         token_b_price
     )?;
 
-    deposit.create_deposit_receipt_token_account(
-        signer, 
-        deposit_receipt_token_account, 
-        ctx.bumps.deposit_receipt_token_account, 
-        deposit, 
-        receipt_token, 
-        token_program, 
-        system_program
-    )?;
+    // deposit.create_deposit_receipt_token_account(
+    //     signer, 
+    //     deposit_receipt_token_account, 
+    //     ctx.bumps.deposit_receipt_token_account, 
+    //     deposit, 
+    //     receipt_token, 
+    //     token_program, 
+    //     system_program
+    // )?;
 
     liquidity_pool.mint_lp_token(
         lp_tokens, 
         liquidity_pool, 
         lp_token, 
-        // TODO: Add creation of per-user specific deposit accounts
-        deposit_receipt_token_account, 
+        lockup_lp_token_vault, 
         token_program
     )?;
 
@@ -91,7 +91,14 @@ pub struct DepositAndLockLp<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    #[account()]
+    #[account(
+        seeds = [
+            LIQUIDITY_POOL_SEED.as_bytes(),
+            token_a.key().as_ref(),
+            token_b.key().as_ref(),
+        ],
+        bump,
+    )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
@@ -121,7 +128,7 @@ pub struct DepositAndLockLp<'info> {
     #[account(
         address = lp_lockup.receipt_token
     )]
-    pub receipt_token: Account<'info, Mint>,
+    pub receipt_token: Box<Account<'info, Mint>>,
 
     /// CHECK: initializing this manually
     #[account(
@@ -136,14 +143,22 @@ pub struct DepositAndLockLp<'info> {
     pub deposit_receipt_token_account: AccountInfo<'info>,
 
     #[account(
+        mut,
         address = liquidity_pool.lp_token
     )]
-    pub lp_token: Account<'info, Mint>,
+    pub lp_token: Box<Account<'info, Mint>>,
+
+    #[account(
+        mut,
+        associated_token::mint = lp_token,
+        associated_token::authority = lp_lockup
+    )]
+    pub lockup_lp_token_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         address = liquidity_pool.token_a
     )]
-    pub token_a: Account<'info, Mint>,
+    pub token_a: Box<Account<'info, Mint>>,
 
     #[account(
         seeds = [
@@ -178,35 +193,35 @@ pub struct DepositAndLockLp<'info> {
     #[account(
         address = liquidity_pool.token_b
     )]
-    pub token_b: Account<'info, Mint>,
+    pub token_b: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::mint = token_a,
         associated_token::authority = liquidity_pool
     )]
-    pub token_a_pool: Account<'info, TokenAccount>,
+    pub token_a_pool: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         associated_token::mint = token_b,
         associated_token::authority = liquidity_pool
     )]
-    pub token_b_pool: Account<'info, TokenAccount>,
+    pub token_b_pool: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         token::mint = token_a,
         token::authority = signer,
     )]
-    pub user_token_a_account: Account<'info, TokenAccount>,
+    pub user_token_a_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         token::mint = token_b,
         token::authority = signer,
     )]
-    pub user_token_b_account: Account<'info, TokenAccount>,
+    pub user_token_b_account: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub token_program: Program<'info, Token>,

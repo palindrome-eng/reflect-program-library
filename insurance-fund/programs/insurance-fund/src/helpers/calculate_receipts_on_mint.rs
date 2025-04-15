@@ -15,10 +15,6 @@ pub fn calculate_receipts_on_mint(
                 .map_err(|_| InsuranceFundError::MathOverflow)?
         )
     } else {
-        msg!("total_deposits: {:?}", total_deposits);
-        msg!("receipt supply: {:?}", receipt_token_mint.supply);
-        msg!("deposit: {:?}", deposit);
-
         let result = (deposit as u128)
             .checked_mul(total_deposits as u128)
             .ok_or(InsuranceFundError::MathOverflow)?

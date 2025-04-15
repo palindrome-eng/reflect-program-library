@@ -17,7 +17,8 @@ import {
     DebtRecord,
     Deposit,
     Intent,
-    Lockup, Permissions,
+    LiquidityPool,
+    Lockup, LpLockup, Permissions,
     PROGRAM_ID,
     Settings,
 } from "../sdk/src/generated";
@@ -45,6 +46,8 @@ import {
 } from "@metaplex-foundation/mpl-token-metadata";
 import {Restaking} from "../sdk/src";
 import getOraclePriceFromAccount from "./helpers/getOraclePriceFromAccount";
+import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
+import comparePubkeys from "./helpers/comparePubkeys";
 
 async function createReceiptToken(
     signer: PublicKey,
@@ -2221,5 +2224,307 @@ describe("insurance-fund", () => {
                     .abs()
                     .toNumber()
             );
+    });
+
+    it("Initializes liquidity pool", async () => {
+        const admin = Restaking.deriveAdmin(provider.publicKey);
+
+        let tokenA = lsts[0];
+        let tokenB = lsts[1];
+
+        // swap to enforce ordering
+        if (comparePubkeys(tokenA, tokenB) < 0) {
+            let temp = tokenA;
+            tokenA = tokenB;
+            tokenB = temp;
+        }
+
+        const [liquidityPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("liquidity_pool"),
+                tokenA.toBuffer(),
+                tokenB.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const {
+            mint: lpTokenMint,
+            instructions: preInstructions
+        } = await createReceiptToken(
+            provider.publicKey,
+            liquidityPool,
+            provider.connection,
+            tokenA,
+            false
+        );
+
+        const tokenAAsset = Restaking.deriveAsset(tokenA);
+        const tokenBAsset = Restaking.deriveAsset(tokenB);
+
+        const tokenAPool = getAssociatedTokenAddressSync(
+            tokenA,
+            liquidityPool,
+            true
+        );
+
+        const tokenBPool = getAssociatedTokenAddressSync(
+            tokenB,
+            liquidityPool,
+            true
+        );
+
+        await program
+            .methods
+            .initializeLp()
+            .preInstructions(preInstructions)
+            .accounts({
+                admin,
+                associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+                liquidityPool,
+                lpTokenMint: lpTokenMint.publicKey,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
+                tokenA,
+                tokenAAsset,
+                tokenAPool,
+                tokenB,
+                tokenBAsset,
+                tokenBPool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([lpTokenMint])
+            .rpc();
+    
+        const {
+            lpToken,
+            tokenA: setTokenA,
+            tokenB: setTokenB
+        } = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        expect(setTokenA.toString()).eq(tokenA.toString());
+        expect(tokenB.toString()).eq(setTokenB.toString());
+        expect(lpToken.toString()).eq(lpTokenMint.publicKey.toString());
+    });
+
+    it('Initializes LP lockup', async () => {
+        await sleep(10);
+
+        // 10 second lockup
+        const durationSeconds = new BN(10);
+
+        let tokenA = lsts[0];
+        let tokenB = lsts[1];
+
+        // swap to enforce ordering
+        if (comparePubkeys(tokenA, tokenB) < 0) {
+            let temp = tokenA;
+            tokenA = tokenB;
+            tokenB = temp;
+        }
+
+        const [liquidityPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("liquidity_pool"),
+                tokenA.toBuffer(),
+                tokenB.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const {
+            lpToken
+        } = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        const [lpLockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lp_lockup"),
+                liquidityPool.toBuffer(),
+                new BN(durationSeconds).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const {
+            instructions: preInstructions,
+            mint: receiptMintKeypair
+        } = await createReceiptToken(
+            provider.publicKey,
+            lpLockup,
+            provider.connection,
+            lpToken,
+            false
+        );
+
+        const lockupLpTokenVault = getAssociatedTokenAddressSync(
+            lpToken,
+            lpLockup,
+            true
+        );
+
+        await program
+            .methods
+            .initializeLpLockup({
+                durationSeconds
+            })
+            .preInstructions(preInstructions)
+            .accounts({
+                admin,
+                liquidityPool,
+                lockupReceiptToken: receiptMintKeypair.publicKey,
+                lpLockup,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
+                associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+                lockupLpTokenVault,
+                lpToken,
+                tokenProgram: TOKEN_PROGRAM_ID
+            })
+            .signers([receiptMintKeypair])
+            .rpc();
+    });
+
+    it("Deposits tokens into LP and locks LP tokens in a lockup, atomically.", async () => {
+        const durationSeconds = new BN(10);
+        const tokenAAmount = new BN(10_000 * LAMPORTS_PER_SOL);
+        const tokenBAmount = new BN(10_000 * LAMPORTS_PER_SOL);
+
+        let tokenA = lsts[0];
+        let tokenB = lsts[1];
+
+        // swap to enforce ordering
+        if (comparePubkeys(tokenA, tokenB) < 0) {
+            let temp = tokenA;
+            tokenA = tokenB;
+            tokenB = temp;
+        }
+
+        await mintTokens(tokenA, provider, 10_000 * LAMPORTS_PER_SOL, provider.publicKey);
+        await mintTokens(tokenB, provider, 10_000 * LAMPORTS_PER_SOL, provider.publicKey);
+        await sleep(5);
+
+        const [liquidityPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("liquidity_pool"),
+                tokenA.toBuffer(),
+                tokenB.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const [lpLockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lp_lockup"),
+                liquidityPool.toBuffer(),
+                new BN(durationSeconds).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const {
+            lpToken,
+        } = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        const {
+            deposits,
+            receiptToken
+        } = await LpLockup.fromAccountAddress(
+            provider.connection,
+            lpLockup
+        );
+
+        const [position] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("deposit"),
+                lpLockup.toBuffer(),
+                new BN(deposits).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const tokenAAsset = Restaking.deriveAsset(tokenA);
+        const tokenBAsset = Restaking.deriveAsset(tokenB);
+
+        const {
+            oracle: tokenAOracle
+        } = await Asset.fromAccountAddress(
+            provider.connection,
+            tokenAAsset
+        );
+
+        const {
+            oracle: tokenBOracle
+        } = await Asset.fromAccountAddress(
+            provider.connection,
+            tokenBAsset
+        );
+
+        const tokenAPool = getAssociatedTokenAddressSync(
+            tokenA,
+            liquidityPool,
+            true
+        );
+
+        const tokenBPool = getAssociatedTokenAddressSync(
+            tokenB,
+            liquidityPool,
+            true
+        );
+
+        const userTokenAAccount = getAssociatedTokenAddressSync(
+            tokenA,
+            provider.publicKey,
+        );
+
+        const userTokenBAccount = getAssociatedTokenAddressSync(
+            tokenB,
+            provider.publicKey,
+        );
+
+        const depositReceiptTokenAccount = Restaking.deriveDepositReceiptVault(position, receiptToken);
+        const lockupLpTokenVault = getAssociatedTokenAddressSync(
+            lpToken,
+            lpLockup,
+            true
+        );
+
+        await program
+            .methods
+            .depositAndLockLp({
+                tokenAAmount,
+                tokenBAmount
+            })
+            .accounts({
+                depositReceiptTokenAccount,
+                liquidityPool,
+                lpLockup,
+                lpToken,
+                position,
+                receiptToken,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
+                tokenA,
+                tokenAAsset,
+                tokenAOracle: tokenAOracle.fields[0],
+                tokenAPool,
+                tokenB,
+                tokenBAsset,
+                tokenBOracle: tokenBOracle.fields[0],
+                tokenBPool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                userTokenAAccount,
+                userTokenBAccount,
+                lockupLpTokenVault
+            })
+            .rpc();
     });
 });
