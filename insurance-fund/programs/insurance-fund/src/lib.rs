@@ -172,4 +172,11 @@ pub mod insurance_fund {
     ) -> Result<()> {
         instructions::deposit_and_lock_lp(ctx, args)
     }
+
+    pub fn swap_lp(
+        ctx: Context<SwapLp>,
+        args: SwapLpArgs
+    ) -> Result<()> {
+        instructions::swap_lp(ctx, args)
+    }
 }

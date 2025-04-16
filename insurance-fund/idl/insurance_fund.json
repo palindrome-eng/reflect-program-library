@@ -1530,6 +1530,94 @@
           }
         }
       ]
+    },
+    {
+      "name": "swapLp",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "liquidityPool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenA",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAAsset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAOracle",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenB",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBAsset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBOracle",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenASignerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBSignerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SwapLpArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2123,6 +2211,28 @@
           {
             "name": "debtRecordId",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SwapLpArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amountIn",
+            "type": "u64"
+          },
+          {
+            "name": "aToB",
+            "type": "bool"
+          },
+          {
+            "name": "minOut",
+            "type": {
+              "option": "u64"
+            }
           }
         ]
       }
