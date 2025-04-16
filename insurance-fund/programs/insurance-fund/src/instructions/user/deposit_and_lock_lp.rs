@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount, Token};
-use crate::states::{liquidity_pool, Asset, Deposit, LiquidityPool, LpLockup};
+use crate::states::{liquidity_pool, lp_lockup, Asset, Deposit, LiquidityPool, LpLockup};
 use crate::constants::*;
+use crate::helpers::*;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct DepositAndLockLpArgs {
@@ -28,6 +29,7 @@ pub fn deposit_and_lock_lp(
     let lp_token = &ctx.accounts.lp_token;
     let token_program = &ctx.accounts.token_program;
     let system_program = &ctx.accounts.system_program;
+    let lp_lockup = &ctx.accounts.lp_lockup;
     let lockup_lp_token_vault = &ctx.accounts.lockup_lp_token_vault;
     
     let deposit = &ctx.accounts.position;
@@ -65,15 +67,11 @@ pub fn deposit_and_lock_lp(
         token_b_price
     )?;
 
-    // deposit.create_deposit_receipt_token_account(
-    //     signer, 
-    //     deposit_receipt_token_account, 
-    //     ctx.bumps.deposit_receipt_token_account, 
-    //     deposit, 
-    //     receipt_token, 
-    //     token_program, 
-    //     system_program
-    // )?;
+    let total_receipts_to_mint: u64 = calculate_receipts_on_mint(
+        &receipt_token,
+        lp_tokens, 
+        lockup_lp_token_vault.amount
+    )?;
 
     liquidity_pool.mint_lp_token(
         lp_tokens, 
@@ -81,6 +79,24 @@ pub fn deposit_and_lock_lp(
         lp_token, 
         lockup_lp_token_vault, 
         token_program
+    )?;
+
+    deposit.create_deposit_receipt_token_account(
+        signer,
+        deposit_receipt_token_account, 
+        ctx.bumps.deposit_receipt_token_account, 
+        deposit, 
+        receipt_token, 
+        token_program, 
+        system_program
+    )?;
+
+    lp_lockup.mint_receipt_tokens(
+        &receipt_token,
+        deposit_receipt_token_account,
+        lp_lockup,
+        token_program,
+        total_receipts_to_mint
     )?;
 
     Ok(())
@@ -126,6 +142,7 @@ pub struct DepositAndLockLp<'info> {
     pub position: Account<'info, Deposit>,
 
     #[account(
+        mut,
         address = lp_lockup.receipt_token
     )]
     pub receipt_token: Box<Account<'info, Mint>>,

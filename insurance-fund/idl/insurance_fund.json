@@ -1443,7 +1443,7 @@
         },
         {
           "name": "receiptToken",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1787,6 +1787,10 @@
         "kind": "struct",
         "fields": [
           {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
             "name": "duration",
             "type": "u64"
           },
@@ -1796,6 +1800,10 @@
           },
           {
             "name": "receiptToken",
+            "type": "publicKey"
+          },
+          {
+            "name": "liquidityPool",
             "type": "publicKey"
           }
         ]

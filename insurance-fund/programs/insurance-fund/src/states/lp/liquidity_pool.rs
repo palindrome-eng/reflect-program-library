@@ -122,11 +122,6 @@ impl LiquidityPool {
             &[self.bump]
         ];
 
-        msg!("minting: {:?}", lp_token.key());
-        msg!("destination mint: {:?}", lockup_lp_token_vault.mint);
-        msg!("mint authority: {:?}", lp_token.mint_authority);
-        msg!("signer: {:?}", liquidity_pool.key());
-
         mint_to(
             CpiContext::new_with_signer(
                 token_program.to_account_info(), 

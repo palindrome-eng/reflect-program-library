@@ -7,7 +7,8 @@ import {
     SystemProgram,
     LAMPORTS_PER_SOL,
     SYSVAR_CLOCK_PUBKEY,
-    TransactionMessage, Connection, TransactionInstruction
+    TransactionMessage, Connection, TransactionInstruction,
+    TokenBalance
 } from "@solana/web3.js";
 import {before, it} from "mocha";
 import {
@@ -48,6 +49,8 @@ import {Restaking} from "../sdk/src";
 import getOraclePriceFromAccount from "./helpers/getOraclePriceFromAccount";
 import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import comparePubkeys from "./helpers/comparePubkeys";
+import calculateLpToken from "./helpers/calculateLpToken";
+import calculateReceiptToken from "./helpers/calculateReceiptToken";
 
 async function createReceiptToken(
     signer: PublicKey,
@@ -2390,7 +2393,13 @@ describe("insurance-fund", () => {
             .rpc();
     });
 
+    // Things to check:
+    // - both tokens go to their respective pools
+    // - amount of LP token minted matches
+    // - LP token get deposited into the lockup-specific pool
+    // - lockup receipt token gets minted into the position account vault
     it("Deposits tokens into LP and locks LP tokens in a lockup, atomically.", async () => {
+        await sleep(10);
         const durationSeconds = new BN(10);
         const tokenAAmount = new BN(10_000 * LAMPORTS_PER_SOL);
         const tokenBAmount = new BN(10_000 * LAMPORTS_PER_SOL);
@@ -2497,7 +2506,22 @@ describe("insurance-fund", () => {
             true
         );
 
-        await program
+        const lpTokenPre = await getMint(
+            provider.connection,
+            lpToken
+        );
+
+        const receiptTokenPre = await getMint(
+            provider.connection,
+            receiptToken
+        );
+
+        const lockupLpTokenVaultPre = await getAccount(
+            provider.connection,
+            lockupLpTokenVault
+        );
+
+        const transaction = await program
             .methods
             .depositAndLockLp({
                 tokenAAmount,
@@ -2526,5 +2550,113 @@ describe("insurance-fund", () => {
                 lockupLpTokenVault
             })
             .rpc();
+
+        await sleep(10);
+
+        const {
+            meta: {
+                preTokenBalances,
+                postTokenBalances
+            }
+        } = await provider.connection.getParsedTransaction(transaction, "confirmed");
+
+        const preTokenAPoolBalance = preTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == liquidityPool.toString());
+        const preTokenBPoolBalance = preTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == liquidityPool.toString());
+        const postTokenAPoolBalance = postTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == liquidityPool.toString());
+        const postTokenBPoolBalance = postTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == liquidityPool.toString());
+
+        expect(
+            new BN(postTokenAPoolBalance.uiTokenAmount.amount)
+                .sub(
+                    new BN(preTokenAPoolBalance.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        expect(
+            new BN(postTokenBPoolBalance.uiTokenAmount.amount)
+                .sub(
+                    new BN(preTokenBPoolBalance.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        const preUserTokenAAccount = preTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == provider.publicKey.toString());
+        const preUserTokenBAccount = preTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == provider.publicKey.toString());
+        const postUserTokenAAccount = postTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == provider.publicKey.toString());
+        const postUserTokenBAccount = postTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == provider.publicKey.toString());
+
+        expect(
+            new BN(preUserTokenAAccount.uiTokenAmount.amount)
+                .sub(
+                    new BN(postUserTokenAAccount.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        expect(
+            new BN(preUserTokenBAccount.uiTokenAmount.amount)
+                .sub(
+                    new BN(postUserTokenBAccount.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        const assetAPrice = await getOraclePriceFromAccount(tokenAOracle.fields[0].toString());
+        const assetBPrice = await getOraclePriceFromAccount(tokenBOracle.fields[0].toString());
+
+        const lpTokenToMint = calculateLpToken(
+            new BN(lpTokenPre.supply.toString()),
+            new BN(preTokenAPoolBalance.uiTokenAmount.amount),
+            new BN(preTokenBPoolBalance.uiTokenAmount.amount),
+            tokenAAmount,
+            tokenBAmount,
+            assetAPrice,
+            assetBPrice
+        );
+
+        const preLockupLpTokenVaultBalance = preTokenBalances.find(({ mint, owner }) => mint == lpToken.toString() && owner == lpLockup.toString());
+        const postLockupLpTokenVaultBalance = postTokenBalances.find(({ mint, owner }) => mint == lpToken.toString() && owner == lpLockup.toString());
+
+        const lpTokenChange = new BN(
+            postLockupLpTokenVaultBalance.uiTokenAmount.amount
+        )
+            .sub(
+                new BN(preLockupLpTokenVaultBalance.uiTokenAmount.amount)
+            );
+
+        expect(
+            lpTokenChange.toNumber()
+        ).approximately(
+            lpTokenToMint.toNumber(),
+            lpTokenToMint.divn(100).toNumber() // 1% delta
+        );
+
+        const preDepositReceiptTokenAccountBalance: TokenBalance = preTokenBalances.find(({ mint, owner }) => mint == receiptToken.toString() && owner == position.toString());
+        const postDepositReceiptTokenAccountBalance = postTokenBalances.find(({ mint, owner }) => mint == receiptToken.toString() && owner == position.toString());
+
+        const receiptTokenShouldMint = calculateReceiptToken(
+            new BN(receiptTokenPre.supply.toString()),
+            lpTokenChange,
+            new BN(lockupLpTokenVaultPre.amount.toString())
+        );
+
+        expect(
+            new BN(postDepositReceiptTokenAccountBalance.uiTokenAmount.amount)
+                .sub(new BN(preDepositReceiptTokenAccountBalance ? preDepositReceiptTokenAccountBalance.uiTokenAmount.amount : 0))
+                .toNumber()
+        )
+        .approximately(
+            receiptTokenShouldMint.toNumber(),
+            receiptTokenShouldMint.divn(100).toNumber() // 1% drift allowed
+        );
     });
 });

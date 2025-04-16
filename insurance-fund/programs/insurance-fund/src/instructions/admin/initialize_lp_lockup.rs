@@ -16,11 +16,14 @@ pub fn initialize_lp_lockup(
 ) -> Result<()> {
     let lp_lockup = &mut ctx.accounts.lp_lockup;
     let lockup_receipt_token = &mut ctx.accounts.lockup_receipt_token;
+    let liquidity_pool = &ctx.accounts.liquidity_pool;
 
     lp_lockup.set_inner(LpLockup { 
         duration: args.duration_seconds,
         deposits: 0,
-        receipt_token: lockup_receipt_token.key()
+        receipt_token: lockup_receipt_token.key(),
+        liquidity_pool: liquidity_pool.key(),
+        bump: ctx.bumps.lp_lockup
     });
 
     Ok(())

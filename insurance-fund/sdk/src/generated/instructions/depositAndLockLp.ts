@@ -44,7 +44,7 @@ export const depositAndLockLpStruct = new beet.BeetArgsStruct<
  * @property [] liquidityPool
  * @property [_writable_] lpLockup
  * @property [_writable_] position
- * @property [] receiptToken
+ * @property [_writable_] receiptToken
  * @property [_writable_] depositReceiptTokenAccount
  * @property [_writable_] lpToken
  * @property [_writable_] lockupLpTokenVault
@@ -132,7 +132,7 @@ export function createDepositAndLockLpInstruction(
     },
     {
       pubkey: accounts.receiptToken,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {

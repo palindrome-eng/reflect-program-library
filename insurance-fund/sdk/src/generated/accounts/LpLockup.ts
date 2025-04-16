@@ -15,9 +15,11 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type LpLockupArgs = {
+  bump: number
   duration: beet.bignum
   deposits: beet.bignum
   receiptToken: web3.PublicKey
+  liquidityPool: web3.PublicKey
 }
 
 export const lpLockupDiscriminator = [115, 87, 100, 152, 145, 58, 126, 24]
@@ -30,16 +32,24 @@ export const lpLockupDiscriminator = [115, 87, 100, 152, 145, 58, 126, 24]
  */
 export class LpLockup implements LpLockupArgs {
   private constructor(
+    readonly bump: number,
     readonly duration: beet.bignum,
     readonly deposits: beet.bignum,
-    readonly receiptToken: web3.PublicKey
+    readonly receiptToken: web3.PublicKey,
+    readonly liquidityPool: web3.PublicKey
   ) {}
 
   /**
    * Creates a {@link LpLockup} instance from the provided args.
    */
   static fromArgs(args: LpLockupArgs) {
-    return new LpLockup(args.duration, args.deposits, args.receiptToken)
+    return new LpLockup(
+      args.bump,
+      args.duration,
+      args.deposits,
+      args.receiptToken,
+      args.liquidityPool
+    )
   }
 
   /**
@@ -145,6 +155,7 @@ export class LpLockup implements LpLockupArgs {
    */
   pretty() {
     return {
+      bump: this.bump,
       duration: (() => {
         const x = <{ toNumber: () => number }>this.duration
         if (typeof x.toNumber === 'function') {
@@ -168,6 +179,7 @@ export class LpLockup implements LpLockupArgs {
         return x
       })(),
       receiptToken: this.receiptToken.toBase58(),
+      liquidityPool: this.liquidityPool.toBase58(),
     }
   }
 }
@@ -184,9 +196,11 @@ export const lpLockupBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['bump', beet.u8],
     ['duration', beet.u64],
     ['deposits', beet.u64],
     ['receiptToken', beetSolana.publicKey],
+    ['liquidityPool', beetSolana.publicKey],
   ],
   LpLockup.fromArgs,
   'LpLockup'
