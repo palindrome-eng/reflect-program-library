@@ -1,22 +1,37 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum CustomError {
-    #[msg("Vault PDA is derived with invalid vault seed.")]
-    InvalidVaultSeed,
+pub enum ReflectError {
+    #[msg("Invalid transaction signer.")]
+    InvalidSigner,
 
-    #[msg("Insufficient deposit amount.")]
-    InsufficientDeposit,
+    #[msg("ProgramAccountsMismatch")]
+    ProgramAccountsMismatch,
 
-    #[msg("Lockup period has not expired.")]
-    LockupNotExpired,
+    #[msg("InvalidReceiptTokenSupply")]
+    InvalidReceiptTokenSupply,
 
-    #[msg("Invalid mint authority. Move mint authority of the receipt token to the vault PDA.")]
-    InvalidMintAuthority,
+    #[msg("InvalidReceiptTokenMintAuthority")]
+    InvalidReceiptTokenMintAuthority,
 
-    #[msg("Invalid freeze authority. Move freeze authority of the receipt token to the vault PDA, or remove it completely.")]
-    InvalidFreezeAuthority,
+    #[msg("InvalidReceiptTokenFreezeAuthority")]
+    InvalidReceiptTokenFreezeAuthority,
 
-    #[msg("Supply of the receipt token has to be 0. Pre-minting is not allowed.")]
-    NonZeroReceiptSupply
+    #[msg("InvalidReceiptTokenSetup")]
+    InvalidReceiptTokenSetup,
+
+    #[msg("InvalidReceiptTokenDecimals")]
+    InvalidReceiptTokenDecimals,
+
+    #[msg("ZeroDivision")]
+    ZeroDivision,
+
+    #[msg("MathOverflow")]
+    MathOverflow,
+
+    #[msg("MissingAccounts")]
+    MissingAccounts,
+
+    #[msg("AmountTooLow")]
+    AmountTooLow
 }

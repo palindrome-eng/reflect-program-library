@@ -1,134 +1,131 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::instruction;
-use anchor_spl::token::{
-    Mint, 
-    Token, 
-    TokenAccount, 
-    Transfer,
-    MintTo,
-    transfer,
-    mint_to
-};
-use crate::state::*;
-use crate::errors::*;
-use crate::constants::*;
+use anchor_spl::token::{Mint, TokenAccount, Token};
+use crate::constants::{VAULT_SEED, VAULT_POOL_SEED};
+use crate::state::Vault;
+use crate::errors::ReflectError;
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct DepositArgs {
+    pub vault_id: u64,
+    pub amount: u64,
+    pub is_rewards: bool,
+}
 
 pub fn deposit(
-    ctx: Context<Deposit>, 
-    amount: u64,
-    vault_id: u64
+    ctx: Context<Deposit>,
+    args: DepositArgs
 ) -> Result<()> {
-    let user = &ctx.accounts.user;
-    let vault = &mut ctx.accounts.vault;
-    let deposit_pool = &ctx.accounts.deposit_pool;
-    let reward_pool = &ctx.accounts.reward_pool;
 
-    let token_program = &ctx.accounts.token_program;
-    let deposit_token_account = &ctx.accounts.deposit_token_account;
-    let receipt_token_mint = &ctx.accounts.receipt_token_mint;
-    let receipt_token_account = &ctx.accounts.receipt_token_account;
-
-    require!(
-        amount >= vault.min_deposit, 
-        CustomError::InsufficientDeposit
-    );
-
-    // Calculate receipt token amount
-    let receipt_amount = if deposit_pool.amount > 0 {
-        amount * deposit_pool.amount / (deposit_pool.amount + reward_pool.amount)
-    } else {
-        amount
-    };
-
-    vault.total_receipt_supply = vault
-        .total_receipt_supply
-        .checked_add(receipt_amount)
-        .ok_or(ProgramError::InvalidInstructionData)?;
+    let DepositArgs {
+        amount,
+        is_rewards,
+        vault_id: _
+    } = args;
     
-    transfer(
-        CpiContext::new(
-            token_program.to_account_info(), 
-            Transfer {
-                from: deposit_token_account.to_account_info(),
-                to: deposit_pool.to_account_info(),
-                authority: user.to_account_info(),
-            }
-        ), 
-        amount
+    let Deposit {
+        signer,
+        receipt_token,
+        signer_receipt_token_account,
+        pool,
+        signer_deposit_token_account,
+        vault,
+        token_program,
+        deposit_token: _,
+    } = ctx.accounts;
+
+    vault.deposit(
+        amount,
+        signer,
+        signer_deposit_token_account,
+        pool,
+        token_program
     )?;
-    
-    mint_to(
-        CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            MintTo {
-                mint: receipt_token_mint.to_account_info(),
-                to: receipt_token_account.to_account_info(),
-                authority: vault.to_account_info(),
-            },
-            &[&[
-                VAULT_SEED.as_bytes(),
-                &vault_id.to_le_bytes(),
-                &[ctx.bumps.vault]
-            ]]
-        ), 
-        receipt_amount
-    )?;
+
+    // If normal deposit, compute and mint receipts.
+    // If rewards, just transfer tokens into the pool.
+    if !is_rewards {
+        require!(
+            receipt_token.is_some(),
+            ReflectError::MissingAccounts
+        );
+
+        require!(
+            signer_receipt_token_account.is_some(),
+            ReflectError::MissingAccounts
+        );
+
+        let receipts: u64 = vault.compute_receipt_token(
+            amount,
+            pool.amount,
+            receipt_token
+                .as_ref()
+                .unwrap()
+                .supply
+        )?;
+
+        vault.mint_receipt_tokens(
+            receipts,
+            vault,
+            signer_receipt_token_account.as_ref().unwrap(),
+            receipt_token.as_ref().unwrap(),
+            token_program
+        )?
+    }
 
     Ok(())
 }
 
 #[derive(Accounts)]
 #[instruction(
-    amount: u64,
-    vault_id: u64
+    args: DepositArgs
 )]
 pub struct Deposit<'info> {
-    #[account(
-        mut
-    )]
-    pub user: Signer<'info>,
+    #[account()]
+    pub signer: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [
             VAULT_SEED.as_bytes(),
-            vault_id.to_le_bytes().as_ref()
+            &args.vault_id.to_le_bytes()
         ],
-        bump,
+        bump
     )]
     pub vault: Account<'info, Vault>,
 
     #[account(
-        mut,
-        constraint = deposit_token_account.mint == vault.deposit_token_mint,
-        constraint = deposit_token_account.owner == user.key(),
+        seeds = [
+            VAULT_POOL_SEED.as_bytes(),
+            vault.key().as_ref()
+        ],
+        bump
     )]
-    pub deposit_token_account: Account<'info, TokenAccount>,
+    pub pool: Account<'info, TokenAccount>,
+
+    #[account(
+        address = vault.deposit_token_mint
+    )]
+    pub deposit_token: Account<'info, Mint>,
 
     #[account(
         mut,
-        constraint = receipt_token_account.mint == vault.receipt_token_mint,
-        constraint = receipt_token_account.owner == user.key(),
+        token::mint = deposit_token,
+        token::authority = signer
     )]
-    pub receipt_token_account: Account<'info, TokenAccount>,
+    pub signer_deposit_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        address = vault.receipt_token_mint,
+    )]
+    pub receipt_token: Option<Account<'info, Mint>>,
 
     #[account(
         mut,
-        address = vault.reward_pool
+        constraint = receipt_token.is_some() @ ReflectError::MissingAccounts,
+        token::mint = receipt_token,
+        token::authority = signer,
     )]
-    pub reward_pool: Account<'info, TokenAccount>,
+    pub signer_receipt_token_account: Option<Account<'info, TokenAccount>>,
 
-    #[account(
-        mut, 
-        address = vault.deposit_pool
-    )]
-    pub deposit_pool: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        address = vault.receipt_token_mint
-    )]
-    pub receipt_token_mint: Account<'info, Mint>,
-
+    #[account()]
     pub token_program: Program<'info, Token>,
 }
