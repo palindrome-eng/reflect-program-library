@@ -67,9 +67,6 @@ pub fn withdraw(
 
     let clock = &Clock::get()?;
 
-    msg!("cooldown.unlock_ts: {:?}", cooldown.unlock_ts);
-    msg!("clock.unix_timestamp: {:?}", clock.unix_timestamp);
-
     require!(
         cooldown.unlock_ts < clock.unix_timestamp as u64,
         InsuranceFundError::CooldownInForce
@@ -318,7 +315,7 @@ pub struct Withdraw<'info> {
             deposit.key().as_ref()
         ],
         bump,
-        space = Intent::LEN,
+        space = 8 + Intent::INIT_SPACE,
     )]
     pub intent: Option<Account<'info, Intent>>,
 

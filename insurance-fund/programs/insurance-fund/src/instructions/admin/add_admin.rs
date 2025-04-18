@@ -73,7 +73,7 @@ pub struct AddAdmin<'info> {
             args.address.as_ref(),
         ],
         bump,
-        space = Admin::SIZE,
+        space = 8 + Admin::INIT_SPACE,
     )]
     pub new_admin: Account<'info, Admin>,
 

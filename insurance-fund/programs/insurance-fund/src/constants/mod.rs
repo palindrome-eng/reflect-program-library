@@ -49,4 +49,10 @@ pub const DEPOSIT_RECEIPT_VAULT_SEED: &str = "deposit_receipt_vault";
 pub const DEBT_RECORD_SEED: &str = "debt_record";
 
 #[constant]
+pub const LIQUIDITY_POOL_SEED: &str = "liquidity_pool";
+
+#[constant]
+pub const LIQUIDITY_POOL_LOCKUP_SEED: &str = "lp_lockup";
+
+#[constant]
 pub const ORACLE_MAXIMUM_AGE: u64 = 60 * 60; // ?

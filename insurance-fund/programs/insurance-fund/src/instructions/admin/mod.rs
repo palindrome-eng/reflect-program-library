@@ -27,3 +27,9 @@ pub use update_deposit_cap::*;
 
 pub mod rebalance;
 pub use rebalance::*;
+
+pub mod initialize_lp;
+pub use initialize_lp::*;
+
+pub mod initialize_lp_lockup;
+pub use initialize_lp_lockup::*;

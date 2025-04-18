@@ -19,18 +19,12 @@ pub fn initialize_lockup(
     ctx: Context<InitializeLockup>,
     args: InitializeLockupArgs
 ) -> Result<()> {
-    msg!("check 0");
-    
     let settings = &mut ctx.accounts.settings;
     let lockup = &mut ctx.accounts.lockup;
     let asset_mint = &ctx.accounts.asset_mint;
     let asset = &mut ctx.accounts.asset;
     let receipt_mint = &mut ctx.accounts.pool_share_receipt;
     let signer = &ctx.accounts.signer;
-
-    msg!("check 1");
-
-    msg!("check 2");
 
     // lockup.initialize_hot_vault(
     //     &signer, 
@@ -129,7 +123,7 @@ pub struct InitializeLockup<'info> {
         ],
         bump,
         payer = signer,
-        space = Lockup::SIZE,
+        space = 8 + Lockup::INIT_SPACE,
     )]
     pub lockup: Box<Account<'info, Lockup>>,
 

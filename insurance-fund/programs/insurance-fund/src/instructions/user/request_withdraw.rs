@@ -257,7 +257,7 @@ pub struct RequestWithdrawal<'info> {
         ],
         bump,
         payer = user,
-        space = Cooldown::SIZE,
+        space = 8 + Cooldown::INIT_SPACE,
     )]
     pub cooldown: Account<'info, Cooldown>,
 

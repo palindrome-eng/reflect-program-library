@@ -6,6 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 insurance_fund = "rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D"
+lp = "Wqq4jCGbvpDLW56ZxS4Z4xfamZD4ApSbjae35uGqzss"
 
 [registry]
 url = "https://api.apr.dev"
@@ -19,13 +20,23 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/insurance-fund.ts"
 test-no-slash = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/scenarios/no-slash.ts"
 test-sdk = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/restaking-sdk.ts"
 
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = false
+
 [test.validator]
+bind_address = "0.0.0.0"
 url = "https://api.mainnet-beta.solana.com"
+ledger = ".anchor/test-ledger"
+rpc_port = 8899
 
 [[test.validator.clone]]
 address = "H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG"
+
 [[test.validator.clone]]
 address = "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"
+
 [[test.validator.clone]]
 address = "rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ"
 [[test.validator.clone]]

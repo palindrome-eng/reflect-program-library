@@ -80,6 +80,18 @@ pub enum InsuranceFundError {
     #[msg("InvalidReceiptTokenSetup")]
     InvalidReceiptTokenSetup,
 
+    #[msg("InvalidReceiptTokenDecimals")]
+    InvalidReceiptTokenDecimals,
+
+    #[msg("InvalidReceiptTokenMintAuthority")]
+    InvalidReceiptTokenMintAuthority,
+
+    #[msg("InvalidReceiptTokenSupply")]
+    InvalidReceiptTokenSupply,
+
+    #[msg("InvalidReceiptTokenFreezeAuthority")]
+    InvalidReceiptTokenFreezeAuthority,
+
     #[msg("MinimumSuperadminsRequired")]
     MinimumSuperadminsRequired,
 
@@ -97,4 +109,7 @@ pub enum InsuranceFundError {
 
     #[msg("SlippageExceeded")]
     SlippageExceeded,
+
+    #[msg("InvalidTokenOrder")]
+    InvalidTokenOrder,
 }

@@ -7,7 +7,8 @@ import {
     SystemProgram,
     LAMPORTS_PER_SOL,
     SYSVAR_CLOCK_PUBKEY,
-    TransactionMessage, Connection, TransactionInstruction
+    TransactionMessage, Connection, TransactionInstruction,
+    TokenBalance
 } from "@solana/web3.js";
 import {before, it} from "mocha";
 import {
@@ -17,7 +18,8 @@ import {
     DebtRecord,
     Deposit,
     Intent,
-    Lockup, Permissions,
+    LiquidityPool,
+    Lockup, LpLockup, Permissions,
     PROGRAM_ID,
     Settings,
 } from "../sdk/src/generated";
@@ -45,6 +47,10 @@ import {
 } from "@metaplex-foundation/mpl-token-metadata";
 import {Restaking} from "../sdk/src";
 import getOraclePriceFromAccount from "./helpers/getOraclePriceFromAccount";
+import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
+import comparePubkeys from "./helpers/comparePubkeys";
+import calculateLpToken from "./helpers/calculateLpToken";
+import calculateReceiptToken from "./helpers/calculateReceiptToken";
 
 async function createReceiptToken(
     signer: PublicKey,
@@ -2221,5 +2227,436 @@ describe("insurance-fund", () => {
                     .abs()
                     .toNumber()
             );
+    });
+
+    it("Initializes liquidity pool", async () => {
+        const admin = Restaking.deriveAdmin(provider.publicKey);
+
+        let tokenA = lsts[0];
+        let tokenB = lsts[1];
+
+        // swap to enforce ordering
+        if (comparePubkeys(tokenA, tokenB) < 0) {
+            let temp = tokenA;
+            tokenA = tokenB;
+            tokenB = temp;
+        }
+
+        const [liquidityPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("liquidity_pool"),
+                tokenA.toBuffer(),
+                tokenB.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const {
+            mint: lpTokenMint,
+            instructions: preInstructions
+        } = await createReceiptToken(
+            provider.publicKey,
+            liquidityPool,
+            provider.connection,
+            tokenA,
+            false
+        );
+
+        const tokenAAsset = Restaking.deriveAsset(tokenA);
+        const tokenBAsset = Restaking.deriveAsset(tokenB);
+
+        const tokenAPool = getAssociatedTokenAddressSync(
+            tokenA,
+            liquidityPool,
+            true
+        );
+
+        const tokenBPool = getAssociatedTokenAddressSync(
+            tokenB,
+            liquidityPool,
+            true
+        );
+
+        await program
+            .methods
+            .initializeLp()
+            .preInstructions(preInstructions)
+            .accounts({
+                admin,
+                associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+                liquidityPool,
+                lpTokenMint: lpTokenMint.publicKey,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
+                tokenA,
+                tokenAAsset,
+                tokenAPool,
+                tokenB,
+                tokenBAsset,
+                tokenBPool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([lpTokenMint])
+            .rpc();
+    
+        const {
+            lpToken,
+            tokenA: setTokenA,
+            tokenB: setTokenB
+        } = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        expect(setTokenA.toString()).eq(tokenA.toString());
+        expect(tokenB.toString()).eq(setTokenB.toString());
+        expect(lpToken.toString()).eq(lpTokenMint.publicKey.toString());
+    });
+
+    it('Initializes LP lockup', async () => {
+        await sleep(10);
+
+        // 10 second lockup
+        const durationSeconds = new BN(10);
+
+        let tokenA = lsts[0];
+        let tokenB = lsts[1];
+
+        // swap to enforce ordering
+        if (comparePubkeys(tokenA, tokenB) < 0) {
+            let temp = tokenA;
+            tokenA = tokenB;
+            tokenB = temp;
+        }
+
+        const [liquidityPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("liquidity_pool"),
+                tokenA.toBuffer(),
+                tokenB.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const {
+            lpToken
+        } = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        const [lpLockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lp_lockup"),
+                liquidityPool.toBuffer(),
+                new BN(durationSeconds).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const {
+            instructions: preInstructions,
+            mint: receiptMintKeypair
+        } = await createReceiptToken(
+            provider.publicKey,
+            lpLockup,
+            provider.connection,
+            lpToken,
+            false
+        );
+
+        const lockupLpTokenVault = getAssociatedTokenAddressSync(
+            lpToken,
+            lpLockup,
+            true
+        );
+
+        await program
+            .methods
+            .initializeLpLockup({
+                durationSeconds
+            })
+            .preInstructions(preInstructions)
+            .accounts({
+                admin,
+                liquidityPool,
+                lockupReceiptToken: receiptMintKeypair.publicKey,
+                lpLockup,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
+                associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+                lockupLpTokenVault,
+                lpToken,
+                tokenProgram: TOKEN_PROGRAM_ID
+            })
+            .signers([receiptMintKeypair])
+            .rpc();
+    });
+
+    // Things to check:
+    // - both tokens go to their respective pools
+    // - amount of LP token minted matches
+    // - LP token get deposited into the lockup-specific pool
+    // - lockup receipt token gets minted into the position account vault
+    it("Deposits tokens into LP and locks LP tokens in a lockup, atomically.", async () => {
+        await sleep(10);
+        const durationSeconds = new BN(10);
+        const tokenAAmount = new BN(10_000 * LAMPORTS_PER_SOL);
+        const tokenBAmount = new BN(10_000 * LAMPORTS_PER_SOL);
+
+        let tokenA = lsts[0];
+        let tokenB = lsts[1];
+
+        // swap to enforce ordering
+        if (comparePubkeys(tokenA, tokenB) < 0) {
+            let temp = tokenA;
+            tokenA = tokenB;
+            tokenB = temp;
+        }
+
+        await mintTokens(tokenA, provider, 10_000 * LAMPORTS_PER_SOL, provider.publicKey);
+        await mintTokens(tokenB, provider, 10_000 * LAMPORTS_PER_SOL, provider.publicKey);
+        await sleep(5);
+
+        const [liquidityPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("liquidity_pool"),
+                tokenA.toBuffer(),
+                tokenB.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const [lpLockup] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("lp_lockup"),
+                liquidityPool.toBuffer(),
+                new BN(durationSeconds).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const {
+            lpToken,
+        } = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        const {
+            deposits,
+            receiptToken
+        } = await LpLockup.fromAccountAddress(
+            provider.connection,
+            lpLockup
+        );
+
+        const [position] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("deposit"),
+                lpLockup.toBuffer(),
+                new BN(deposits).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const tokenAAsset = Restaking.deriveAsset(tokenA);
+        const tokenBAsset = Restaking.deriveAsset(tokenB);
+
+        const {
+            oracle: tokenAOracle
+        } = await Asset.fromAccountAddress(
+            provider.connection,
+            tokenAAsset
+        );
+
+        const {
+            oracle: tokenBOracle
+        } = await Asset.fromAccountAddress(
+            provider.connection,
+            tokenBAsset
+        );
+
+        const tokenAPool = getAssociatedTokenAddressSync(
+            tokenA,
+            liquidityPool,
+            true
+        );
+
+        const tokenBPool = getAssociatedTokenAddressSync(
+            tokenB,
+            liquidityPool,
+            true
+        );
+
+        const userTokenAAccount = getAssociatedTokenAddressSync(
+            tokenA,
+            provider.publicKey,
+        );
+
+        const userTokenBAccount = getAssociatedTokenAddressSync(
+            tokenB,
+            provider.publicKey,
+        );
+
+        const depositReceiptTokenAccount = Restaking.deriveDepositReceiptVault(position, receiptToken);
+        const lockupLpTokenVault = getAssociatedTokenAddressSync(
+            lpToken,
+            lpLockup,
+            true
+        );
+
+        const lpTokenPre = await getMint(
+            provider.connection,
+            lpToken
+        );
+
+        const receiptTokenPre = await getMint(
+            provider.connection,
+            receiptToken
+        );
+
+        const lockupLpTokenVaultPre = await getAccount(
+            provider.connection,
+            lockupLpTokenVault
+        );
+
+        const transaction = await program
+            .methods
+            .depositAndLockLp({
+                tokenAAmount,
+                tokenBAmount
+            })
+            .accounts({
+                depositReceiptTokenAccount,
+                liquidityPool,
+                lpLockup,
+                lpToken,
+                position,
+                receiptToken,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
+                tokenA,
+                tokenAAsset,
+                tokenAOracle: tokenAOracle.fields[0],
+                tokenAPool,
+                tokenB,
+                tokenBAsset,
+                tokenBOracle: tokenBOracle.fields[0],
+                tokenBPool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                userTokenAAccount,
+                userTokenBAccount,
+                lockupLpTokenVault
+            })
+            .rpc();
+
+        await sleep(10);
+
+        const {
+            meta: {
+                preTokenBalances,
+                postTokenBalances
+            }
+        } = await provider.connection.getParsedTransaction(transaction, "confirmed");
+
+        const preTokenAPoolBalance = preTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == liquidityPool.toString());
+        const preTokenBPoolBalance = preTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == liquidityPool.toString());
+        const postTokenAPoolBalance = postTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == liquidityPool.toString());
+        const postTokenBPoolBalance = postTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == liquidityPool.toString());
+
+        expect(
+            new BN(postTokenAPoolBalance.uiTokenAmount.amount)
+                .sub(
+                    new BN(preTokenAPoolBalance.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        expect(
+            new BN(postTokenBPoolBalance.uiTokenAmount.amount)
+                .sub(
+                    new BN(preTokenBPoolBalance.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        const preUserTokenAAccount = preTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == provider.publicKey.toString());
+        const preUserTokenBAccount = preTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == provider.publicKey.toString());
+        const postUserTokenAAccount = postTokenBalances.find(({ mint, owner }) => mint == tokenA.toString() && owner == provider.publicKey.toString());
+        const postUserTokenBAccount = postTokenBalances.find(({ mint, owner }) => mint == tokenB.toString() && owner == provider.publicKey.toString());
+
+        expect(
+            new BN(preUserTokenAAccount.uiTokenAmount.amount)
+                .sub(
+                    new BN(postUserTokenAAccount.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        expect(
+            new BN(preUserTokenBAccount.uiTokenAmount.amount)
+                .sub(
+                    new BN(postUserTokenBAccount.uiTokenAmount.amount)
+                )
+                .toNumber()
+        ).eq(
+            tokenAAmount.toNumber()
+        );
+
+        const assetAPrice = await getOraclePriceFromAccount(tokenAOracle.fields[0].toString());
+        const assetBPrice = await getOraclePriceFromAccount(tokenBOracle.fields[0].toString());
+
+        const lpTokenToMint = calculateLpToken(
+            new BN(lpTokenPre.supply.toString()),
+            new BN(preTokenAPoolBalance.uiTokenAmount.amount),
+            new BN(preTokenBPoolBalance.uiTokenAmount.amount),
+            tokenAAmount,
+            tokenBAmount,
+            assetAPrice,
+            assetBPrice
+        );
+
+        const preLockupLpTokenVaultBalance = preTokenBalances.find(({ mint, owner }) => mint == lpToken.toString() && owner == lpLockup.toString());
+        const postLockupLpTokenVaultBalance = postTokenBalances.find(({ mint, owner }) => mint == lpToken.toString() && owner == lpLockup.toString());
+
+        const lpTokenChange = new BN(
+            postLockupLpTokenVaultBalance.uiTokenAmount.amount
+        )
+            .sub(
+                new BN(preLockupLpTokenVaultBalance.uiTokenAmount.amount)
+            );
+
+        expect(
+            lpTokenChange.toNumber()
+        ).approximately(
+            lpTokenToMint.toNumber(),
+            lpTokenToMint.divn(100).toNumber() // 1% delta
+        );
+
+        const preDepositReceiptTokenAccountBalance: TokenBalance = preTokenBalances.find(({ mint, owner }) => mint == receiptToken.toString() && owner == position.toString());
+        const postDepositReceiptTokenAccountBalance = postTokenBalances.find(({ mint, owner }) => mint == receiptToken.toString() && owner == position.toString());
+
+        const receiptTokenShouldMint = calculateReceiptToken(
+            new BN(receiptTokenPre.supply.toString()),
+            lpTokenChange,
+            new BN(lockupLpTokenVaultPre.amount.toString())
+        );
+
+        expect(
+            new BN(postDepositReceiptTokenAccountBalance.uiTokenAmount.amount)
+                .sub(new BN(preDepositReceiptTokenAccountBalance ? preDepositReceiptTokenAccountBalance.uiTokenAmount.amount : 0))
+                .toNumber()
+        )
+        .approximately(
+            receiptTokenShouldMint.toNumber(),
+            receiptTokenShouldMint.divn(100).toNumber() // 1% drift allowed
+        );
     });
 });

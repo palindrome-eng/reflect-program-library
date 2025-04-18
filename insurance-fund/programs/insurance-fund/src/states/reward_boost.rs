@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::errors::InsuranceFundError;
 
 #[account]
+#[derive(InitSpace)]
 pub struct RewardBoost {
     pub index: u64,
     // Minimum USD value of the deposit to be included in the tier.
@@ -13,8 +14,6 @@ pub struct RewardBoost {
 }
 
 impl RewardBoost {
-    pub const SIZE: usize = 8 + 8 + 3 * 8;
-
     pub fn validate(
         &self,
         amount: u64
