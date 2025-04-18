@@ -1,13 +1,11 @@
-pub mod create_vault;
-pub mod init_vault_pools;
-pub mod deposit;
-pub mod withdraw;
-pub mod initialize_protocol;
-pub mod lockup;
+pub mod initialize;
+pub use initialize::*;
 
+pub mod create_vault;
 pub use create_vault::*;
-pub use init_vault_pools::*;
+
+pub mod deposit;
 pub use deposit::*;
+
+pub mod withdraw;
 pub use withdraw::*;
-pub use initialize_protocol::*;
-pub use lockup::*;

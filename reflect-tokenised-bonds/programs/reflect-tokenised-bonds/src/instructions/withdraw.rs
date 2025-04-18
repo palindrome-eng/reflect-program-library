@@ -1,133 +1,82 @@
-use anchor_lang::{prelude::*, solana_program::instruction};
+use anchor_lang::prelude::*;
 use anchor_spl::token::{
-    Burn,
     Token, 
     TokenAccount, 
-    Transfer,
-    burn, 
-    transfer,
     Mint,
 };
 use crate::state::*;
+use crate::errors::ReflectError;
 use crate::constants::*;
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct WithdrawArgs {
+    vault_id: u64,
+    amount: u64,
+}
 
 pub fn withdraw(
     ctx: Context<Withdraw>,
-    lockup_id: u64,
-    vault_id: u64
+    args: WithdrawArgs
 ) -> Result<()> {
-    let user = &ctx.accounts.user;
-    let vault = &ctx.accounts.vault;
-    let lockup = &ctx.accounts.lockup;
-    let lockup_receipt_token_account = &ctx.accounts.lockup_receipt_token_account;
-    let user_deposit_token_account = &ctx.accounts.user_deposit_token_account;
-    let deposit_pool = &ctx.accounts.deposit_pool;
-    let reward_pool = &ctx.accounts.reward_pool;
-    let receipt_mint = &ctx.accounts.receipt_mint;
-    let token_program = &ctx.accounts.token_program;
+    let WithdrawArgs {
+        amount,
+        vault_id: _
+    } = args;
 
-    // Check if the lockup period has expired
     require!(
-        Clock::get()?.unix_timestamp >= lockup.unlock_date,
-        crate::errors::CustomError::LockupNotExpired
+        amount > 0,
+        ReflectError::AmountTooLow
     );
 
-    // Calculate the user's share of the total supply
-    let total_supply = deposit_pool.amount + reward_pool.amount;
-    let user_share = lockup.receipt_amount as u128 * total_supply as u128 / vault.total_receipt_supply as u128;
-    let user_share = user_share as u64;
+    let Withdraw {
+        signer,
+        deposit_mint: _,
+        pool,
+        receipt_mint,
+        signer_deposit_token_account,
+        signer_receipt_token_account,
+        token_program,
+        vault
+    } = ctx.accounts;
 
-    // Calculate the amount to withdraw from each pool
-    let deposit_amount = (user_share as u128 * deposit_pool.amount as u128 / total_supply as u128) as u64;
-    let reward_amount = (user_share as u128 * reward_pool.amount as u128 / total_supply as u128) as u64;
-
-    burn(
-        CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            Burn {
-                mint: receipt_mint.to_account_info(),
-                from: lockup_receipt_token_account.to_account_info(),
-                authority: lockup.to_account_info(),
-            },
-            &[&[
-                LOCKUP_SEED.as_bytes(),
-                &lockup_id.to_le_bytes(),
-                &[ctx.bumps.lockup]
-            ]]
-        ), 
-        lockup.receipt_amount
+    let base_token_amount: u64 = vault.compute_base_token(
+        amount,
+        pool.amount,
+        receipt_mint.supply
     )?;
 
-    // Transfer deposit tokens to the user
-    if deposit_amount > 0 {
-        transfer(
-            CpiContext::new_with_signer(
-                token_program.to_account_info(), 
-                Transfer {
-                    from: deposit_pool.to_account_info(),
-                    to: user_deposit_token_account.to_account_info(),
-                    authority: vault.to_account_info(),
-                },
-                &[&[
-                    VAULT_SEED.as_bytes(),
-                    &vault_id.to_le_bytes(),
-                    &[ctx.bumps.vault]
-                ]]
-            ), 
-            deposit_amount
-        )?;
-    }
+    vault.burn_receipt_tokens(
+        amount,
+        signer,
+        signer_receipt_token_account,
+        receipt_mint,
+        token_program
+    )?;
 
-    // Transfer reward tokens to the user
-    if reward_amount > 0 {
-        transfer(
-            CpiContext::new_with_signer(
-                token_program.to_account_info(), 
-                Transfer {
-                    from: reward_pool.to_account_info(),
-                    to: user_deposit_token_account.to_account_info(),
-                    authority: vault.to_account_info(),
-                },
-                &[&[
-                    VAULT_SEED.as_bytes(),
-                    &vault_id.to_le_bytes(),
-                    &[ctx.bumps.vault]
-                ]]
-            ), 
-            reward_amount
-        )?;
-    }
+    vault.withdraw(
+        base_token_amount,
+        vault,
+        signer_deposit_token_account,
+        pool,
+        token_program
+    )?;
 
     Ok(())
 }
 
 #[derive(Accounts)]
 #[instruction(
-    lockup_id: u64,
-    vault_id: u64
+    args: WithdrawArgs
 )]
 pub struct Withdraw<'info> {
     #[account(mut)]
-    pub user: Signer<'info>,
-
-    #[account(
-        mut, 
-        has_one = user,
-        has_one = vault,
-        seeds = [
-            LOCKUP_SEED.as_bytes(),
-            &lockup_id.to_le_bytes()
-        ],
-        bump,
-        close = user,
-    )]
-    pub lockup: Account<'info, LockupState>,
+    pub signer: Signer<'info>,
 
     #[account(
         mut,
         seeds = [
             VAULT_SEED.as_bytes(),
-            &vault_id.to_le_bytes(),
+            &args.vault_id.to_le_bytes(),
         ],
         bump
     )]
@@ -135,35 +84,37 @@ pub struct Withdraw<'info> {
 
     #[account(
         mut,
-        constraint = lockup_receipt_token_account.mint == vault.receipt_token_mint,
-        constraint = lockup_receipt_token_account.owner == lockup.key(),
+        seeds = [
+            VAULT_POOL_SEED.as_bytes(),
+            vault.key().as_ref()
+        ],
+        bump
     )]
-    pub lockup_receipt_token_account: Account<'info, TokenAccount>,
+    pub pool: Account<'info, TokenAccount>,
 
     #[account(
-        mut,
-        constraint = user_deposit_token_account.mint == vault.deposit_token_mint,
-        constraint = user_deposit_token_account.owner == user.key(),
-    )]
-    pub user_deposit_token_account: Account<'info, TokenAccount>,
-
-    #[account(
-        mut, 
-        address = vault.deposit_pool
-    )]
-    pub deposit_pool: Account<'info, TokenAccount>,
-
-    #[account(
-        mut, 
-        address = vault.reward_pool
-    )]
-    pub reward_pool: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
         address = vault.receipt_token_mint
     )]
     pub receipt_mint: Account<'info, Mint>,
+
+    #[account(
+        address = vault.deposit_token_mint
+    )]
+    pub deposit_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        token::authority = signer,
+        token::mint = deposit_mint
+    )]
+    pub signer_deposit_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::authority = signer,
+        token::mint = receipt_mint
+    )]
+    pub signer_receipt_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }

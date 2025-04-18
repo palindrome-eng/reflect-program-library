@@ -59,11 +59,11 @@ pub fn deposit_and_lock_lp(
 
     let lp_tokens = liquidity_pool.compute_lp_tokens_on_deposit(
         lp_token.supply, 
-        token_a_pool.amount, 
+        token_a_pool.amount,
         token_b_pool.amount, 
-        token_a_amount, 
-        token_b_amount, 
-        token_a_price, 
+        token_a_amount,
+        token_b_amount,
+        token_a_price,
         token_b_price
     )?;
 

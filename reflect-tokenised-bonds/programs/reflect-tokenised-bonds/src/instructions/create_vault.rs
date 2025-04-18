@@ -1,65 +1,99 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::state::*;
-use crate::errors::CustomError;
+use crate::errors::ReflectError;
 use crate::constants::{
-    RTB_SEED, VAULT_SEED
+    CONFIG_SEED, 
+    VAULT_SEED,
+    VAULT_POOL_SEED
 };
 
 pub fn create_vault(
-    ctx: Context<CreateVault>,
-    min_deposit: u64,
-    min_lockup: i64,
-    target_yield_rate: u64,
-    vault_seed: u64,
+    ctx: Context<CreateVault>
 ) -> Result<()> {
-    let rtb_protocol = &mut ctx.accounts.rtb_protocol;
-    let vault = &mut ctx.accounts.vault;
+    let CreateVault {
+        signer,
+        config,
+        deposit_mint,
+        receipt_mint,
+        vault,
+        receipt_mint_freeze_authority: _,
+        vault_pool: __,
+        token_program: ___,
+        system_program: ____
+    } = ctx.accounts;
 
-    rtb_protocol.next_vault_seed += 1;
+    vault.set_inner(Vault { 
+        bump: ctx.bumps.vault,
+        index: config.vaults,
+        creator: signer.key(), 
+        deposit_token_mint: deposit_mint.key(), 
+        receipt_token_mint: receipt_mint.key() 
+    });
 
-    vault.admin = *ctx.accounts.admin.key;
-    vault.min_deposit = min_deposit;
-    vault.min_lockup = min_lockup;
-    vault.target_yield_rate = target_yield_rate;
-    vault.total_receipt_supply = 0;
+    config.vaults += 1;
 
     Ok(())
 }
 
 #[derive(Accounts)]
-#[instruction(
-    min_deposit: u64,
-    min_lockup: i64,
-    target_yield_rate: u64,
-    vault_seed: u64,
-)]
 pub struct CreateVault<'info> {
     #[account(mut)]
-    pub admin: Signer<'info>,
+    pub signer: Signer<'info>,
     
     #[account(
         mut,
         seeds = [
-            RTB_SEED.as_bytes()
+            CONFIG_SEED.as_bytes()
         ],
-        constraint = vault_seed == rtb_protocol.next_vault_seed @ CustomError::InvalidVaultSeed,
         bump
     )]
-    rtb_protocol: Account<'info, RTBProtocol>,
+    pub config: Account<'info, Config>,
 
     #[account(
         init,
         seeds = [
             VAULT_SEED.as_bytes(),
-            vault_seed.to_le_bytes().as_ref()
+            &config.vaults.to_le_bytes()
         ],
         bump,
-        payer = admin,
-        space = Vault::LEN
+        payer = signer,
+        space = 8 + Vault::INIT_SPACE
     )]
-    pub vault: Box<Account<'info, Vault>>,
+    pub vault: Account<'info, Vault>,
 
+    #[account()]
+    pub deposit_mint: Account<'info, Mint>,
+
+    #[account(
+        constraint = receipt_mint.supply == 0 @ ReflectError::InvalidReceiptTokenSupply,
+        constraint = receipt_mint.mint_authority.unwrap() == vault.key() @ ReflectError::InvalidReceiptTokenMintAuthority,
+        constraint = receipt_mint.freeze_authority.unwrap() == receipt_mint_freeze_authority.key() @ ReflectError::InvalidReceiptTokenFreezeAuthority,
+        constraint = receipt_mint.is_initialized @ ReflectError::InvalidReceiptTokenSetup,
+        constraint = receipt_mint.decimals == deposit_mint.decimals @ ReflectError::InvalidReceiptTokenDecimals
+    )]
+    pub receipt_mint: Account<'info, Mint>,
+
+    /// CHECK: Up to the signer.
+    #[account()]
+    pub receipt_mint_freeze_authority: UncheckedAccount<'info>,
+
+    #[account(
+        init,
+        payer = signer,
+        token::mint = deposit_mint,
+        token::authority = vault,
+        seeds = [
+            VAULT_POOL_SEED.as_bytes(),
+            vault.key().as_ref()
+        ],
+        bump
+    )]
+    pub vault_pool: Account<'info, TokenAccount>,
+
+    #[account()]
+    pub token_program: Program<'info, Token>,
+
+    #[account()]
     pub system_program: Program<'info, System>,
-
-    pub rent: Sysvar<'info, Rent>,
 }
