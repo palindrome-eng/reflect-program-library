@@ -1,208 +1,233 @@
 use std::ops::Div;
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::Token;
-use anchor_spl::token::{Mint, TokenAccount, transfer, Transfer};
-use crate::errors::InsuranceFundError;
-use crate::constants::*;
-use crate::helpers::get_price_from_pyth;
-use crate::helpers::get_price_from_switchboard;
-use crate::states::*;
+use anchor_spl::{associated_token::AssociatedToken, token::{transfer, Mint, Token, TokenAccount, Transfer}};
+use crate::{constants::{ASSET_SEED, LIQUIDITY_POOL_SEED}, errors::InsuranceFundError, states::{liquidity_pool, Admin, Asset, LiquidityPool}};
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct SwapArgs {
-    from_lockup_id: u64,
-    to_lockup_id: u64,
-    amount_in: u64,
-    min_amount_out: Option<u64>
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct SwapLpArgs {
+    pub amount_in: u64,
+    pub min_out: Option<u64>
 }
 
-pub fn swap(
-    ctx: Context<Swap>,
-    args: SwapArgs
+pub fn swap_lp(
+    ctx: Context<SwapLp>,
+    args: SwapLpArgs
 ) -> Result<()> {
-    let SwapArgs {
-        amount_in,
-        from_lockup_id,
-        min_amount_out,
-        to_lockup_id
+    let SwapLpArgs {
+        min_out,
+        amount_in
     } = args;
 
+    let clock = &Clock::get()?;
+
     let signer = &ctx.accounts.signer;
-    let settings = &ctx.accounts.settings;
+    let liquidity_pool = &ctx.accounts.liquidity_pool;
 
-    let from_asset = &ctx.accounts.from_asset;
-    let from_oracle = &ctx.accounts.from_oracle;
-    let from_lockup = &ctx.accounts.from_lockup;
-    let from_hot_vault = &ctx.accounts.from_hot_vault;
-    let reflect_from_token_account = &ctx.accounts.reflect_from_token_account;
+    let token_a = &ctx.accounts.token_a;
+    let token_b = &ctx.accounts.token_b;
 
-    let to_asset = &ctx.accounts.to_asset;
-    let to_oracle = &ctx.accounts.to_oracle;
-    let to_lockup = &ctx.accounts.to_lockup;
-    let to_hot_vault = &ctx.accounts.to_hot_vault;
-    let reflect_to_token_account = &ctx.accounts.reflect_to_token_account;
+    let token_a_asset = &ctx.accounts.token_a_asset;
+    let token_b_asset = &ctx.accounts.token_b_asset;
+
+    let token_a_oracle = &ctx.accounts.token_a_oracle;
+    let token_b_oracle = &ctx.accounts.token_b_oracle;
+
+    let token_a_price = token_a_asset.get_price(token_a_oracle, clock)?;
+    let token_b_price = token_b_asset.get_price(token_b_oracle, clock)?;
+
+    let token_a_signer_account = &ctx.accounts.token_a_signer_account;
+    let token_b_signer_account = &ctx.accounts.token_b_signer_account;
+
+    let token_a_pool = &ctx.accounts.token_a_pool;
+    let token_b_pool = &ctx.accounts.token_b_pool;
 
     let token_program = &ctx.accounts.token_program;
 
-    let clock = Clock::get()?;
+    let (
+        in_price, 
+        out_price,
+    ) = if a_to_b { 
+        (
+            &token_a_price, 
+            &token_b_price,
+        ) 
+    } else { 
+        (
+            &token_b_price, 
+            &token_a_price,
+        ) 
+    };
 
-    let from_price = from_asset.get_price(from_oracle, &clock)?;
-    let to_price = to_asset.get_price(to_oracle, &clock)?;
-
-    let out_amount: u64 = from_price
+    let amount_out: u64 = in_price
         .mul(amount_in)?
-        .checked_div(
-            to_price
-                .mul(1)?
+        .div(out_price
+            .mul(1)?
         )
-        .ok_or(InsuranceFundError::MathOverflow)?
         .try_into()
         .map_err(|_| InsuranceFundError::MathOverflow)?;
 
-    match min_amount_out {
-        Some(min_amount_out) => {
+    match min_out {
+        Some(amount) => {
             require!(
-                out_amount >= min_amount_out,
+                amount_out >= amount,
                 InsuranceFundError::SlippageExceeded
-            )
+            );
         },
         None => {}
     }
 
-    // Only deposit into hot wallet, since we only withdraw from hot wallet, too.
-    from_lockup.deposit_hot_wallet(
-        amount_in, 
-        signer, 
-        reflect_from_token_account, 
-        from_hot_vault, 
-        token_program
-    )?;
+    let token_a_key = token_a.key();
+    let token_b_key = token_b.key();
 
-    to_lockup.withdraw_hot_vault(
-        out_amount, 
-        to_hot_vault, 
-        to_lockup, 
-        reflect_to_token_account, 
-        token_program
-    )?;
+    let lp_seeds = &[
+        LIQUIDITY_POOL_SEED.as_bytes(),
+        token_a_key.as_ref(),
+        token_b_key.as_ref()
+    ];
+
+    if a_to_b {
+        transfer(
+            CpiContext::new(
+                token_program.to_account_info(), 
+                Transfer { 
+                    from: token_a_signer_account.to_account_info(), 
+                    to: token_a_pool.to_account_info(), 
+                    authority: signer.to_account_info() 
+                }
+            ),
+            amount_in
+        )?;
+
+        transfer(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(), 
+                Transfer { 
+                    from: token_b_pool.to_account_info(), 
+                    to: token_b_signer_account.to_account_info(), 
+                    authority: liquidity_pool.to_account_info()
+                }, 
+                &[lp_seeds]
+            ), 
+            amount_out
+        )?;
+    } else {
+        transfer(
+            CpiContext::new(
+                token_program.to_account_info(), 
+                Transfer { 
+                    from: token_b_signer_account.to_account_info(), 
+                    to: token_b_pool.to_account_info(), 
+                    authority: signer.to_account_info() 
+                }
+            ),
+            amount_in
+        )?;
+
+        transfer(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(), 
+                Transfer { 
+                    from: token_a_pool.to_account_info(), 
+                    to: token_a_signer_account.to_account_info(), 
+                    authority: liquidity_pool.to_account_info() 
+                }, 
+                &[lp_seeds]
+            ), 
+            amount_out
+        )?;
+    }
 
     Ok(())
 }
 
 #[derive(Accounts)]
-#[instruction(
-    args: SwapArgs
-)]
-pub struct Swap<'info> {
-    #[account()]
+pub struct SwapLp<'info> {
+    #[account(
+        mut
+    )]
     pub signer: Signer<'info>,
 
-    #[account(
-        constraint = admin.address == signer.key(),
-        constraint = admin.has_permissions(Permissions::Superadmin),
-    )]
+    #[account()]
     pub admin: Account<'info, Admin>,
 
     #[account(
-        mut,
-        seeds = [
-            SETTINGS_SEED.as_bytes()
-        ],
-        bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        has_one = token_a,
+        has_one = token_b
     )]
-    pub settings: Account<'info, Settings>,
-
-    // For the incoming transfer
-    #[account(
-        constraint = from_lockup.asset_mint == from_token.key()
-    )]
-    pub from_token: Account<'info, Mint>,
+    pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
-        mut,
+        address = liquidity_pool.token_a
+    )]
+    pub token_a: Account<'info, Mint>,
+
+    #[account(
         seeds = [
-            LOCKUP_SEED.as_bytes(),
-            &args.from_lockup_id.to_le_bytes()
+            ASSET_SEED.as_bytes(),
+            token_a.key().as_ref()
         ],
         bump
     )]
-    pub from_lockup: Account<'info, Lockup>,
+    pub token_a_asset: Account<'info, Asset>,
 
+    /// CHECK: Directly checking the address
     #[account(
-        constraint = from_asset.mint == from_token.key()
+        address = *token_a_asset.oracle.key()
     )]
-    pub from_asset: Account<'info, Asset>,
+    pub token_a_oracle: AccountInfo<'info>,
 
-    /// CHECK: Directly validating address
     #[account(
-        constraint = from_oracle.key().eq(from_asset.oracle.key())
+        address = liquidity_pool.token_b
     )]
-    pub from_oracle: AccountInfo<'info>,
+    pub token_b: Account<'info, Mint>,
 
     #[account(
-        mut,
         seeds = [
-            HOT_VAULT_SEED.as_bytes(),
-            from_lockup.key().as_ref(),
-            from_token.key().as_ref(),
-        ],
-        bump,
-    )]
-    pub from_hot_vault: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        token::authority = signer,
-        token::mint = from_token
-    )]
-    pub reflect_from_token_account: Account<'info, TokenAccount>,
-
-    // For the outgoing transfer
-    #[account(
-        constraint = to_lockup.asset_mint == to_token.key()
-    )]
-    pub to_token: Account<'info, Mint>,
-
-    #[account(
-        mut,
-        seeds = [
-            LOCKUP_SEED.as_bytes(),
-            &args.to_lockup_id.to_le_bytes()
+            ASSET_SEED.as_bytes(),
+            token_b.key().as_ref()
         ],
         bump
     )]
-    pub to_lockup: Account<'info, Lockup>,
+    pub token_b_asset: Account<'info, Asset>,
 
+    /// CHECK: Directly checking the address
     #[account(
-        constraint = to_asset.mint == to_token.key()
+        address = *token_b_asset.oracle.key()
     )]
-    pub to_asset: Account<'info, Asset>,
-
-    /// CHECK: Directly validating address
-    #[account(
-        constraint = to_oracle.key().eq(to_asset.oracle.key())
-    )]
-    pub to_oracle: AccountInfo<'info>,
+    pub token_b_oracle: AccountInfo<'info>,
 
     #[account(
         mut,
-        seeds = [
-            HOT_VAULT_SEED.as_bytes(),
-            to_lockup.key().as_ref(),
-            to_token.key().as_ref(),
-        ],
-        bump,
+        associated_token::authority = liquidity_pool,
+        associated_token::mint = token_a
     )]
-    pub to_hot_vault: Account<'info, TokenAccount>,
+    pub token_a_pool: Account<'info, TokenAccount>,
 
     #[account(
-        token::authority = signer,
-        token::mint = to_token
+        mut,
+        associated_token::authority = liquidity_pool,
+        associated_token::mint = token_b
     )]
-    pub reflect_to_token_account: Account<'info, TokenAccount>,
+    pub token_b_pool: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = token_a,
+        token::authority = signer,
+    )]
+    pub token_a_signer_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = token_b,
+        token::authority = signer,
+    )]
+    pub token_b_signer_account: Account<'info, TokenAccount>,
 
     #[account()]
     pub token_program: Program<'info, Token>,
+
+    #[account()]
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }

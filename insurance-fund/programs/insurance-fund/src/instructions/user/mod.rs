@@ -9,6 +9,3 @@ pub use withdraw::*;
 
 pub mod process_intent;
 pub use process_intent::*;
-
-pub mod deposit_and_lock_lp;
-pub use deposit_and_lock_lp::*;

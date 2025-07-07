@@ -7,6 +7,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeLpLockupArgs {
+    pub liquidity_pool_index: u64,
     pub duration_seconds: u64
 }
 
@@ -18,12 +19,17 @@ pub fn initialize_lp_lockup(
     let lockup_receipt_token = &mut ctx.accounts.lockup_receipt_token;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
 
+    require!(
+        liquidity_pool.index == args.liquidity_pool_index,
+        InsuranceFundError::InvalidInput
+    );
+
     lp_lockup.set_inner(LpLockup { 
+        bump: ctx.bumps.lp_lockup,
         duration: args.duration_seconds,
         deposits: 0,
         receipt_token: lockup_receipt_token.key(),
         liquidity_pool: liquidity_pool.key(),
-        bump: ctx.bumps.lp_lockup
     });
 
     Ok(())
@@ -48,7 +54,13 @@ pub struct InitializeLpLockup<'info> {
     )]
     pub admin: Account<'info, Admin>,
 
-    #[account()]
+    #[account(
+        seeds = [
+            LIQUIDITY_POOL_SEED.as_bytes(),
+            &args.liquidity_pool_index.to_le_bytes()
+        ],
+        bump,
+    )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(

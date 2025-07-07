@@ -26,13 +26,6 @@ pub fn add_admin(
 
     new_admin.address = address;
     new_admin.permissions = permissions;
-    
-    match args.permissions {
-        Permissions::Superadmin => {
-            settings.superadmins += 1;
-        },
-        _ => {}
-    };
 
     emit!(ChangeAdminEvent {
         affected_admin: args.address,
