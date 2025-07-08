@@ -116,21 +116,6 @@ pub fn request_withdrawal(
         InsuranceFundError::NotEnoughReceiptTokens
     );
 
-    // // Here we check if the amount is not bigger than allowed share, no matter if the
-    // // cold-hot wallet ratios are currently balanced.
-    // let max_allowed_auto_withdrawal = total_deposits
-    //     .checked_mul(settings.shares_config.hot_wallet_share_bps)
-    //     .ok_or(InsuranceFundError::MathOverflow)?
-    //     .checked_div(10_000)
-    //     .ok_or(InsuranceFundError::MathOverflow)?;
-
-    // // If above passes, we check if the pools are actually balanced 
-    // // well enough to process the withdrawal.
-    // require!(
-    //     base_amount <= lockup_hot_vault.amount,
-    //     InsuranceFundError::PoolImbalance
-    // );
-
     cooldown.receipt_amount = receipt_amount;
     cooldown.deposit_id = deposit_id;
     cooldown.user = user.key();
@@ -141,15 +126,6 @@ pub fn request_withdrawal(
         lockup.receipt_to_reward_exchange_rate_bps_accumulator, 
         receipt_amount
     )?;
-
-    cooldown.rewards = match lockup.yield_mode {
-        YieldMode::Single => {
-            CooldownRewards::Single(rewards)
-        },
-        YieldMode::Dual(_) => {
-            CooldownRewards::Dual([rewards, 0])
-        }
-    };
 
     cooldown.lock(settings.cooldown_duration)?;
 
@@ -289,47 +265,6 @@ pub struct RequestWithdrawal<'info> {
         address = lockup.asset_mint,
     )]
     pub asset_mint: Box<Account<'info, Mint>>,
-
-    #[account(
-        mut,
-        address = settings.reward_config.main
-    )]
-    pub reward_mint: Box<Account<'info, Mint>>,
-
-    #[account(
-        mut,
-        seeds = [
-            HOT_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
-        ],
-        bump,
-    )]
-    pub lockup_hot_vault: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        seeds = [
-            COLD_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
-        ],
-        bump,
-    )]
-    pub lockup_cold_vault: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        seeds = [
-            REWARD_POOL_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            reward_mint.key().as_ref(),
-        ],
-        bump,
-        token::mint = reward_mint,
-        token::authority = lockup,
-    )]
-    pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,

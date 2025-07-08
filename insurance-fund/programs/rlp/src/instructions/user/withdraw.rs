@@ -59,29 +59,7 @@ pub fn withdraw(
         .checked_div(10_000)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
-    let lockup_seeds = &[
-        LOCKUP_SEED.as_bytes(),
-        &lockup_id.to_le_bytes(),
-        &[lockup.bump]
-    ];
-
     let clock = &Clock::get()?;
-
-    require!(
-        cooldown.unlock_ts < clock.unix_timestamp as u64,
-        InsuranceFundError::CooldownInForce
-    );
-
-    let max_allowed_auto_withdrawal = total_deposits
-        .checked_mul(settings.shares_config.hot_wallet_share_bps)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(10_000)
-        .ok_or(InsuranceFundError::MathOverflow)?;
-
-    let reward = match cooldown.rewards {
-        CooldownRewards::Single(base) => base,
-        CooldownRewards::Dual([base, _]) => base
-    };
 
     // Transfer user rewards
     transfer(

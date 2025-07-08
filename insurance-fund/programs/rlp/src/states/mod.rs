@@ -1,9 +1,6 @@
 pub mod settings;
 pub use settings::*;
 
-pub mod deposit;
-pub use deposit::*;
-
 pub mod asset;
 pub use asset::*;
 

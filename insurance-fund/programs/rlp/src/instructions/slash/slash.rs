@@ -45,7 +45,7 @@ pub fn slash(
                 to: destination.to_account_info(),
             },
             &[seeds]
-        ), 
+        ),
         amount
     )?;
 

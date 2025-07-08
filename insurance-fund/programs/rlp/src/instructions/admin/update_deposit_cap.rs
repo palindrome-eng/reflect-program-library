@@ -18,8 +18,8 @@ pub fn update_deposit_cap(
         new_cap
     } = args;
 
-    let lockup = &mut ctx.accounts.lockup;
-    lockup.deposit_cap = new_cap;
+    // let lockup = &mut ctx.accounts.lockup;
+    // lockup.deposit_cap = new_cap;
 
     Ok(())
 }
@@ -52,14 +52,4 @@ pub struct UpdateDepositCap<'info> {
         constraint = !settings.frozen @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
-
-    #[account(
-        mut,
-        seeds = [
-            LOCKUP_SEED.as_bytes(),
-            &args.lockup_id.to_le_bytes()
-        ],
-        bump
-    )]
-    pub lockup: Account<'info, Lockup>,
 }

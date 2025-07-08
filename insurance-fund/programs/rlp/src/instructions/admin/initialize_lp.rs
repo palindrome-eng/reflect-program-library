@@ -35,7 +35,7 @@ pub struct InitializeLiquidityPool<'info> {
             signer.key().as_ref(),
         ],
         bump,
-        constraint = admin,
+        constraint = permissions.can_perform_protocol_action(Action::InitializeLiquidityPool, &settings.access_control) @ InsuranceFundError::InvalidSigner,
     )]
     pub permissions: Account<'info, UserPermissions>,
 

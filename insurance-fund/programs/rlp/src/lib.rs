@@ -6,7 +6,6 @@ pub mod errors;
 pub mod instructions;
 pub mod events;
 pub mod helpers;
-pub mod common;
 
 use crate::instructions::*;
 
@@ -32,13 +31,6 @@ pub mod rlp {
         instructions::initialize_lp(ctx)
     }
 
-    pub fn initialize_lp_lockup(
-        ctx: Context<InitializeLpLockup>,
-        args: InitializeLpLockupArgs
-    ) -> Result<()> {
-        instructions::initialize_lp_lockup(ctx, args)
-    }
-
     // TODO: Add asset should be on liquidity pool level
     pub fn add_asset(
         ctx: Context<AddAsset>,
@@ -49,7 +41,6 @@ pub mod rlp {
     // Freeze should allow for freezing:
     // - liquidity pool
     // - asset
-    // - lp_lockup
     pub fn manage_freeze(
         ctx: Context<ManageFreeze>,
         args: ManageFreezeArgs
@@ -63,24 +54,6 @@ pub mod rlp {
         args: UpdateDepositCapArgs
     ) -> Result<()> {
         instructions::update_deposit_cap(ctx, args)
-    }
-
-    // This should not exist?
-    pub fn boost_rewards(
-        ctx: Context<BoostRewards>,
-        args: BoostRewardsArgs
-    ) -> Result<()> {
-        instructions::boost_rewards(ctx, args)
-    }
-
-    pub fn restake(
-        ctx: Context<Restake>,
-        args: RestakeArgs
-    ) -> Result<()> {
-        instructions::restake(
-            ctx,
-            args
-        )
     }
 
     pub fn slash(
@@ -102,13 +75,6 @@ pub mod rlp {
         args: WithdrawArgs
     ) -> Result<()> {
         instructions::withdraw(ctx, args)
-    }
-
-    pub fn deposit_rewards(
-        ctx: Context<DepositRewards>,
-        args: DepositRewardsArgs
-    ) -> Result<()> {
-        instructions::deposit_rewards(ctx, args)
     }
 
     pub fn swap_lp(

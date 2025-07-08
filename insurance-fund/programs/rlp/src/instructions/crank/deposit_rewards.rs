@@ -101,12 +101,6 @@ pub struct DepositRewards<'info> {
 
     #[account(
         mut,
-        address = settings.reward_config.main
-    )]
-    pub reward_mint: Account<'info, Mint>,
-
-    #[account(
-        mut,
         associated_token::authority = caller,
         associated_token::mint = reward_mint,
     )]
