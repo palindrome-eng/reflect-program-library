@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::Token;
+use spl_math::precise_number::PreciseNumber;
+use switchboard_solana::rust_decimal::prelude::ToPrimitive;
 use crate::errors::InsuranceFundError;
 use crate::states::*;
 use crate::constants::*;
@@ -14,121 +16,189 @@ use anchor_spl::token::{
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
 pub struct WithdrawArgs {
-    pub lockup_id: u64,
-    pub deposit_id: u64,
+    pub liquidity_pool_id: u64,
+    pub cooldown_id: u64,
 }
 
-pub fn withdraw(
-    ctx: Context<Withdraw>,
+pub fn withdraw<'a>(
+    ctx: Context<'_, '_, 'a, 'a, Withdraw<'a>>,
     args: WithdrawArgs
 ) -> Result<()> {
 
     let WithdrawArgs {
-        deposit_id: _,
-        lockup_id,
+        liquidity_pool_id: _,
+        cooldown_id,
     } = args;
 
     let settings = &ctx.accounts.settings;
-    let lockup = &ctx.accounts.lockup;
-    let asset_reward_pool = &ctx.accounts.asset_reward_pool;
-    let user_reward_ata = &ctx.accounts.user_reward_ata;
-    let deposit = &ctx.accounts.deposit;
     let cooldown = &ctx.accounts.cooldown;
-    let user_asset_ata = &ctx.accounts.user_asset_ata;
-    let lockup_cooldown_vault = &ctx.accounts.lockup_cooldown_vault;
-    let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
-    let lockup_cold_vault = &ctx.accounts.lockup_cold_vault;
-    let receipt_token_mint = &ctx.accounts.receipt_token_mint;
+    let liquidity_pool = &ctx.accounts.liquidity_pool;
+    let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
+    let lp_token_mint = &ctx.accounts.lp_token_mint;
     let token_program = &ctx.accounts.token_program;
+    let user = &ctx.accounts.user;
 
-    let receipt_amount = cooldown.receipt_amount;
-    let total_receipts = receipt_token_mint.supply;
-    let total_deposits = lockup_hot_vault.amount
-        .checked_add(lockup_cold_vault.amount)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+    let lp_token_amount = cooldown_lp_token_account.amount;
+    let lp_token_supply = lp_token_mint.supply;
 
-    let receipt_to_deposit_exchange_rate_bps = total_deposits
-        .checked_mul(10_000)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(total_receipts)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+    let clock = Clock::get()?;
+    require!(
+        clock.unix_timestamp as u64 > cooldown.unlock_ts,
+        InsuranceFundError::CooldownInForce
+    );
 
-    let deposit_to_return = receipt_amount
-        .checked_mul(receipt_to_deposit_exchange_rate_bps)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(10_000)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+    require!(
+        lp_token_amount > 0 && lp_token_supply > 0,
+        InsuranceFundError::InvalidInput
+    );
 
-    let clock = &Clock::get()?;
+    let remaining_accounts = &ctx.remaining_accounts;
+    require!(
+        remaining_accounts.len() == settings.assets as usize * 3,
+        InsuranceFundError::InvalidInput
+    );
 
-    // Transfer user rewards
-    transfer(
-        CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            Transfer {
-                authority: lockup.to_account_info(),
-                from: asset_reward_pool.to_account_info(),
-                to: user_reward_ata.to_account_info()
-            }, 
-            &[lockup_seeds]
-        ), 
-        reward
-    )?;
+    // Liquidity pool signer seeds for transfers
+    let lp_seeds = &[
+        LIQUIDITY_POOL_SEED.as_bytes(),
+        &liquidity_pool.index.to_le_bytes(),
+        &[liquidity_pool.bump]
+    ];
 
-    // Burn user receipts
+    // Iterate through remaining accounts to calculate and transfer user's share of each asset
+    let mut i = 0;
+    while i < remaining_accounts.len() {
+        let pool_token_account_info = &remaining_accounts[i];
+        
+        require!(
+            pool_token_account_info.owner == &anchor_spl::token::ID,
+            InsuranceFundError::InvalidInput
+        );
+
+        let pool_token_account = TokenAccount::try_deserialize(&mut pool_token_account_info.try_borrow_mut_data()?.as_ref())
+            .map_err(|_| InsuranceFundError::InvalidInput)?;
+
+        require!(
+            pool_token_account.owner == liquidity_pool.key(),
+            InsuranceFundError::InvalidInput
+        );
+
+        let asset_info = &remaining_accounts[i + 1];
+        
+        require!(
+            asset_info.owner == &crate::ID,
+            InsuranceFundError::InvalidInput
+        );
+        
+        let asset = Asset::try_deserialize(&mut asset_info.try_borrow_mut_data()?.as_ref())
+            .map_err(|_| InsuranceFundError::InvalidInput)?;
+
+        require!(
+            asset.mint == pool_token_account.mint,
+            InsuranceFundError::InvalidInput
+        );
+        
+        let (expected_asset_pda, _) = Pubkey::find_program_address(
+            &[
+                ASSET_SEED.as_bytes(),
+                &asset.mint.to_bytes()
+            ],
+            &crate::ID
+        );
+
+        require!(
+            asset_info.key() == expected_asset_pda,
+            InsuranceFundError::InvalidInput
+        );
+
+        // Verify this is the correct associated token account for the liquidity pool and asset
+        let (expected_pool_token_account, _) = Pubkey::find_program_address(
+            &[
+                anchor_spl::associated_token::ID.as_ref(),
+                liquidity_pool.key().as_ref(),
+                anchor_spl::token::ID.as_ref(),
+                asset.mint.as_ref(),
+            ],
+            &anchor_spl::associated_token::ID
+        );
+
+        require!(
+            pool_token_account_info.key() == expected_pool_token_account,
+            InsuranceFundError::InvalidInput
+        );
+
+        let user_token_account_info = &remaining_accounts[i + 2];
+        
+        require!(
+            user_token_account_info.owner == &anchor_spl::token::ID,
+            InsuranceFundError::InvalidInput
+        );
+
+        let user_token_account = TokenAccount::try_deserialize(&mut user_token_account_info.try_borrow_mut_data()?.as_ref())
+            .map_err(|_| InsuranceFundError::InvalidInput)?;
+
+        require!(
+            user_token_account.owner == user.key(),
+            InsuranceFundError::InvalidInput
+        );
+
+        require!(
+            user_token_account.mint == asset.mint,
+            InsuranceFundError::InvalidInput
+        );
+
+        let user_pool_share_amount = PreciseNumber::new(pool_token_account.amount as u128)
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .checked_mul(
+                &PreciseNumber::new(lp_token_amount as u128)
+                .ok_or(InsuranceFundError::MathOverflow)?
+            )
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .checked_div(
+                &PreciseNumber::new(lp_token_supply as u128)
+                .ok_or(InsuranceFundError::MathOverflow)?
+            )
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .to_imprecise()
+            .ok_or(InsuranceFundError::MathOverflow)?
+            .to_u64()
+            .ok_or(InsuranceFundError::MathOverflow)?;
+
+        // Transfer user's share from pool to user
+        if user_pool_share_amount > 0 {
+            transfer(
+                CpiContext::new_with_signer(
+                    token_program.to_account_info(), 
+                    Transfer {
+                        from: pool_token_account_info.to_account_info(),
+                        to: user_token_account_info.to_account_info(),
+                        authority: liquidity_pool.to_account_info()
+                    }, 
+                    &[lp_seeds]
+                ), 
+                user_pool_share_amount
+            )?;
+        }
+
+        i += 3;
+    }
+
+    // Burn the user's LP tokens
     burn(
         CpiContext::new_with_signer(
             token_program.to_account_info(), 
             Burn {
-                authority: lockup.to_account_info(),
-                from: lockup_cooldown_vault.to_account_info(),
-                mint: receipt_token_mint.to_account_info()
+                authority: cooldown.to_account_info(),
+                from: cooldown_lp_token_account.to_account_info(),
+                mint: lp_token_mint.to_account_info()
             }, 
-            &[lockup_seeds]
-        ), 
-        receipt_amount
-    )?;
-
-    if deposit_to_return > max_allowed_auto_withdrawal {
-        return match &mut ctx.accounts.intent {
-            Some(intent) => {
-                intent.amount = deposit_to_return;
-                intent.deposit = deposit.key();
-                intent.lockup = lockup.key();
-
-                Ok(())
-            },
-            None => {
-                Err(InsuranceFundError::WithdrawalNeedsIntent.into())
-            }
-        };
-    }
-
-    // Prevent account from initializing if passed and not needed.
-    require!(
-        ctx.accounts.intent.is_none(),
-        InsuranceFundError::IntentValueTooLow
-    );
-
-    // Check if the pools are actually balanced 
-    // well enough to process the withdrawal.
-    require!(
-        deposit_to_return <= lockup_hot_vault.amount,
-        InsuranceFundError::PoolImbalance
-    );
-
-    // Transfer user base_amount
-    transfer(
-        CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            Transfer {
-                from: lockup_hot_vault.to_account_info(),
-                to: user_asset_ata.to_account_info(),
-                authority: lockup.to_account_info()
-            },
-            &[lockup_seeds]
-        ), 
-        deposit_to_return
+            &[&[
+                COOLDOWN_SEED.as_bytes(),
+                &cooldown_id.to_le_bytes(),
+                &[ctx.bumps.cooldown]
+            ]]
+        ),
+        lp_token_amount
     )?;
 
     Ok(())
@@ -155,147 +225,38 @@ pub struct Withdraw<'info> {
     #[account(
         mut,
         seeds = [
-            LOCKUP_SEED.as_bytes(),
-            &args.lockup_id.to_le_bytes()
+            LIQUIDITY_POOL_SEED.as_bytes(),
+            &args.liquidity_pool_id.to_le_bytes()
         ],
         bump
     )]
-    pub lockup: Account<'info, Lockup>,
+    pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
         mut,
-        address = lockup.receipt_mint
+        address = liquidity_pool.lp_token
     )]
-    pub receipt_token_mint: Box<Account<'info, Mint>>,
-
-    // All these checks were run during initializing cooldown
-    // not sure if we need to check them again, likely not.
-    #[account(
-        mut,
-        seeds = [
-            DEPOSIT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            &args.deposit_id.to_le_bytes()
-        ],
-        bump,
-        has_one = user
-    )]
-    pub deposit: Account<'info, Deposit>,
+    pub lp_token_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
-        seeds = [
-            DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
-            deposit.key().as_ref(),
-            receipt_token_mint.key().as_ref(),
-        ],
-        bump,
+        associated_token::mint = lp_token_mint,
+        associated_token::authority = cooldown,
     )]
-    pub deposit_receipt_token_account: Box<Account<'info, TokenAccount>>,
+    pub cooldown_lp_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         seeds = [
             COOLDOWN_SEED.as_bytes(),
-            &deposit.key().to_bytes(),
+            &args.cooldown_id.to_le_bytes(),
         ],
         bump,
-        close = user
+        close = user,
+        constraint = cooldown.liquidity_pool_id == args.liquidity_pool_id,
+        constraint = cooldown.authority == user.key()
     )]
     pub cooldown: Account<'info, Cooldown>,
-
-    #[account(
-        mut,
-        address = lockup.asset_mint,
-    )]
-    pub asset_mint: Box<Account<'info, Mint>>,
-
-    #[account(
-        mut,
-        seeds = [
-            ASSET_SEED.as_bytes(),
-            &asset_mint.key().to_bytes()
-        ],
-        bump,
-        constraint = asset.mint == asset_mint.key()
-    )]
-    pub asset: Account<'info, Asset>,
-
-    #[account(
-        mut,
-        associated_token::authority = user,
-        associated_token::mint = asset_mint
-    )]
-    pub user_asset_ata: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        address = settings.reward_config.main
-    )]
-    pub reward_mint: Box<Account<'info, Mint>>,
-
-    #[account(
-        mut,
-        associated_token::authority = user,
-        associated_token::mint = reward_mint
-    )]
-    pub user_reward_ata: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        seeds = [
-            HOT_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
-        ],
-        bump,
-    )]
-    pub lockup_hot_vault: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        seeds = [
-            COLD_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            asset_mint.key().as_ref(),
-        ],
-        bump,
-    )]
-    pub lockup_cold_vault: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        seeds = [
-            REWARD_POOL_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            reward_mint.key().as_ref(),
-        ],
-        bump
-    )]
-    pub asset_reward_pool: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        seeds = [
-            COOLDOWN_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            receipt_token_mint.key().as_ref(),
-        ],
-        bump
-    )]
-    pub lockup_cooldown_vault: Box<Account<'info, TokenAccount>>,
-
-    #[account(
-        init,
-        payer = user,
-        seeds = [
-            INTENT_SEED.as_bytes(),
-            deposit.key().as_ref()
-        ],
-        bump,
-        space = 8 + Intent::INIT_SPACE,
-    )]
-    pub intent: Option<Account<'info, Intent>>,
 
     #[account()]
     pub token_program: Program<'info, Token>,

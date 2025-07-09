@@ -9,6 +9,13 @@ pub struct RestakeEvent {
 }
 
 #[event]
+pub struct RequestWithdrawEvent {
+    pub authority: Pubkey,
+    pub liquidity_pool_id: u64,
+    pub amount: u64,
+}
+
+#[event]
 pub struct WithdrawEvent {
     pub from: Pubkey,
     pub asset: Pubkey,

@@ -13,7 +13,9 @@ use crate::states::*;
 pub struct LiquidityPool {
     pub bump: u8,
     pub index: u8,
-    pub lp_token: Pubkey
+    pub lp_token: Pubkey,
+    pub cooldowns: u64,
+    pub cooldown_duration: u64,
 }
 
 impl LiquidityPool {

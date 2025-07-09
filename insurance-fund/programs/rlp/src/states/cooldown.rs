@@ -11,15 +11,12 @@ impl CooldownRewards {
     pub const SIZE: usize = 1 + (2 * 8);
 }
 
-#[derive(InitSpace)]
+#[derive(InitSpace, Default)]
 #[account]
 pub struct Cooldown {
-    pub user: Pubkey,
-    pub deposit_id: u64,
-    pub lockup_id: u64,
-    pub receipt_amount: u64,
+    pub authority: Pubkey,
+    pub liquidity_pool_id: u64,
     pub unlock_ts: u64,
-    pub rewards: CooldownRewards,
 }
 
 impl Cooldown {

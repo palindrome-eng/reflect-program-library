@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::events::WithdrawEvent;
+use crate::events::RequestWithdrawEvent;
 use crate::states::*;
 use crate::errors::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{
     Mint,
     TokenAccount,
@@ -11,18 +12,10 @@ use anchor_spl::token::{
     Transfer
 };
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
-pub enum RequestWithdrawalMode {
-    ExactIn(u64), // Exact receipt tokens burned
-    ExactOut(u64) // Exact base tokens received
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RequestWithdrawalArgs {
-    pub lockup_id: u64,
-    pub deposit_id: u64,
-    pub reward_boost_id: Option<u64>,
-    pub mode: RequestWithdrawalMode,
+    pub liquidity_pool_id: u64,
+    pub amount: u64
 }
 
 pub fn request_withdrawal(
@@ -30,134 +23,49 @@ pub fn request_withdrawal(
     args: RequestWithdrawalArgs
 ) -> Result<()> {
     let RequestWithdrawalArgs {
-        mode,
-        deposit_id,
-        lockup_id,
-        reward_boost_id: __
+        liquidity_pool_id,
+        amount
     } = args;
 
+    let signer = &ctx.accounts.signer;
     let settings = &ctx.accounts.settings;
-    let deposit = &mut ctx.accounts.deposit;
-    let user = &mut ctx.accounts.user;
-    let lockup = &mut ctx.accounts.lockup;
-    let asset_mint = &ctx.accounts.asset_mint;
+    let liquidity_pool = &ctx.accounts.liquidity_pool;
     let cooldown = &mut ctx.accounts.cooldown;
-    let lockup_cold_vault = &ctx.accounts.lockup_cold_vault;
-    let lockup_hot_vault = &ctx.accounts.lockup_hot_vault;
-    let receipt_token_mint = &ctx.accounts.receipt_token_mint;
-    let deposit_receipt_token_account = &ctx.accounts.deposit_receipt_token_account;
-    let lockup_cooldown_vault = &ctx.accounts.lockup_cooldown_vault;
     let token_program = &ctx.accounts.token_program;
-    let reward_boost = &ctx.accounts.reward_boost;
 
-    match reward_boost {
-        Some(account) => {
-            require!(
-                account
-                    .validate(deposit.initial_usd_value)
-                    .is_ok(),
-                InsuranceFundError::BoostNotApplied
-            );
-
-            require!(
-                account.lockup == lockup_id,
-                InsuranceFundError::BoostNotApplied
-            );
-        },
-        None => {}
-    }
-
-    let clock = &Clock::get()?;
+    let remaining_accounts = &ctx.remaining_accounts;
     require!(
-        deposit.unlock_ts <= (clock.unix_timestamp as u64),
-        InsuranceFundError::LockupInForce,
+        remaining_accounts.len() == settings.assets as usize * 3,
+        InsuranceFundError::InvalidInput
     );
 
-    let total_receipts = receipt_token_mint.supply;
-    let total_deposits = lockup_cold_vault.amount
-        .checked_add(lockup_hot_vault.amount)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+    cooldown.set_inner(Cooldown {
+        liquidity_pool_id,
+        authority: signer.key(),
+        ..Default::default()
+    });
 
-    let receipt_to_deposit_exchange_rate_bps = total_deposits
-        .checked_mul(10_000)
-        .ok_or(InsuranceFundError::MathOverflow)?
-        .checked_div(total_receipts)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+    cooldown.lock(liquidity_pool.cooldown_duration)?;
 
-    let (
-        base_amount, 
-        receipt_amount
-    ) = match args.mode {
-        RequestWithdrawalMode::ExactIn(receipt_tokens) => {
-            (
-                receipt_tokens
-                    .checked_mul(receipt_to_deposit_exchange_rate_bps)
-                    .ok_or(InsuranceFundError::MathOverflow)?
-                    .checked_div(10_000)
-                    .ok_or(InsuranceFundError::MathOverflow)?,
-                receipt_tokens
-            )
-        },
-        RequestWithdrawalMode::ExactOut(base_tokens) => {
-            (
-                base_tokens,
-                base_tokens
-                    .checked_mul(10_000)
-                    .ok_or(InsuranceFundError::MathOverflow)?
-                    .checked_div(receipt_to_deposit_exchange_rate_bps)
-                    .ok_or(InsuranceFundError::MathOverflow)?
-            )
-        }
-    };
+    let signer_lp_token_account = &ctx.accounts.signer_lp_token_account;
+    let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
 
-    // Check if user actually owns enough receipts to process this
-    require!(
-        receipt_amount <= deposit_receipt_token_account.amount,
-        InsuranceFundError::NotEnoughReceiptTokens
-    );
-
-    cooldown.receipt_amount = receipt_amount;
-    cooldown.deposit_id = deposit_id;
-    cooldown.user = user.key();
-    cooldown.lockup_id = lockup.index;
-
-    // Does not take reward boost into account. Fix.
-    let rewards = deposit.compute_accrued_rewards(
-        lockup.receipt_to_reward_exchange_rate_bps_accumulator, 
-        receipt_amount
-    )?;
-
-    cooldown.lock(settings.cooldown_duration)?;
-
-    let lockup_key = lockup.key();
-    let seeds = &[
-        DEPOSIT_SEED.as_bytes(),
-        &lockup_key.as_ref(),
-        &deposit_id.to_le_bytes(),
-        &[deposit.bump]
-    ];
-
-    // Transfer receipts into cooldown vault
-    // We need this to be able to still slash (since slashing is based on the total receipt supply)
-    // but not influence others rewards (since reward calculation is based on the total receipt supply - cooldown vault balance)
     transfer(
-        CpiContext::new_with_signer(
+        CpiContext::new(
             token_program.to_account_info(), 
             Transfer {
-                from: deposit_receipt_token_account.to_account_info(),
-                to: lockup_cooldown_vault.to_account_info(),
-                authority: deposit.to_account_info()
-            },
-            &[seeds]
-        ), 
-        receipt_amount
+                from: signer_lp_token_account.to_account_info(),
+                to: cooldown_lp_token_account.to_account_info(),
+                authority: signer.to_account_info()
+            }
+        ),
+        amount
     )?;
 
-    emit!(WithdrawEvent {
-        asset: asset_mint.key(),
-        from: user.key(),
-        base_amount: base_amount,
-        reward_amount: rewards
+    emit!(RequestWithdrawEvent {
+        amount,
+        authority: signer.key(),
+        liquidity_pool_id
     });
 
     Ok(())
@@ -171,7 +79,7 @@ pub struct RequestWithdrawal<'info> {
     #[account(
         mut,
     )]
-    pub user: Signer<'info>,
+    pub signer: Signer<'info>,
 
     #[account(
         mut,
@@ -186,101 +94,51 @@ pub struct RequestWithdrawal<'info> {
     #[account(
         mut,
         seeds = [
-            LOCKUP_SEED.as_bytes(),
-            &args.lockup_id.to_le_bytes()
+            LIQUIDITY_POOL_SEED.as_bytes(),
+            &args.liquidity_pool_id.to_le_bytes()
         ],
         bump
     )]
-    pub lockup: Account<'info, Lockup>,
+    pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
         mut,
-        address = lockup.receipt_mint
+        address = liquidity_pool.lp_token
     )]
-    pub receipt_token_mint: Account<'info, Mint>,
+    pub lp_token_mint: Account<'info, Mint>,
 
     #[account(
         mut,
-        seeds = [
-            DEPOSIT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            &args.deposit_id.to_le_bytes()
-        ],
-        bump,
-        // Enforce account ownership
-        has_one = user
+        token::mint = lp_token_mint,
+        token::authority = signer,
     )]
-    pub deposit: Account<'info, Deposit>,
-
-    #[account(
-        mut,
-        seeds = [
-            DEPOSIT_RECEIPT_VAULT_SEED.as_bytes(),
-            deposit.key().as_ref(),
-            receipt_token_mint.key().as_ref(),
-        ],
-        bump,
-        token::mint = receipt_token_mint,
-        token::authority = deposit,
-    )]
-    pub deposit_receipt_token_account: Account<'info, TokenAccount>,
+    pub signer_lp_token_account: Account<'info, TokenAccount>,
 
     #[account(
         init,
         seeds = [
             COOLDOWN_SEED.as_bytes(),
-            &deposit.key().to_bytes(),
+            &liquidity_pool.cooldowns.to_le_bytes(),
         ],
         bump,
-        payer = user,
+        payer = signer,
         space = 8 + Cooldown::INIT_SPACE,
     )]
     pub cooldown: Account<'info, Cooldown>,
 
     #[account(
-        mut,
-        seeds = [
-            REWARD_BOOST_SEED.as_bytes(),
-            &lockup.key().to_bytes(),
-            // Unwrap will panic if reward_boost account is present, but reward_boost_id argument is not.
-            &args.reward_boost_id.unwrap().to_le_bytes()
-        ],
-        bump
+        init,
+        payer = signer,
+        associated_token::mint = lp_token_mint,
+        associated_token::authority = cooldown,
     )]
-    pub reward_boost: Option<Account<'info, RewardBoost>>,
-
-    #[account(
-        mut,
-        seeds = [
-            ASSET_SEED.as_bytes(),
-            &asset_mint.key().to_bytes()
-        ],
-        bump,
-        constraint = asset.mint == asset_mint.key()
-    )]
-    pub asset: Account<'info, Asset>,
-
-    #[account(
-        mut,
-        address = lockup.asset_mint,
-    )]
-    pub asset_mint: Box<Account<'info, Mint>>,
-
-    #[account(
-        mut,
-        seeds = [
-            COOLDOWN_VAULT_SEED.as_bytes(),
-            lockup.key().as_ref(),
-            receipt_token_mint.key().as_ref(),
-        ],
-        bump,
-        token::mint = receipt_token_mint,
-        token::authority = lockup,
-    )]
-    pub lockup_cooldown_vault: Box<Account<'info, TokenAccount>>,
+    pub cooldown_lp_token_account: Account<'info, TokenAccount>,
 
     #[account()]
     pub token_program: Program<'info, Token>,
+
+    #[account()]
+    pub associated_token_program: Program<'info, AssociatedToken>,
 
     #[account()]
     pub system_program: Program<'info, System>,
