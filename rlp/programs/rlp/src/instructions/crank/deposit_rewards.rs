@@ -69,7 +69,7 @@ pub struct DepositRewards<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::DepositRewards) @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -79,7 +79,7 @@ pub struct DepositRewards<'info> {
             &signer.key().to_bytes()
         ],
         bump,
-        constraint = permissions.can_perform_protocol_action(Action::DepositRewards, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
+        constraint = permissions.can_perform_protocol_action(Action::DepositRewards, &settings.access_control) @ InsuranceFundError::PermissionsTooLow
     )]
     pub permissions: Account<'info, UserPermissions>,
 

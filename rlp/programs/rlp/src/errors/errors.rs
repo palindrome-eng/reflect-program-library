@@ -133,4 +133,13 @@ pub enum InsuranceFundError {
 
     #[msg("IncorrectAdmin")]
     IncorrectAdmin,
+
+    #[msg("SameAdmin")]
+    SameAdmin,
+
+    #[msg("AlreadyFrozen")]
+    AlreadyFrozen,
+
+    #[msg("AlreadyUnfrozen")]
+    AlreadyUnfrozen,
 }

@@ -6,7 +6,9 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type ManageFreezeArgs = {
+import { Action, actionBeet } from './Action'
+export type FreezeProtocolActionArgs = {
+  action: Action
   freeze: boolean
 }
 
@@ -14,7 +16,11 @@ export type ManageFreezeArgs = {
  * @category userTypes
  * @category generated
  */
-export const manageFreezeArgsBeet = new beet.BeetArgsStruct<ManageFreezeArgs>(
-  [['freeze', beet.bool]],
-  'ManageFreezeArgs'
-)
+export const freezeProtocolActionArgsBeet =
+  new beet.BeetArgsStruct<FreezeProtocolActionArgs>(
+    [
+      ['action', actionBeet],
+      ['freeze', beet.bool],
+    ],
+    'FreezeProtocolActionArgs'
+  )

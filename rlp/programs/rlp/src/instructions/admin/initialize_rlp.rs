@@ -27,7 +27,13 @@ pub fn initialize_rlp(
     });
 
     let settings = &mut ctx.accounts.settings;
-    settings.set_inner(Settings::default());
+    settings.set_inner(Settings {
+        bump: ctx.bumps.settings,
+        assets: 0,
+        access_control: AccessControl::default(),
+        frozen: false,
+        liquidity_pools: 0
+    });
 
     emit!(InitializeRlpEvent {
         caller: signer.key()

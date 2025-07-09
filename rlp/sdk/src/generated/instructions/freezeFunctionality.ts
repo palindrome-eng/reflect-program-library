@@ -8,87 +8,93 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  ManageFreezeArgs,
-  manageFreezeArgsBeet,
-} from '../types/ManageFreezeArgs'
+  FreezeProtocolActionArgs,
+  freezeProtocolActionArgsBeet,
+} from '../types/FreezeProtocolActionArgs'
 
 /**
  * @category Instructions
- * @category ManageFreeze
+ * @category FreezeFunctionality
  * @category generated
  */
-export type ManageFreezeInstructionArgs = {
-  args: ManageFreezeArgs
+export type FreezeFunctionalityInstructionArgs = {
+  args: FreezeProtocolActionArgs
 }
 /**
  * @category Instructions
- * @category ManageFreeze
+ * @category FreezeFunctionality
  * @category generated
  */
-export const manageFreezeStruct = new beet.BeetArgsStruct<
-  ManageFreezeInstructionArgs & {
+export const freezeFunctionalityStruct = new beet.BeetArgsStruct<
+  FreezeFunctionalityInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', manageFreezeArgsBeet],
+    ['args', freezeProtocolActionArgsBeet],
   ],
-  'ManageFreezeInstructionArgs'
+  'FreezeFunctionalityInstructionArgs'
 )
 /**
- * Accounts required by the _manageFreeze_ instruction
+ * Accounts required by the _freezeFunctionality_ instruction
  *
- * @property [_writable_, **signer**] signer
- * @property [_writable_] admin
+ * @property [_writable_, **signer**] admin
  * @property [_writable_] settings
+ * @property [_writable_] adminPermissions
  * @category Instructions
- * @category ManageFreeze
+ * @category FreezeFunctionality
  * @category generated
  */
-export type ManageFreezeInstructionAccounts = {
-  signer: web3.PublicKey
+export type FreezeFunctionalityInstructionAccounts = {
   admin: web3.PublicKey
   settings: web3.PublicKey
+  systemProgram?: web3.PublicKey
+  adminPermissions: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const manageFreezeInstructionDiscriminator = [
-  163, 151, 84, 239, 6, 113, 250, 208,
+export const freezeFunctionalityInstructionDiscriminator = [
+  65, 152, 119, 202, 25, 239, 206, 157,
 ]
 
 /**
- * Creates a _ManageFreeze_ instruction.
+ * Creates a _FreezeFunctionality_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category ManageFreeze
+ * @category FreezeFunctionality
  * @category generated
  */
-export function createManageFreezeInstruction(
-  accounts: ManageFreezeInstructionAccounts,
-  args: ManageFreezeInstructionArgs,
+export function createFreezeFunctionalityInstruction(
+  accounts: FreezeFunctionalityInstructionAccounts,
+  args: FreezeFunctionalityInstructionArgs,
   programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')
 ) {
-  const [data] = manageFreezeStruct.serialize({
-    instructionDiscriminator: manageFreezeInstructionDiscriminator,
+  const [data] = freezeFunctionalityStruct.serialize({
+    instructionDiscriminator: freezeFunctionalityInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.signer,
+      pubkey: accounts.admin,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: accounts.admin,
+      pubkey: accounts.settings,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.adminPermissions,
       isWritable: true,
       isSigner: false,
     },

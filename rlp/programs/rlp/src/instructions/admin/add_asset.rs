@@ -56,7 +56,7 @@ pub struct AddAsset<'info> {
             signer.key().as_ref()
         ],
         bump,
-        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ InsuranceFundError::PermissionsTooLow
+        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
     )]
     pub admin: Account<'info, UserPermissions>,
 
@@ -66,7 +66,7 @@ pub struct AddAsset<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::AddAsset) @ InsuranceFundError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

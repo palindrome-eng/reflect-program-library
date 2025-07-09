@@ -21,3 +21,6 @@ pub use action::*;
 
 pub mod killswitch;
 pub use killswitch::*;
+
+pub mod update;
+pub use update::*;

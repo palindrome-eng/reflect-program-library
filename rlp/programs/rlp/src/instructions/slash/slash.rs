@@ -79,7 +79,7 @@ pub struct Slash<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) @ InsuranceFundError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

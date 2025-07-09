@@ -13,7 +13,6 @@ import {
     Cooldown,
     cooldownDiscriminator,
     createAddAssetInstruction,
-    createManageFreezeInstruction,
     createRequestWithdrawalInstruction,
     createSlashInstruction,
     createWithdrawInstruction,
@@ -492,7 +491,8 @@ export class Restaking {
                 poolAssetAccount,
                 signer,
                 userAssetAccount,
-                userLpAccount
+                userLpAccount,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
             },
             {
                 args: {
@@ -583,7 +583,7 @@ export class Restaking {
                 liquidityPool,
                 lpTokenMint: lpToken,
                 settings: Restaking.deriveSettings(),
-                user: signer,
+                signer: signer,
                 systemProgram: SystemProgram.programId,
                 tokenProgram: TOKEN_PROGRAM_ID
             },

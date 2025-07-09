@@ -991,6 +991,69 @@ createErrorFromCodeLookup.set(0x179b, () => new IncorrectAdminError())
 createErrorFromNameLookup.set('IncorrectAdmin', () => new IncorrectAdminError())
 
 /**
+ * SameAdmin: 'SameAdmin'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SameAdminError extends Error {
+  readonly code: number = 0x179c
+  readonly name: string = 'SameAdmin'
+  constructor() {
+    super('SameAdmin')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SameAdminError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x179c, () => new SameAdminError())
+createErrorFromNameLookup.set('SameAdmin', () => new SameAdminError())
+
+/**
+ * AlreadyFrozen: 'AlreadyFrozen'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class AlreadyFrozenError extends Error {
+  readonly code: number = 0x179d
+  readonly name: string = 'AlreadyFrozen'
+  constructor() {
+    super('AlreadyFrozen')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, AlreadyFrozenError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x179d, () => new AlreadyFrozenError())
+createErrorFromNameLookup.set('AlreadyFrozen', () => new AlreadyFrozenError())
+
+/**
+ * AlreadyUnfrozen: 'AlreadyUnfrozen'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class AlreadyUnfrozenError extends Error {
+  readonly code: number = 0x179e
+  readonly name: string = 'AlreadyUnfrozen'
+  constructor() {
+    super('AlreadyUnfrozen')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, AlreadyUnfrozenError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x179e, () => new AlreadyUnfrozenError())
+createErrorFromNameLookup.set(
+  'AlreadyUnfrozen',
+  () => new AlreadyUnfrozenError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

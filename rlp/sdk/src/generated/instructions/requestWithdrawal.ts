@@ -42,6 +42,7 @@ export const requestWithdrawalStruct = new beet.BeetArgsStruct<
  *
  * @property [_writable_, **signer**] signer
  * @property [_writable_] settings
+ * @property [] permissions (optional)
  * @property [_writable_] liquidityPool
  * @property [_writable_] lpTokenMint
  * @property [_writable_] signerLpTokenAccount
@@ -55,6 +56,7 @@ export const requestWithdrawalStruct = new beet.BeetArgsStruct<
 export type RequestWithdrawalInstructionAccounts = {
   signer: web3.PublicKey
   settings: web3.PublicKey
+  permissions?: web3.PublicKey
   liquidityPool: web3.PublicKey
   lpTokenMint: web3.PublicKey
   signerLpTokenAccount: web3.PublicKey
@@ -72,6 +74,9 @@ export const requestWithdrawalInstructionDiscriminator = [
 
 /**
  * Creates a _RequestWithdrawal_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
@@ -98,6 +103,11 @@ export function createRequestWithdrawalInstruction(
     {
       pubkey: accounts.settings,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.permissions ?? programId,
+      isWritable: false,
       isSigner: false,
     },
     {

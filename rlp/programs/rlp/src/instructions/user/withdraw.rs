@@ -36,7 +36,7 @@ pub fn withdraw<'a>(
     let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
     let lp_token_mint = &ctx.accounts.lp_token_mint;
     let token_program = &ctx.accounts.token_program;
-    let user = &ctx.accounts.user;
+    let signer = &ctx.accounts.signer;
 
     let lp_token_amount = cooldown_lp_token_account.amount;
     let lp_token_supply = lp_token_mint.supply;
@@ -138,7 +138,7 @@ pub fn withdraw<'a>(
             .map_err(|_| InsuranceFundError::InvalidInput)?;
 
         require!(
-            user_token_account.owner == user.key(),
+            user_token_account.owner == signer.key(),
             InsuranceFundError::InvalidInput
         );
 
@@ -210,7 +210,7 @@ pub fn withdraw<'a>(
 )]
 pub struct Withdraw<'info> {
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub signer: Signer<'info>,
 
     #[account(
         mut,
@@ -218,9 +218,18 @@ pub struct Withdraw<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        constraint = settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
+
+    #[account(
+        seeds = [
+            PERMISSIONS_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump = permissions.bump
+    )]
+    pub permissions: Option<Account<'info, UserPermissions>>,
 
     #[account(
         mut,
@@ -252,9 +261,9 @@ pub struct Withdraw<'info> {
             &args.cooldown_id.to_le_bytes(),
         ],
         bump,
-        close = user,
+        close = signer,
         constraint = cooldown.liquidity_pool_id == args.liquidity_pool_id,
-        constraint = cooldown.authority == user.key()
+        constraint = cooldown.authority == signer.key()
     )]
     pub cooldown: Account<'info, Cooldown>,
 

@@ -39,6 +39,7 @@ export const restakeStruct = new beet.BeetArgsStruct<
  *
  * @property [_writable_, **signer**] signer
  * @property [_writable_] settings
+ * @property [] permissions (optional)
  * @property [] liquidityPool
  * @property [_writable_] lpToken
  * @property [_writable_] userLpAccount
@@ -55,6 +56,7 @@ export const restakeStruct = new beet.BeetArgsStruct<
 export type RestakeInstructionAccounts = {
   signer: web3.PublicKey
   settings: web3.PublicKey
+  permissions?: web3.PublicKey
   liquidityPool: web3.PublicKey
   lpToken: web3.PublicKey
   userLpAccount: web3.PublicKey
@@ -75,6 +77,9 @@ export const restakeInstructionDiscriminator = [
 
 /**
  * Creates a _Restake_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
@@ -101,6 +106,11 @@ export function createRestakeInstruction(
     {
       pubkey: accounts.settings,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.permissions ?? programId,
+      isWritable: false,
       isSigner: false,
     },
     {

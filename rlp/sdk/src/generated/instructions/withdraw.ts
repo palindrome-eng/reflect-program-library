@@ -37,8 +37,9 @@ export const withdrawStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _withdraw_ instruction
  *
- * @property [_writable_, **signer**] user
+ * @property [_writable_, **signer**] signer
  * @property [_writable_] settings
+ * @property [] permissions (optional)
  * @property [_writable_] liquidityPool
  * @property [_writable_] lpTokenMint
  * @property [_writable_] cooldownLpTokenAccount
@@ -48,8 +49,9 @@ export const withdrawStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type WithdrawInstructionAccounts = {
-  user: web3.PublicKey
+  signer: web3.PublicKey
   settings: web3.PublicKey
+  permissions?: web3.PublicKey
   liquidityPool: web3.PublicKey
   lpTokenMint: web3.PublicKey
   cooldownLpTokenAccount: web3.PublicKey
@@ -87,13 +89,18 @@ export function createWithdrawInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.user,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
     },
     {
       pubkey: accounts.settings,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.permissions ?? programId,
+      isWritable: false,
       isSigner: false,
     },
     {

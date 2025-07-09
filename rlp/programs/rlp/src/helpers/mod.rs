@@ -10,6 +10,9 @@ pub use get_price_from_pyth::*;
 pub mod get_price_from_switchboard;
 pub use get_price_from_switchboard::*;
 
+pub mod action_check_protocol;
+pub use action_check_protocol::*;
+
 use crate::errors::InsuranceFundError;
 use spl_math::precise_number::PreciseNumber;
 

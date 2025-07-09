@@ -46,14 +46,11 @@ pub mod rlp {
         instructions::deposit_rewards(ctx, args)
     }
 
-    // Freeze should allow for freezing:
-    // - liquidity pool
-    // - asset
-    pub fn manage_freeze(
-        ctx: Context<ManageFreeze>,
-        args: ManageFreezeArgs
+    pub fn freeze_functionality(
+        ctx: Context<RlpAdminMain>,
+        args: FreezeProtocolActionArgs
     ) -> Result<()> {
-        instructions::manage_freeze(ctx, args)
+        instructions::freeze_protocol_action(ctx, args)
     }
 
     // Deposit cap should be on liquidity pool level
@@ -97,5 +94,26 @@ pub mod rlp {
         args: SwapLpArgs
     ) -> Result<()> {
         instructions::swap_lp(ctx, args)
+    }
+
+    pub fn create_permission_account(
+        ctx: Context<RlpUserPermissionsInit>,
+        new_admin: Pubkey
+    ) -> Result<()> {
+        instructions::create_permission_account(ctx, new_admin)
+    }
+
+    pub fn update_action_role(
+        ctx: Context<RlpAdminMain>,
+        args: UpdateActionRoleArgs
+    ) -> Result<()> {
+        instructions::update_action_role_protocol(ctx, args)
+    }
+
+    pub fn update_role_holder(
+        ctx: Context<RlpAdminRoleUpdate>,
+        args: UpdateRoleHolderArgs
+    ) -> Result<()> {
+        instructions::update_role_holder_protocol(ctx, args)
     }
 }

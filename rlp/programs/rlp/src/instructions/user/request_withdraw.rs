@@ -11,6 +11,7 @@ use anchor_spl::token::{
     transfer,
     Transfer
 };
+use crate::helpers::action_check_protocol;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RequestWithdrawalArgs {
@@ -27,8 +28,16 @@ pub fn request_withdrawal(
         amount
     } = args;
 
-    let signer = &ctx.accounts.signer;
     let settings = &ctx.accounts.settings;
+    let permissions = &ctx.accounts.permissions;
+
+    action_check_protocol(
+        Action::Withdraw,
+        permissions.as_deref(),
+        &settings.access_control
+    )?;
+
+    let signer = &ctx.accounts.signer;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let cooldown = &mut ctx.accounts.cooldown;
     let token_program = &ctx.accounts.token_program;
@@ -87,9 +96,18 @@ pub struct RequestWithdrawal<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
+
+    #[account(
+        seeds = [
+            PERMISSIONS_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump = permissions.bump
+    )]
+    pub permissions: Option<Account<'info, UserPermissions>>,
 
     #[account(
         mut,

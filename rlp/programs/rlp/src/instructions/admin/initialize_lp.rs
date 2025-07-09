@@ -48,8 +48,11 @@ pub struct InitializeLiquidityPool<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref(),
         ],
-        bump,
-        constraint = permissions.can_perform_protocol_action(Action::InitializeLiquidityPool, &settings.access_control) @ InsuranceFundError::InvalidSigner,
+        bump = permissions.bump,
+        constraint = permissions.can_perform_protocol_action(
+            Action::InitializeLiquidityPool, 
+            &settings.access_control
+        ) @ InsuranceFundError::InvalidSigner,
     )]
     pub permissions: Account<'info, UserPermissions>,
 
@@ -58,8 +61,8 @@ pub struct InitializeLiquidityPool<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        bump = settings.bump,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::InitializeLiquidityPool) @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 

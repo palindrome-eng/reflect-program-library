@@ -126,6 +126,7 @@ pub struct SwapLp<'info> {
         ],
         bump,
         constraint = admin.can_perform_protocol_action(Action::Swap, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Swap) @ InsuranceFundError::Frozen,
     )]
     pub admin: Account<'info, UserPermissions>,
 

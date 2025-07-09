@@ -275,20 +275,25 @@
       ]
     },
     {
-      "name": "manageFreeze",
+      "name": "freezeFunctionality",
       "accounts": [
         {
-          "name": "signer",
+          "name": "admin",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "admin",
+          "name": "settings",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "settings",
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "adminPermissions",
           "isMut": true,
           "isSigner": false
         }
@@ -297,7 +302,7 @@
         {
           "name": "args",
           "type": {
-            "defined": "ManageFreezeArgs"
+            "defined": "FreezeProtocolActionArgs"
           }
         }
       ]
@@ -402,6 +407,12 @@
           "isSigner": false
         },
         {
+          "name": "permissions",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "liquidityPool",
           "isMut": false,
           "isSigner": false
@@ -480,6 +491,12 @@
           "isSigner": false
         },
         {
+          "name": "permissions",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "liquidityPool",
           "isMut": true,
           "isSigner": false
@@ -533,7 +550,7 @@
       "name": "withdraw",
       "accounts": [
         {
-          "name": "user",
+          "name": "signer",
           "isMut": true,
           "isSigner": true
         },
@@ -541,6 +558,12 @@
           "name": "settings",
           "isMut": true,
           "isSigner": false
+        },
+        {
+          "name": "permissions",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "liquidityPool",
@@ -672,6 +695,113 @@
           "name": "args",
           "type": {
             "defined": "SwapLpArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createPermissionAccount",
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "newCreds",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "caller",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "newAdmin",
+          "type": "publicKey"
+        }
+      ]
+    },
+    {
+      "name": "updateActionRole",
+      "accounts": [
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "adminPermissions",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "UpdateActionRoleArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateRoleHolder",
+      "accounts": [
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "adminPermissions",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "updateAdminPermissions",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "strategy",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "UpdateRoleHolderArgs"
           }
         }
       ]
@@ -808,6 +938,50 @@
   ],
   "types": [
     {
+      "name": "UpdateActionRoleArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "action",
+            "type": {
+              "defined": "Action"
+            }
+          },
+          {
+            "name": "role",
+            "type": {
+              "defined": "Role"
+            }
+          },
+          {
+            "name": "update",
+            "type": {
+              "defined": "Update"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FreezeProtocolActionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "action",
+            "type": {
+              "defined": "Action"
+            }
+          },
+          {
+            "name": "freeze",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
       "name": "InitializeLpTokenAccountArgs",
       "type": {
         "kind": "struct",
@@ -848,13 +1022,25 @@
       }
     },
     {
-      "name": "ManageFreezeArgs",
+      "name": "UpdateRoleHolderArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "freeze",
-            "type": "bool"
+            "name": "address",
+            "type": "publicKey"
+          },
+          {
+            "name": "role",
+            "type": {
+              "defined": "Role"
+            }
+          },
+          {
+            "name": "update",
+            "type": {
+              "defined": "Update"
+            }
           }
         ]
       }
@@ -1216,6 +1402,20 @@
                 ]
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Update",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Add"
+          },
+          {
+            "name": "Remove"
           }
         ]
       }
@@ -1603,6 +1803,21 @@
       "code": 6043,
       "name": "IncorrectAdmin",
       "msg": "IncorrectAdmin"
+    },
+    {
+      "code": 6044,
+      "name": "SameAdmin",
+      "msg": "SameAdmin"
+    },
+    {
+      "code": 6045,
+      "name": "AlreadyFrozen",
+      "msg": "AlreadyFrozen"
+    },
+    {
+      "code": 6046,
+      "name": "AlreadyUnfrozen",
+      "msg": "AlreadyUnfrozen"
     }
   ],
   "metadata": {

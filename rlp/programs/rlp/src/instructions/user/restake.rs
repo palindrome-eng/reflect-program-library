@@ -2,9 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount, Token, transfer, Transfer};
 use spl_math::precise_number::PreciseNumber;
 use crate::errors::InsuranceFundError;
-use crate::states::{Asset, LiquidityPool, Settings};
+use crate::states::{Asset, LiquidityPool, Settings, UserPermissions, Action};
 use crate::constants::*;
 use anchor_spl::associated_token::AssociatedToken;
+use crate::helpers::action_check_protocol;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RestakeArgs {
@@ -23,8 +24,16 @@ pub fn restake<'a>(
         min_lp_tokens 
     } = args;
 
-    let signer = &ctx.accounts.signer;
     let settings = &ctx.accounts.settings;
+    let permissions = &ctx.accounts.permissions;
+
+    action_check_protocol(
+        Action::Restake,
+        permissions.as_deref(),
+        &settings.access_control
+    )?;
+
+    let signer = &ctx.accounts.signer;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let lp_token = &ctx.accounts.lp_token;
     let token_program = &ctx.accounts.token_program;
@@ -107,9 +116,18 @@ pub struct Restake<'info> {
             SETTINGS_SEED.as_bytes(),
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ InsuranceFundError::Frozen,
     )]
     pub settings: Box<Account<'info, Settings>>,
+
+    #[account(
+        seeds = [
+            PERMISSIONS_SEED.as_bytes(),
+            signer.key().as_ref()
+        ],
+        bump = permissions.bump
+    )]
+    pub permissions: Option<Account<'info, UserPermissions>>,
 
     #[account(
         seeds = [
