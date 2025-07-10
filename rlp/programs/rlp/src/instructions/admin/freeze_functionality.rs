@@ -22,8 +22,8 @@ pub fn freeze_protocol_action(
 
     msg!("Caller: {:?} wants to {:?} PROTOCOL", ctx.accounts.admin.key(), action); 
     action_check_protocol(
-        action, 
-        Some(&ctx.accounts.admin_permissions), 
+        action,
+        Some(&ctx.accounts.admin_permissions),
         &settings.access_control
     )?;
 

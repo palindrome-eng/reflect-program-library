@@ -12,6 +12,7 @@ use anchor_spl::token::Mint;
 pub fn add_asset(
     ctx: Context<AddAsset>
 ) -> Result<()> {
+    let settings = &mut ctx.accounts.settings;
     let asset = &mut ctx.accounts.asset;
     let asset_mint = &ctx.accounts.asset_mint;
     let oracle = &ctx.accounts.oracle;
@@ -26,6 +27,11 @@ pub fn add_asset(
         asset: asset_mint.key(),
         oracle: oracle.key()
     });
+
+    settings.assets = settings
+    .assets
+    .checked_add(1)
+    .ok_or(InsuranceFundError::MathOverflow)?;
 
     if oracle.owner.eq(&PYTH_PROGRAM_ID) {
         get_price_from_pyth(oracle, &clock)?;
@@ -65,11 +71,10 @@ pub struct AddAsset<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::AddAsset) @ InsuranceFundError::Frozen,
+        bump
     )]
     pub settings: Account<'info, Settings>,
-
+    
     #[account(
         init,
         payer = signer,

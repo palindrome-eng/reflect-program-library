@@ -39,8 +39,7 @@ pub struct InitializeLpTokenAccount<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen
+        bump
     )]
     pub settings: Account<'info, Settings>,
 
@@ -73,6 +72,7 @@ pub struct InitializeLpTokenAccount<'info> {
         payer = signer,
         associated_token::mint = mint,
         associated_token::authority = liquidity_pool,
+        associated_token::token_program = token_program
     )]
     pub lp_mint_token_account: Box<Account<'info, TokenAccount>>,
 

@@ -61,8 +61,7 @@ pub struct InitializeLiquidityPool<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump = settings.bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::InitializeLiquidityPool) @ InsuranceFundError::Frozen
+        bump = settings.bump
     )]
     pub settings: Account<'info, Settings>,
 

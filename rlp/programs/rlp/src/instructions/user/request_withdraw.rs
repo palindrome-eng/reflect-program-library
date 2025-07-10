@@ -42,12 +42,6 @@ pub fn request_withdrawal(
     let cooldown = &mut ctx.accounts.cooldown;
     let token_program = &ctx.accounts.token_program;
 
-    let remaining_accounts = &ctx.remaining_accounts;
-    require!(
-        remaining_accounts.len() == settings.assets as usize * 3,
-        InsuranceFundError::InvalidInput
-    );
-
     cooldown.set_inner(Cooldown {
         liquidity_pool_id,
         authority: signer.key(),

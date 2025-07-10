@@ -68,8 +68,7 @@ pub struct DepositRewards<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::DepositRewards) @ InsuranceFundError::Frozen
+        bump
     )]
     pub settings: Account<'info, Settings>,
 

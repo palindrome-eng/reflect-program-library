@@ -63,6 +63,8 @@ impl LiquidityPool {
         while i < remaining_accounts.len() {
             let token_account_info = &remaining_accounts[i];
             
+            msg!("token_account_info.owner: {}", token_account_info.owner);
+
             require!(
                 token_account_info.owner == &anchor_spl::token::ID,
                 crate::errors::InsuranceFundError::InvalidInput
@@ -145,11 +147,17 @@ impl LiquidityPool {
             msg!("route2");
             let lp_supply_precise = PreciseNumber::new(lp_token.supply as u128)
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+
+            msg!("lp_supply_precise: {}", lp_supply_precise.to_imprecise().unwrap());
+            msg!("total_pool_value: {}", total_pool_value.to_imprecise().unwrap());
+
             let deposit_ratio = deposit_value
                 .checked_mul(&lp_supply_precise)
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
                 .checked_div(&total_pool_value)
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+
+            msg!("deposit_ratio: {}", deposit_ratio.to_imprecise().unwrap());
             
             deposit_ratio
                 .to_imprecise()

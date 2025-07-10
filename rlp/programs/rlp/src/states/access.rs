@@ -337,7 +337,9 @@ impl AccessControl {
 
         // Freeze actions.
         access_control.add_role_to_action(Action::FreezeRestake, Role::FREEZE)?;
-        access_control.add_role_to_action(Action::FreezeWithdraw, Role::FREEZE)?;            
+        access_control.add_role_to_action(Action::FreezeWithdraw, Role::FREEZE)?;
+        access_control.add_role_to_action(Action::FreezeSlash, Role::FREEZE)?;
+        access_control.add_role_to_action(Action::FreezeSwap, Role::FREEZE)?;
         
         Ok(access_control)
     }

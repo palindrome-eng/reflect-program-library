@@ -48,6 +48,7 @@ import {
     createCreateMetadataAccountV3Instruction,
     PROGRAM_ID as METAPLEX_PROGRAM_ID
 } from "@metaplex-foundation/mpl-token-metadata";
+import { AccountWithPubkey } from "../types";
 
 type InsuranceFundAccount = Asset | UserPermissions | Cooldown | KillSwitch | LiquidityPool | Settings;
 
@@ -85,7 +86,7 @@ export class Restaking {
         return liquidityPool;
     }
 
-    async getAssets() {
+async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
         const assets = await Asset
             .gpaBuilder()
             .addFilter("accountDiscriminator", assetDiscriminator)
@@ -94,7 +95,7 @@ export class Restaking {
         return assets.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Asset>(Asset, account) }));
     }
 
-    async getCooldowns() {
+    async getCooldowns(): Promise<AccountWithPubkey<Cooldown>[]> {
         const cooldowns = await Cooldown
             .gpaBuilder()
             .addFilter("accountDiscriminator", cooldownDiscriminator)
@@ -103,7 +104,7 @@ export class Restaking {
         return cooldowns.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Cooldown>(Cooldown, account) }));
     }
 
-    async getCooldownsByUser(user: PublicKey) {
+    async getCooldownsByUser(user: PublicKey): Promise<AccountWithPubkey<Cooldown>[]> {
         const cooldowns = await Cooldown
             .gpaBuilder()
             .addFilter("accountDiscriminator", cooldownDiscriminator)
@@ -113,7 +114,7 @@ export class Restaking {
         return cooldowns.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Cooldown>(Cooldown, account) }));
     }
 
-    async getUserPermissions() {
+    async getUserPermissions(): Promise<AccountWithPubkey<UserPermissions>[]> {
         const permissions = await UserPermissions
             .gpaBuilder()
             .addFilter("accountDiscriminator", userPermissionsDiscriminator)
@@ -122,7 +123,7 @@ export class Restaking {
         return permissions.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<UserPermissions>(UserPermissions, account) }));
     }
 
-    async getUserPermissionsFromPublicKey(address: PublicKey) {
+    async getUserPermissionsFromPublicKey(address: PublicKey): Promise<AccountWithPubkey<UserPermissions>[]> {
         const permissions = await UserPermissions
             .gpaBuilder()
             .addFilter("accountDiscriminator", userPermissionsDiscriminator)

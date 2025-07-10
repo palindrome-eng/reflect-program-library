@@ -8,7 +8,8 @@ import {
     LAMPORTS_PER_SOL,
     SYSVAR_CLOCK_PUBKEY,
     TransactionMessage, Connection, TransactionInstruction,
-    TokenBalance
+    TokenBalance,
+    Transaction
 } from "@solana/web3.js";
 import {before, it} from "mocha";
 import {
@@ -50,6 +51,12 @@ import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import comparePubkeys from "./helpers/comparePubkeys";
 import calculateLpToken from "./helpers/calculateLpToken";
 import calculateReceiptToken from "./helpers/calculateReceiptToken";
+import { AccountMeta } from "@solana/web3.js";
+import { ComputeBudgetInstruction } from "@solana/web3.js";
+import { ComputeBudgetProgram } from "@solana/web3.js";
+import { calculateDepositValue, calculateLpTokensOnDeposit, calculateTotalPoolValue } from "./helpers/liquidityPoolMath";
+import { AddressLookupTableProgram } from "@solana/web3.js";
+import { VersionedTransaction } from "@solana/web3.js";
 
 async function createLpToken(
     signer: PublicKey,
@@ -227,7 +234,7 @@ describe("rlp", () => {
         await program
             .methods
             .freezeFunctionality({
-                action: { restake: {} },
+                action: { freezeRestake: {} },
                 freeze: true
             })
             .accounts({
@@ -243,9 +250,7 @@ describe("rlp", () => {
         );
 
         const killswitch = settingsData.accessControl.killswitch;
-        console.log(killswitch.frozen);
-        const actionPermissionMap = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.Restake);
-        expect(actionPermissionMap.).eq(true);
+        expect(killswitch.frozen).eq(1);
     });
 
     it("Tries to interact with frozen protocol. Succeeds on errors", async () => {
@@ -276,7 +281,7 @@ describe("rlp", () => {
         await program
             .methods
             .freezeFunctionality({
-                action: { restake: {} },
+                action: { freezeRestake: {} },
                 freeze: false
             })
             .accounts({
@@ -286,12 +291,13 @@ describe("rlp", () => {
             })
             .rpc()
 
-        let settingsData = await Settings.fromAccountAddress(
-            provider.connection,
-            settings
-        );
-
-        expect(settingsData.frozen).eq(false);
+            let settingsData = await Settings.fromAccountAddress(
+                provider.connection,
+                settings
+            );
+    
+            const killswitch = settingsData.accessControl.killswitch;
+            expect(killswitch.frozen).eq(0);
     });
 
     it("Mints and adds assets to insurance pool.", async () => {
@@ -345,13 +351,7 @@ describe("rlp", () => {
     });
 
     it("Initializes liquidity pool", async () => {
-        const [liquidityPool] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("liquidity_pool"),
-                new BN(0).toArrayLike(Buffer, "le", 1)
-            ],
-            program.programId
-        );
+        const liquidityPool = Restaking.deriveLiquidityPool(0);
 
         const {
             mint: lpTokenMint,
@@ -399,6 +399,90 @@ describe("rlp", () => {
         expect(index).eq(0);
     });
 
+    it("Initializes LP-owned token accounts.", async () => {
+        const restaking = new Restaking(provider.connection);
+        const assets = await restaking.getAssets();
+
+        const liquidityPool = Restaking.deriveLiquidityPool(0);
+        const liquidityPoolData = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        await Promise.all(assets.map(async ({ pubkey, account }) => {
+            const lpMintTokenAccount = getAssociatedTokenAddressSync(
+                account.mint,
+                liquidityPool,
+                true
+            );
+
+            const instruction = await program
+                .methods
+                .initializeLpTokenAccount({
+                    liquidityPoolIndex: 0
+                })
+                .accounts({
+                    admin,
+                    asset: pubkey,
+                    associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+                    liquidityPool,
+                    lpMintTokenAccount,
+                    mint: account.mint,
+                    settings,
+                    signer: provider.publicKey,
+                    systemProgram: SystemProgram.programId,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .instruction();
+
+            await program
+                .methods
+                .initializeLpTokenAccount({
+                    liquidityPoolIndex: 0
+                })
+                .accounts({
+                    admin,
+                    asset: pubkey,
+                    associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+                    liquidityPool,
+                    lpMintTokenAccount,
+                    mint: account.mint,
+                    settings,
+                    signer: provider.publicKey,
+                    systemProgram: SystemProgram.programId,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .rpc();
+        }));
+    });
+
+    it("Sets the restaking action to public.", async () => {
+        await program
+            .methods
+            // Necessary to ignore fucked-up anchor uppercasing the enum.
+            // @ts-ignore
+            .updateActionRole({
+                action: { restake: {} },
+                role: { public: {} },
+                update: { add: {} }
+            })
+            .accounts({
+                admin: provider.publicKey,
+                settings,
+                adminPermissions: admin,
+            })
+            .rpc();
+
+        const settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+        
+        const actionPermissionMap = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.Restake);
+        expect(actionPermissionMap.action).eq(Action.Restake);
+        expect(actionPermissionMap.allowedRoles).include(Role.PUBLIC);
+    });
+
     it("Locks-up tokens in liquidity pool.", async () => {
         const liquidityPoolId = 0;
         const amount = new BN(LAMPORTS_PER_SOL * 1_000);
@@ -440,6 +524,30 @@ describe("rlp", () => {
             asset
         );
 
+        const restaking = new Restaking(provider.connection);
+        const assets = await restaking.getAssets();
+
+        const anchorRemainingAccounts: AccountMeta[] = assets
+        .map(({ account, pubkey }) => {
+            return [
+                {
+                    isSigner: false,
+                    isWritable: true,
+                    pubkey: getAssociatedTokenAddressSync(account.mint, liquidityPool, true)
+                },
+                {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: Restaking.deriveAsset(account.mint)
+                },
+                {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: account.oracle.fields[0]
+                }
+            ] as AccountMeta[];
+        }).flat();
+
         await program
             .methods
             .restake({
@@ -460,9 +568,14 @@ describe("rlp", () => {
                 oracle: assetData.oracle.fields[0],
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
+                permissions: null,
             })
+            .remainingAccounts(anchorRemainingAccounts)
             .signers([
                 user
+            ])
+            .preInstructions([
+                ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 })
             ])
             .rpc()
             .catch(err => {
@@ -689,10 +802,53 @@ describe("rlp", () => {
         );
         const totalLpSupply = new BN(lpToken.supply.toString());
 
-        const expectedLpTokens = amount
-            .mul(totalLpSupply)
-            .div(totalDepositsPre)
-            .toNumber();
+        const restaking = new Restaking(provider.connection);
+        const assets = await restaking.getAssets();
+
+        const totalPoolValue = await calculateTotalPoolValue(
+            await Promise.all(
+                assets.map(async (asset) => ({
+                    asset: {
+                        mint: asset.account.mint.toString(),
+                        oracle: asset.account.oracle.fields[0].toString(),
+                        tokenBalance: new BN((await getAccount(provider.connection, getAssociatedTokenAddressSync(asset.account.mint, liquidityPool, true))).amount.toString())
+                    },
+                }))
+            )
+        );
+
+        const oraclePrice = await getOraclePriceFromAccount(assetDataPre.oracle.fields[0].toString());
+        const depositValue = calculateDepositValue(
+            amount,
+            oraclePrice
+        );
+
+        const expectedLpTokens = calculateLpTokensOnDeposit(
+            totalLpSupply,
+            totalPoolValue,
+            depositValue
+        );
+
+        const anchorRemainingAccounts: AccountMeta[] = assets
+            .map(({ account, pubkey }) => {
+                return [
+                    {
+                        isSigner: false,
+                        isWritable: true,
+                        pubkey: getAssociatedTokenAddressSync(account.mint, liquidityPool, true)
+                    },
+                    {
+                        isSigner: false,
+                        isWritable: false,
+                        pubkey: Restaking.deriveAsset(account.mint)
+                    },
+                    {
+                        isSigner: false,
+                        isWritable: false,
+                        pubkey: account.oracle.fields[0]
+                    }
+                ] as AccountMeta[];
+            }).flat();
 
         await program
             .methods
@@ -714,9 +870,14 @@ describe("rlp", () => {
                 oracle: assetDataPre.oracle.fields[0],
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
+                permissions: null
             })
+            .remainingAccounts(anchorRemainingAccounts)
             .signers([
                 alice
+            ])
+            .preInstructions([
+                ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 })
             ])
             .rpc()
             .catch(err => {
@@ -734,9 +895,35 @@ describe("rlp", () => {
         expect(
             parseInt(userLpAccountData.amount.toString())
         ).approximately(
-            expectedLpTokens,
+            expectedLpTokens.toNumber(),
             0.01 * LAMPORTS_PER_SOL // 0.1 full LP token delta
         );
+    });
+
+    it("Sets the withdraw action to public.", async () => {
+        await program
+            .methods
+            // @ts-ignore
+            .updateActionRole({
+                action: { withdraw: {} },
+                role: { public: {} },
+                update: { add: {} }
+            })
+            .accounts({
+                admin: provider.publicKey,
+                settings,
+                adminPermissions: admin,
+            })
+            .rpc();
+
+        const settingsData = await Settings.fromAccountAddress(
+            provider.connection,
+            settings
+        );
+        
+        const actionPermissionMap = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.Withdraw);
+        expect(actionPermissionMap.action).eq(Action.Withdraw);
+        expect(actionPermissionMap.allowedRoles).include(Role.PUBLIC);
     });
 
     it("Requests withdrawal for the first user.", async () => {
@@ -792,6 +979,7 @@ describe("rlp", () => {
                 signerLpTokenAccount: userLpAccount,
                 cooldown,
                 cooldownLpTokenAccount,
+                permissions: null
             })
             .signers([user])
             .rpc();
@@ -808,6 +996,71 @@ describe("rlp", () => {
                 parseInt(liquidityPoolData.cooldownDuration.toString()) + timestampPre,
                 2 // 2 second delta
             );
+    });
+
+    let lookupTablePubkey: PublicKey;
+    it("Creates lookup table with asset datas", async () => {
+        let done = false;
+        while (!done) {
+            try {
+                const restaking = new Restaking(provider.connection);
+                const assets = await restaking.getAssets();
+
+                const [ix, pubkey] = AddressLookupTableProgram
+                .createLookupTable({
+                    authority: provider.publicKey,
+                    payer: provider.publicKey,
+                    recentSlot: await provider.connection.getSlot()
+                });
+
+                const tx = new Transaction();
+                tx.add(ix);
+
+                const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
+                tx.recentBlockhash = blockhash;
+                tx.feePayer = provider.publicKey;
+
+                const signedTx = await provider.wallet.signTransaction(tx);
+                const signature = await provider.connection.sendRawTransaction(signedTx.serialize());
+                await provider.connection.confirmTransaction({
+                    blockhash,
+                    lastValidBlockHeight,
+                    signature
+                });
+
+                const ix2 = AddressLookupTableProgram
+                .extendLookupTable({
+                    addresses: assets.map(asset => [asset.pubkey, asset.account.mint, asset.account.oracle.fields[0]]).flat(),
+                    authority: provider.publicKey,
+                    payer: provider.publicKey,
+                    lookupTable: pubkey
+                });
+
+                const tx2 = new Transaction();
+                tx2.add(ix2);
+
+                const blockData2 = await provider.connection.getLatestBlockhash();
+                tx2.recentBlockhash = blockData2.blockhash;
+                tx2.feePayer = provider.publicKey;
+
+                await sleep(10);
+
+                const signedTx2 = await provider.wallet.signTransaction(tx2);
+                const signature2 = await provider.connection.sendRawTransaction(signedTx2.serialize());
+                await provider.connection.confirmTransaction({
+                    blockhash: blockData2.blockhash,
+                    lastValidBlockHeight: blockData2.lastValidBlockHeight,
+                    signature: signature2
+                });
+
+                await sleep(10);
+                lookupTablePubkey = pubkey;
+                done = true;
+            } catch (err) {
+                console.log("failed to create lookup table. retrying...");
+                await sleep(3);
+            }
+        }
     });
 
     it("Waits cooldown duration & withdraws.", async () => {
@@ -833,6 +1086,8 @@ describe("rlp", () => {
             provider.connection,
             cooldown
         );
+
+        await sleep(new BN(liquidityPoolData.cooldownDuration.toString()).toNumber());
 
         const asset = Restaking.deriveAsset(lsts[0]);
 
@@ -863,7 +1118,31 @@ describe("rlp", () => {
             true
         );
 
-        await program
+        const restaking = new Restaking(provider.connection);
+        const assets = await restaking.getAssets();
+
+        const anchorRemainingAccounts: AccountMeta[] = assets
+        .map(({ account, pubkey }) => {
+            return [
+                {
+                    isSigner: false,
+                    isWritable: true,
+                    pubkey: getAssociatedTokenAddressSync(account.mint, liquidityPool, true)
+                },
+                {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: Restaking.deriveAsset(account.mint)
+                },
+                {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: getAssociatedTokenAddressSync(account.mint, user.publicKey, true)
+                }
+            ] as AccountMeta[];
+        }).flat();
+
+        const ix = await program
             .methods
             .withdraw({
                 liquidityPoolId,
@@ -878,21 +1157,49 @@ describe("rlp", () => {
                 cooldown,
                 cooldownLpTokenAccount,
                 signer: user.publicKey,
+                permissions: null
             })
-            .preInstructions([
-                createAssociatedTokenAccountInstruction(
+            .remainingAccounts(anchorRemainingAccounts)
+            // .preInstructions(
+            //     assets
+            //     .map(asset => createAssociatedTokenAccountIdempotentInstruction(
+            //         user.publicKey,
+            //         getAssociatedTokenAddressSync(asset.account.mint, provider.publicKey, true),
+            //         user.publicKey,
+            //         asset.account.mint
+            //     ))
+            // )
+            // .signers([user])
+            .instruction();
+
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
+        const msg = new TransactionMessage({
+            instructions: [
+                ...(assets
+                .map(asset => createAssociatedTokenAccountIdempotentInstruction(
                     user.publicKey,
-                    userRewardAta,
+                    getAssociatedTokenAddressSync(asset.account.mint, user.publicKey, true),
                     user.publicKey,
-                    rewardToken
-                )
-            ])
-            .signers([user])
-            .rpc()
-            .catch(err => {
-                console.log(err);
-                throw err;
-            });
+                    asset.account.mint
+                ))),
+                ix
+            ],
+            payerKey: user.publicKey,
+            recentBlockhash: blockhash
+        }).compileToV0Message(
+            [(await provider.connection.getAddressLookupTable(lookupTablePubkey)).value]
+        );
+
+        const tx = new VersionedTransaction(msg);
+        tx.sign([user]);
+        const signature = await provider.connection.sendRawTransaction(tx.serialize());
+        await provider.connection.confirmTransaction({
+            blockhash,
+            lastValidBlockHeight,
+            signature
+        });
+
+        await sleep(10);
 
         const userRewardAtaPost = await getAccount(
             provider.connection,
@@ -904,17 +1211,20 @@ describe("rlp", () => {
         ).gt(0);
     });
 
-    it("Performs a swap between two liquidity pools", async () => {
+    it("Performs a swap between two assets in a liquidity pool", async () => {
         const amountIn = new BN(1000 * LAMPORTS_PER_SOL);
 
-        const fromLiquidityPoolId = 0;
-        const toLiquidityPoolId = 1;
+        const liquidityPoolId = 0;
+        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
 
-        const fromLiquidityPool = Restaking.deriveLiquidityPool(fromLiquidityPoolId);
-        const toLiquidityPool = Restaking.deriveLiquidityPool(toLiquidityPoolId);
+        const restaking = new Restaking(provider.connection);
+        const assets = await restaking.getAssets();
 
-        const fromAsset = Restaking.deriveAsset(lsts[0]);
-        const toAsset = Restaking.deriveAsset(lsts[1]);
+        const fromMint = lsts[0];
+        const toMint = lsts[1];
+
+        const fromAsset = Restaking.deriveAsset(fromMint);
+        const toAsset = Restaking.deriveAsset(toMint);
 
         const {
             oracle: fromOracle
@@ -924,14 +1234,14 @@ describe("rlp", () => {
             oracle: toOracle
         } = await Asset.fromAccountAddress(provider.connection, toAsset);
 
-        const reflectFromTokenAccount = getAssociatedTokenAddressSync(
-            lsts[0],
+        const fromSignerTokenAccount = getAssociatedTokenAddressSync(
+            fromMint,
             provider.publicKey,
             true
         );
 
-        const reflectToTokenAccount = getAssociatedTokenAddressSync(
-            lsts[1],
+        const toSignerTokenAccount = getAssociatedTokenAddressSync(
+            toMint,
             provider.publicKey,
             true
         );
@@ -963,11 +1273,11 @@ describe("rlp", () => {
         } = await getOraclePriceFromAccount(toOracle.fields[0].toString());
 
         const {
-            amount: reflectFromTokenAccountBalancePre
-        } = await getAccount(provider.connection, reflectFromTokenAccount);
+            amount: fromSignerTokenAccountBalancePre
+        } = await getAccount(provider.connection, fromSignerTokenAccount);
         const {
-            amount: reflectToTokenAccountBalancePre
-        } = await getAccount(provider.connection, reflectToTokenAccount);
+            amount: toSignerTokenAccountBalancePre
+        } = await getAccount(provider.connection, toSignerTokenAccount);
 
         await program
             .methods
@@ -975,34 +1285,36 @@ describe("rlp", () => {
                 amountIn,
                 minOut: new BN(0)
             })
-            .preInstructions([createAssociatedTokenAccountIdempotentInstruction(provider.publicKey, reflectToTokenAccount, provider.publicKey, lsts[1])])
+            .preInstructions([
+                ...assets.map((asset) => createAssociatedTokenAccountIdempotentInstruction(provider.publicKey, getAssociatedTokenAddressSync(asset.account.mint, provider.publicKey, true), provider.publicKey, asset.account.mint))
+            ])
             .accounts({
                 admin,
                 settings,
                 signer: provider.publicKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
-                liquidityPool: fromLiquidityPool,
-                tokenFrom: lsts[0],
+                liquidityPool,
+                tokenFrom: fromMint,
                 tokenFromAsset: fromAsset,
                 tokenFromOracle: fromOracle.fields[0],
-                tokenTo: lsts[1],
+                tokenTo: toMint,
                 tokenToAsset: toAsset,
                 tokenToOracle: toOracle.fields[0],
-                tokenFromPool: getAssociatedTokenAddressSync(lsts[0], fromLiquidityPool, true),
-                tokenToPool: getAssociatedTokenAddressSync(lsts[1], toLiquidityPool, true),
-                tokenFromSignerAccount: reflectFromTokenAccount,
-                tokenToSignerAccount: reflectToTokenAccount,
+                tokenFromPool: getAssociatedTokenAddressSync(fromMint, liquidityPool, true),
+                tokenToPool: getAssociatedTokenAddressSync(toMint, liquidityPool, true),
+                tokenFromSignerAccount: fromSignerTokenAccount,
+                tokenToSignerAccount: toSignerTokenAccount,
                 associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
             })
             .rpc();
 
         const {
-            amount: reflectFromTokenAccountBalancePost
-        } = await getAccount(provider.connection, reflectFromTokenAccount);
+            amount: fromSignerTokenAccountBalancePost
+        } = await getAccount(provider.connection, fromSignerTokenAccount);
 
         const {
-            amount: reflectToTokenAccountBalancePost
-        } = await getAccount(provider.connection, reflectToTokenAccount);
+            amount: toSignerTokenAccountBalancePost
+        } = await getAccount(provider.connection, toSignerTokenAccount);
 
         const fromUsdValue = amountIn
             .mul(fromTokenPrice)
@@ -1017,8 +1329,8 @@ describe("rlp", () => {
 
         expect(toAmount.toNumber())
             .approximately(
-                new BN(reflectToTokenAccountBalancePost.toString())
-                    .sub(new BN(reflectToTokenAccountBalancePre.toString()))
+                new BN(toSignerTokenAccountBalancePost.toString())
+                    .sub(new BN(toSignerTokenAccountBalancePre.toString()))
                     .abs()
                     .toNumber(),
                 0.25 * LAMPORTS_PER_SOL
@@ -1026,8 +1338,8 @@ describe("rlp", () => {
 
         expect(amountIn.toNumber())
             .eq(
-                new BN(reflectFromTokenAccountBalancePost.toString())
-                    .sub(new BN(reflectFromTokenAccountBalancePre.toString()))
+                new BN(fromSignerTokenAccountBalancePre.toString())
+                    .sub(new BN(fromSignerTokenAccountBalancePost.toString()))
                     .abs()
                     .toNumber()
             );
@@ -1207,49 +1519,5 @@ describe("rlp", () => {
 
         // Verify the role was removed
         expect(targetUserPermissionsData.authority.toString()).eq(targetUser.publicKey.toString());
-    });
-
-    it("Freezes specific functionality", async () => {
-        await program
-            .methods
-            .freezeFunctionality({
-                action: { restake: {} },
-                freeze: true
-            })
-            .accounts({
-                admin,
-                adminPermissions: admin,
-                settings
-            })
-            .rpc();
-
-        const settingsData = await Settings.fromAccountAddress(
-            provider.connection,
-            settings
-        );
-
-        expect(settingsData.frozen).eq(true);
-    });
-
-    it("Unfreezes specific functionality", async () => {
-        await program
-            .methods
-            .freezeFunctionality({
-                action: { restake: {} },
-                freeze: false
-            })
-            .accounts({
-                admin,
-                adminPermissions: admin,
-                settings
-            })
-            .rpc();
-
-        const settingsData = await Settings.fromAccountAddress(
-            provider.connection,
-            settings
-        );
-
-        expect(settingsData.frozen).eq(false);
     });
 });

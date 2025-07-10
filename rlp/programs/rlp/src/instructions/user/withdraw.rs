@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token;
 use anchor_spl::token::Token;
 use spl_math::precise_number::PreciseNumber;
 use switchboard_solana::rust_decimal::prelude::ToPrimitive;
@@ -42,8 +43,9 @@ pub fn withdraw<'a>(
     let lp_token_supply = lp_token_mint.supply;
 
     let clock = Clock::get()?;
+
     require!(
-        clock.unix_timestamp as u64 > cooldown.unlock_ts,
+        clock.unix_timestamp as u64 >= cooldown.unlock_ts,
         InsuranceFundError::CooldownInForce
     );
 
@@ -112,14 +114,9 @@ pub fn withdraw<'a>(
         );
 
         // Verify this is the correct associated token account for the liquidity pool and asset
-        let (expected_pool_token_account, _) = Pubkey::find_program_address(
-            &[
-                anchor_spl::associated_token::ID.as_ref(),
-                liquidity_pool.key().as_ref(),
-                anchor_spl::token::ID.as_ref(),
-                asset.mint.as_ref(),
-            ],
-            &anchor_spl::associated_token::ID
+        let expected_pool_token_account = associated_token::get_associated_token_address(
+            &liquidity_pool.key(), 
+            &asset.mint
         );
 
         require!(
@@ -129,21 +126,25 @@ pub fn withdraw<'a>(
 
         let user_token_account_info = &remaining_accounts[i + 2];
         
+        msg!("user_token_account owner: {}", user_token_account_info.owner);
+
         require!(
-            user_token_account_info.owner == &anchor_spl::token::ID,
+            user_token_account_info.owner.eq(&anchor_spl::token::ID),
             InsuranceFundError::InvalidInput
         );
 
         let user_token_account = TokenAccount::try_deserialize(&mut user_token_account_info.try_borrow_mut_data()?.as_ref())
             .map_err(|_| InsuranceFundError::InvalidInput)?;
 
+        msg!("user_token_account owner: {}", user_token_account.owner);
+
         require!(
-            user_token_account.owner == signer.key(),
+            user_token_account.owner.eq(&signer.key()),
             InsuranceFundError::InvalidInput
         );
 
         require!(
-            user_token_account.mint == asset.mint,
+            user_token_account.mint.eq(&asset.mint),
             InsuranceFundError::InvalidInput
         );
 
@@ -218,7 +219,7 @@ pub struct Withdraw<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ InsuranceFundError::Frozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 

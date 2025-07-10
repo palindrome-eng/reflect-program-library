@@ -166,6 +166,69 @@
       ]
     },
     {
+      "name": "initializeLpTokenAccount",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidityPool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "asset",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "mint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lpMintTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "InitializeLpTokenAccountArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "addAsset",
       "accounts": [
         {
@@ -1320,10 +1383,22 @@
             "name": "Withdraw"
           },
           {
+            "name": "Slash"
+          },
+          {
+            "name": "Swap"
+          },
+          {
             "name": "FreezeRestake"
           },
           {
             "name": "FreezeWithdraw"
+          },
+          {
+            "name": "FreezeSlash"
+          },
+          {
+            "name": "FreezeSwap"
           },
           {
             "name": "InitializeLiquidityPool"
@@ -1333,12 +1408,6 @@
           },
           {
             "name": "UpdateDepositCap"
-          },
-          {
-            "name": "Slash"
-          },
-          {
-            "name": "Swap"
           },
           {
             "name": "DepositRewards"
