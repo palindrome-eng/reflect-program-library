@@ -10,12 +10,13 @@ import {
     createMintToInstruction,
     createSetAuthorityInstruction, getAccount,
     getAssociatedTokenAddressSync,
+    getMint,
     MINT_SIZE,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import {
     Connection,
-    Keypair, Lockup,
+    Keypair, LAMPORTS_PER_SOL, Lockup,
     PublicKey,
     SystemProgram,
     SYSVAR_CLOCK_PUBKEY,
@@ -23,7 +24,7 @@ import {
     Transaction
 } from "@solana/web3.js";
 import BN, {min} from "bn.js";
-import {LockupState, RTBProtocol, Vault} from "../sdk/src";
+import {Config, Vault} from "../sdk/src";
 import {expect, use} from "chai";
 
 async function createToken(
@@ -165,13 +166,21 @@ describe("reflect-tokenised-bonds", () => {
     const program = anchor.workspace.ReflectTokenisedBonds as Program<ReflectTokenisedBonds>;
 
     let vaultId = 0;
-    let [rtbProtocol] = PublicKey.findProgramAddressSync(
+    const [config] = PublicKey.findProgramAddressSync(
         [
-            Buffer.from("rtb")
+            Buffer.from("config")
+        ],
+        program.programId
+    );
+    const [admin] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from("admin"),
+            provider.publicKey.toBuffer()
         ],
         program.programId
     );
     const user = Keypair.generate();
+    const user2 = Keypair.generate();
     const [userAccount] = PublicKey.findProgramAddressSync(
         [
             Buffer.from("user_account"),
@@ -182,27 +191,32 @@ describe("reflect-tokenised-bonds", () => {
 
     before(async () => {
         await provider.connection.requestAirdrop(user.publicKey, 2_000_000_000);
+        await provider.connection.requestAirdrop(user2.publicKey, 2_000_000_000);
     });
 
     it('Initializes Reflect Tokenised Bonds Protocol', async () => {
         await program
             .methods
-            .initializeProtocol()
+            .initialize()
             .accounts({
-                rtbProtocol,
-                payer: provider.publicKey,
-                systemProgram: SystemProgram.programId
+                admin,
+                config,
+                program: program.programId,
+                signer: provider.publicKey,
+                systemProgram: SystemProgram.programId,
             })
             .rpc();
 
         const {
-            nextVaultSeed
-        } = await RTBProtocol.fromAccountAddress(
+            vaults,
+            frozen,
+            bump
+        } = await Config.fromAccountAddress(
             provider.connection,
-            rtbProtocol
+            config
         );
 
-        expect(nextVaultSeed.toString()).eq("0");
+        expect(vaults.toString()).eq("0");
     });
 
     it("Successfully initializes vault and vault pools.", async () => {
@@ -224,6 +238,14 @@ describe("reflect-tokenised-bonds", () => {
             program.programId
         );
 
+        const [vaultPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault_pool"),
+                vault.toBuffer()
+            ],
+            program.programId
+        );
+
         // Transfer mint authority to vault.
         await transferAuthority(
             receiptToken,
@@ -240,85 +262,49 @@ describe("reflect-tokenised-bonds", () => {
             null
         );
 
-        const minimumDeposit = new BN(2 * 1_000_000_000);
-        const minimumLockup = new BN(20); // 20 seconds
-        const yieldPreset = new BN(5);
-
         await program
             .methods
-            .createVault(
-                minimumDeposit,
-                minimumLockup,
-                yieldPreset,
-                new BN(vaultId)
-            )
+            .createVault()
             .accounts({
                 vault,
-                rtbProtocol,
-                admin: provider.publicKey,
-                systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY
-            })
-            .rpc();
-
-        const [depositPool] = PublicKey.findProgramAddressSync(
-            [
-                vault.toBuffer(),
-                Buffer.from("deposit_pool")
-            ],
-            program.programId
-        );
-
-        const [rewardPool] = PublicKey.findProgramAddressSync(
-            [
-                vault.toBuffer(),
-                Buffer.from("reward_pool")
-            ],
-            program.programId
-        );
-
-        await program
-            .methods
-            .initVaultPools(
-                new BN(vaultId)
-            )
-            .accounts({
-                vault,
-                admin: provider.publicKey,
-                systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY,
-                depositTokenMint: depositToken,
-                receiptTokenMint: receiptToken,
-                depositPool,
-                rewardPool,
+                config,
+                signer: provider.publicKey,
+                depositMint: depositToken,
+                receiptMint: receiptToken,
                 tokenProgram: TOKEN_PROGRAM_ID,
+                vaultPool,
+                systemProgram: SystemProgram.programId,
             })
-            .rpc();
+            .rpc()
+            .catch(err => {
+                console.log(err);
+                throw err;
+            });
 
         const {
-            depositPool: depositPoolAddress,
-            admin,
+            bump,
+            creator,
             depositTokenMint,
             receiptTokenMint,
-            rewardPool: rewardPoolAddress,
-            minLockup,
-            minDeposit,
-            targetYieldRate,
-            totalReceiptSupply
+            index
         } = await Vault.fromAccountAddress(
             provider.connection,
             vault
         );
 
-        expect(depositPoolAddress.toString()).eq(depositPoolAddress.toString());
-        expect(admin.toString()).eq(provider.wallet.publicKey.toString());
+        expect(index.toString()).eq("0");
+        expect(creator.toString()).eq(provider.wallet.publicKey.toString());
         expect(depositTokenMint.toString()).eq(depositToken.toString());
         expect(receiptTokenMint.toString()).eq(receiptToken.toString());
-        expect(rewardPoolAddress.toString()).eq(rewardPool.toString());
-        expect(minLockup.toString()).eq(minimumLockup.toString());
-        expect(minDeposit.toString()).eq(minimumDeposit.toString());
-        expect(targetYieldRate.toString()).eq(yieldPreset.toString());
-        expect(totalReceiptSupply.toString()).eq("0");
+
+        const {
+            vaults
+        } = await Config.fromAccountAddress(
+            provider.connection,
+            config
+        );
+
+        expect(vaults.toString()).eq("1");
 
         vaultId++;
     });
@@ -342,157 +328,32 @@ describe("reflect-tokenised-bonds", () => {
             program.programId
         );
 
-        const minimumDeposit = new BN(2 * 1_000_000_000);
-        const minimumLockup = new BN(20);
-        const yieldPreset = new BN(5);
-
-        await program
-            .methods
-            .createVault(
-                minimumDeposit,
-                minimumLockup,
-                yieldPreset,
-                new BN(vaultId)
-            )
-            .accounts({
-                vault,
-                rtbProtocol,
-                admin: provider.publicKey,
-                systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY
-            })
-            .rpc();
-
-        const [depositPool] = PublicKey.findProgramAddressSync(
+        const [vaultPool] = PublicKey.findProgramAddressSync(
             [
-                vault.toBuffer(),
-                Buffer.from("deposit_pool")
-            ],
-            program.programId
-        );
-
-        const [rewardPool] = PublicKey.findProgramAddressSync(
-            [
-                vault.toBuffer(),
-                Buffer.from("reward_pool")
+                Buffer.from("vault_pool"),
+                vault.toBuffer()
             ],
             program.programId
         );
 
         let error: string = "";
-
         await program
             .methods
-            .initVaultPools(
-                new BN(vaultId)
-            )
+            .createVault()
             .accounts({
                 vault,
-                admin: provider.publicKey,
+                config,
+                signer: provider.publicKey,
+                depositMint: depositToken,
+                receiptMint: receiptToken,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                vaultPool,
                 systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY,
-                depositTokenMint: depositToken,
-                receiptTokenMint: receiptToken,
-                depositPool,
-                rewardPool,
-                tokenProgram: TOKEN_PROGRAM_ID
             })
             .rpc()
             .catch(err => error = err.toString());
 
-        expect(error).include("Invalid mint authority. Move mint authority of the receipt token to the vault PDA");
-
-        vaultId++;
-    });
-
-    it('Fails to create a vault with incorrect freeze authority.', async () => {
-        const depositToken = await createToken(
-            provider.connection,
-            provider
-        );
-
-        const receiptToken = await createToken(
-            provider.connection,
-            provider
-        );
-
-        const [vault] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("vault"),
-                new BN(vaultId).toArrayLike(Buffer, "le", 8)
-            ],
-            program.programId
-        );
-
-        const minimumDeposit = new BN(2 * 1_000_000_000);
-        const minimumLockup = new BN(20);
-        const yieldPreset = new BN(5);
-
-        await program
-            .methods
-            .createVault(
-                minimumDeposit,
-                minimumLockup,
-                yieldPreset,
-                new BN(vaultId)
-            )
-            .accounts({
-                vault,
-                rtbProtocol,
-                admin: provider.publicKey,
-                systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY
-            })
-            .rpc();
-
-        const [depositPool] = PublicKey.findProgramAddressSync(
-            [
-                vault.toBuffer(),
-                Buffer.from("deposit_pool")
-            ],
-            program.programId
-        );
-
-        const [rewardPool] = PublicKey.findProgramAddressSync(
-            [
-                vault.toBuffer(),
-                Buffer.from("reward_pool")
-            ],
-            program.programId
-        );
-
-        // Transfer mint authority to vault.
-        await transferAuthority(
-            receiptToken,
-            provider,
-            AuthorityType.MintTokens,
-            vault
-        );
-
-        let error: string = "";
-
-        await program
-            .methods
-            .initVaultPools(
-                new BN(vaultId)
-            )
-            .accounts({
-                vault,
-                admin: provider.publicKey,
-                systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY,
-                depositTokenMint: depositToken,
-                receiptTokenMint: receiptToken,
-                depositPool,
-                rewardPool,
-                tokenProgram: TOKEN_PROGRAM_ID
-            })
-            .rpc()
-            .catch(err => error = err.toString());
-
-        expect(error).include("Invalid freeze authority. Move freeze authority of the receipt token to the vault PDA, or remove it completely.");
-
-        vaultId++;
+        expect(error).include("InvalidReceiptTokenMintAuthority");
     });
 
     it('Fails to create a vault with pre-minted receipt tokens.', async () => {
@@ -520,39 +381,10 @@ describe("reflect-tokenised-bonds", () => {
             program.programId
         );
 
-        const minimumDeposit = new BN(2 * 1_000_000_000);
-        const minimumLockup = new BN(20);
-        const yieldPreset = new BN(5);
-
-        await program
-            .methods
-            .createVault(
-                minimumDeposit,
-                minimumLockup,
-                yieldPreset,
-                new BN(vaultId)
-            )
-            .accounts({
-                vault,
-                rtbProtocol,
-                admin: provider.publicKey,
-                systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY
-            })
-            .rpc();
-
-        const [depositPool] = PublicKey.findProgramAddressSync(
+        const [vaultPool] = PublicKey.findProgramAddressSync(
             [
-                vault.toBuffer(),
-                Buffer.from("deposit_pool")
-            ],
-            program.programId
-        );
-
-        const [rewardPool] = PublicKey.findProgramAddressSync(
-            [
-                vault.toBuffer(),
-                Buffer.from("reward_pool")
+                Buffer.from("vault_pool"),
+                vault.toBuffer()
             ],
             program.programId
         );
@@ -577,29 +409,24 @@ describe("reflect-tokenised-bonds", () => {
 
         await program
             .methods
-            .initVaultPools(
-                new BN(vaultId)
-            )
+            .createVault()
             .accounts({
                 vault,
-                admin: provider.publicKey,
+                config,
+                signer: provider.publicKey,
+                depositMint: depositToken,
+                receiptMint: receiptToken,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                vaultPool,
                 systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY,
-                depositTokenMint: depositToken,
-                receiptTokenMint: receiptToken,
-                depositPool,
-                rewardPool,
-                tokenProgram: TOKEN_PROGRAM_ID
             })
             .rpc()
             .catch(err => error = err.toString());
 
-        expect(error).include("Supply of the receipt token has to be 0. Pre-minting is not allowed.");
-
-        vaultId++;
+        expect(error).include("InvalidReceiptTokenSupply");
     });
 
-    it('Successfully deposits base token.', async () => {
+    it('Deposits base token.', async () => {
         // Vault with ID = 0, created in the 2nd test.
         const [vault] = PublicKey.findProgramAddressSync(
             [
@@ -609,20 +436,26 @@ describe("reflect-tokenised-bonds", () => {
             program.programId
         );
 
-        let vaultData  = await Vault.fromAccountAddress(
+        const [vaultPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault_pool"),
+                vault.toBuffer()
+            ],
+            program.programId
+        );
+
+        const {
+            bump,
+            creator,
+            depositTokenMint,
+            index,
+            receiptTokenMint
+        }  = await Vault.fromAccountAddress(
             provider.connection,
             vault
         );
 
-        let {
-            depositPool,
-            rewardPool,
-            depositTokenMint,
-            receiptTokenMint,
-            minDeposit
-        } = vaultData;
-
-        const amount = typeof minDeposit === "number" ? minDeposit : minDeposit.toNumber();
+        const amount = LAMPORTS_PER_SOL * 100;
 
         await mintTokens(
             depositTokenMint,
@@ -648,71 +481,146 @@ describe("reflect-tokenised-bonds", () => {
             receiptTokenMint
         );
 
-        const depositIx = await program
-            .methods
-            .deposit(
-                new BN(amount),
-                new BN(0)
-            )
-            .accounts({
-                vault,
-                rewardPool,
-                depositPool,
-                receiptTokenMint,
-                user: user.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                depositTokenAccount,
-                receiptTokenAccount,
-            })
-            .instruction();
-
-        const transaction = new Transaction();
-        transaction.add(ataIx);
-        transaction.add(depositIx);
-
-        const {
-            lastValidBlockHeight,
-            blockhash
-        } = await provider.connection.getLatestBlockhash();
-
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = user.publicKey;
-
-        transaction.sign(user);
-        const signature = await provider.connection.sendRawTransaction(transaction.serialize());
-        await provider.connection.confirmTransaction({
-            blockhash,
-            lastValidBlockHeight,
-            signature
-        }, "confirmed");
-
-        vaultData  = await Vault.fromAccountAddress(
+        const vaultPoolPre = await getAccount(
             provider.connection,
-            vault
+            vaultPool
         );
 
-        const userReceiptTokenAccountData = await getAccount(
-            provider.connection,
-            receiptTokenAccount,
-        );
-
-        const userDepositTokenAccountData = await getAccount(
+        const signerDepositTokenAccountPre = await getAccount(
             provider.connection,
             depositTokenAccount
         );
 
-        const depositPoolData = await getAccount(
+        await program
+            .methods
+            .deposit({
+                amount: new BN(amount),
+                isRewards: false,
+                vaultId: new BN(0)
+            })
+            .accounts({
+                vault,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                depositToken: depositTokenMint,
+                pool: vaultPool,
+                receiptToken: receiptTokenMint,
+                signer: user.publicKey,
+                signerDepositTokenAccount: depositTokenAccount,
+                signerReceiptTokenAccount: receiptTokenAccount
+            })
+            .preInstructions([ataIx])
+            .signers([user])
+            .rpc()
+            .catch(err => {
+                console.log(err);
+                throw err;
+            });
+
+        const vaultPoolPost = await getAccount(
             provider.connection,
-            depositPool
+            vaultPool
         );
 
-        expect(vaultData.totalReceiptSupply.toString()).eq(amount.toString());
-        expect(userReceiptTokenAccountData.amount.toString()).eq(amount.toString());
-        expect(userDepositTokenAccountData.amount.toString()).eq("0");
-        expect(depositPoolData.amount.toString()).eq(amount.toString());
+        const signerReceiptTokenAccountPost = await getAccount(
+            provider.connection,
+            receiptTokenAccount
+        );
+
+        const signerDepositTokenAccountPost = await getAccount(
+            provider.connection,
+            depositTokenAccount
+        );
+
+        expect(
+            new BN(signerDepositTokenAccountPost.amount.toString())
+                .add(new BN(amount.toString()))
+                .toNumber()
+        ).eq(new BN(signerDepositTokenAccountPre.amount.toString()).toNumber());
+
+        expect(
+            new BN(vaultPoolPost.amount.toString())
+                .sub(new BN(amount))
+                .toNumber()
+        ).eq(new BN(vaultPoolPre.amount.toString()).toNumber());
+
+        // Expect to have same amount of receipts inted as the amount deposited, since it's the first deposit.
+        expect(
+            new BN(signerReceiptTokenAccountPost.amount.toString()).toNumber()
+        ).eq(amount);
     });
 
-    it("Locks receipts tokens up.", async () => {
+    it("Deposits 500,000 reward token into the reward pool.", async () => {
+        const [vault] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault"),
+                new BN(0).toArrayLike(Buffer, "le", 8)
+            ],
+            program.programId
+        );
+
+        const [vaultPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault_pool"),
+                vault.toBuffer()
+            ],
+            program.programId
+        );
+
+        const {
+            depositTokenMint,
+            receiptTokenMint
+        } = await Vault.fromAccountAddress(
+            provider.connection,
+            vault
+        );
+
+        const signerDepositTokenAccount = getAssociatedTokenAddressSync(
+            depositTokenMint,
+            provider.publicKey
+        );
+
+        const signerReceiptTokenAccount = getAssociatedTokenAddressSync(
+            receiptTokenMint,
+            provider.publicKey
+        );
+
+        const ataIx = createAssociatedTokenAccountInstruction(
+            provider.publicKey,
+            signerReceiptTokenAccount,
+            provider.publicKey,
+            receiptTokenMint
+        );
+
+        await mintTokens(
+            depositTokenMint,
+            provider,
+            50 * LAMPORTS_PER_SOL,
+            provider.publicKey
+        );
+
+        await program
+            .methods
+            .deposit({
+                amount: new BN(50 * LAMPORTS_PER_SOL),
+                isRewards: true,
+                vaultId: new BN(0)
+            })
+            .accounts({
+                signer: provider.publicKey,
+                signerDepositTokenAccount,
+                signerReceiptTokenAccount,
+                vault,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                depositToken: depositTokenMint,
+                pool: vaultPool,
+                receiptToken: receiptTokenMint,
+            })
+            .preInstructions([ataIx])
+            .rpc();
+    });
+
+    
+    it('Deposits base token for user2.', async () => {
         // Vault with ID = 0, created in the 2nd test.
         const [vault] = PublicKey.findProgramAddressSync(
             [
@@ -722,145 +630,145 @@ describe("reflect-tokenised-bonds", () => {
             program.programId
         );
 
-        const [lockup] = PublicKey.findProgramAddressSync(
+        const [vaultPool] = PublicKey.findProgramAddressSync(
             [
-                Buffer.from("lockup"),
-                (new BN(0)).toArrayLike(Buffer, "le", 8)
+                Buffer.from("vault_pool"),
+                vault.toBuffer()
             ],
             program.programId
         );
 
-        let {
-            receiptTokenMint,
-            minLockup
+        const {
+            bump,
+            creator,
+            depositTokenMint,
+            index,
+            receiptTokenMint
         }  = await Vault.fromAccountAddress(
             provider.connection,
             vault
         );
 
-        const lockupReceiptTokenAccount = getAssociatedTokenAddressSync(
-            receiptTokenMint,
-            lockup,
-            true
-        );
-
-        const userReceiptTokenAccount = getAssociatedTokenAddressSync(
-            receiptTokenMint,
-            user.publicKey
-        );
-
-        const ataIx = createAssociatedTokenAccountInstruction(
-            user.publicKey,
-            lockupReceiptTokenAccount,
-            lockup,
-            receiptTokenMint
-        );
-
-        const {
-            amount: userReceiptTokenBalance
-        } = await getAccount(
-            provider.connection,
-            userReceiptTokenAccount,
-        );
-
-        const lockupIx = await program
-            .methods
-            .lockup(
-                new BN(userReceiptTokenBalance.toString())
-            )
-            .accounts({
-                user: user.publicKey,
-                systemProgram: SystemProgram.programId,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                vault,
-                userAccount,
-                lockup,
-                clock: SYSVAR_CLOCK_PUBKEY,
-                lockupReceiptTokenAccount,
-                userReceiptTokenAccount,
-            })
-            .instruction();
-
-        const transaction = new Transaction();
-        transaction.add(ataIx);
-        transaction.add(lockupIx);
-
-        const {
-            lastValidBlockHeight,
-            blockhash
-        } = await provider.connection.getLatestBlockhash();
-
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = user.publicKey;
-
-        transaction.sign(user);
-        const signature = await provider.connection.sendRawTransaction(transaction.serialize());
-        const sendTransactionTimestamp = Math.floor(Date.now() / 1000);
-
-        await provider.connection.confirmTransaction({
-            blockhash,
-            lastValidBlockHeight,
-            signature
-        }, "confirmed");
-
-        const lockupAccountData = await LockupState.fromAccountAddress(
-            provider.connection,
-            lockup
-        );
-
-        const userReceiptTokenAccountData = await getAccount(
-            provider.connection,
-            userReceiptTokenAccount,
-        );
-
-        const lockupReceiptTokenAccountData = await getAccount(
-            provider.connection,
-            lockupReceiptTokenAccount,
-        );
-
-        expect(userReceiptTokenAccountData.amount.toString()).eq("0");
-        expect(lockupAccountData.receiptAmount.toString()).eq(userReceiptTokenBalance.toString());
-        expect(lockupReceiptTokenAccountData.amount.toString()).eq(lockupAccountData.receiptAmount.toString());
-        expect(lockupAccountData.user.toString()).eq(user.publicKey.toString());
-
-        // Expect unlock date to be approximately equal to timestamp of the
-        // transaction + minimum lockup. Delta of 3 seconds due to latencies.
-        expect(
-            typeof lockupAccountData.unlockDate == "number"
-                ? lockupAccountData.unlockDate
-                : lockupAccountData.unlockDate.toNumber()
-        ).approximately(
-            sendTransactionTimestamp + (typeof minLockup == "number" ? minLockup : minLockup.toNumber()),
-            3
-        );
-    });
-
-    it ("Deposits 500,000 reward token into the reward pool.", async () => {
-        const [vault] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("vault"),
-                new BN(0).toArrayLike(Buffer, "le", 8)
-            ],
-            program.programId
-        );
-
-        const {
-            rewardPool,
-            depositTokenMint
-        } = await Vault.fromAccountAddress(
-            provider.connection,
-            vault
-        );
+        const amount = LAMPORTS_PER_SOL * 100;
 
         await mintTokens(
             depositTokenMint,
             provider,
-            500_000,
-            rewardPool
+            amount,
+            user2.publicKey
         );
+
+        const depositTokenAccount = getAssociatedTokenAddressSync(
+            depositTokenMint,
+            user2.publicKey
+        );
+
+        const receiptTokenAccount = getAssociatedTokenAddressSync(
+            receiptTokenMint,
+            user2.publicKey
+        );
+
+        const ataIx = createAssociatedTokenAccountInstruction(
+            user2.publicKey,
+            receiptTokenAccount,
+            user2.publicKey,
+            receiptTokenMint
+        );
+
+        const vaultPoolPre = await getAccount(
+            provider.connection,
+            vaultPool
+        );
+
+        const signerDepositTokenAccountPre = await getAccount(
+            provider.connection,
+            depositTokenAccount
+        );
+
+        const receiptTokenMintDataPre = await getMint(
+            provider.connection,
+            receiptTokenMint
+        );
+
+        await program
+            .methods
+            .deposit({
+                amount: new BN(amount),
+                isRewards: false,
+                vaultId: new BN(0)
+            })
+            .accounts({
+                vault,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                depositToken: depositTokenMint,
+                pool: vaultPool,
+                receiptToken: receiptTokenMint,
+                signer: user2.publicKey,
+                signerDepositTokenAccount: depositTokenAccount,
+                signerReceiptTokenAccount: receiptTokenAccount
+            })
+            .preInstructions([ataIx])
+            .signers([user2])
+            .rpc()
+            .catch(err => {
+                console.log(err);
+                throw err;
+            });
+
+        const vaultPoolPost = await getAccount(
+            provider.connection,
+            vaultPool
+        );
+
+        const signerReceiptTokenAccountPost = await getAccount(
+            provider.connection,
+            receiptTokenAccount
+        );
+
+        const signerDepositTokenAccountPost = await getAccount(
+            provider.connection,
+            depositTokenAccount
+        );
+
+        const receiptTokenMintDataPost = await getMint(
+            provider.connection,
+            receiptTokenMint
+        );
+
+        expect(
+            new BN(signerReceiptTokenAccountPost.amount.toString())
+                .mul(new BN(vaultPoolPost.amount.toString()))
+                .div(new BN(receiptTokenMintDataPost.supply.toString()))
+                .toNumber()
+        )
+        .approximately(
+            amount,
+            1
+        );
+
+        expect(
+            new BN(vaultPoolPre.amount.toString())
+                .add(new BN(amount.toString()))
+                .toNumber()
+        ).eq(
+            new BN(vaultPoolPost.amount.toString())
+                .toNumber()
+        );
+
+        expect(
+            new BN(signerDepositTokenAccountPost.amount.toString())
+                .add(new BN(amount.toString()))
+                .toNumber()
+        ).eq(new BN(signerDepositTokenAccountPre.amount.toString()).toNumber());
+
+        expect(
+            new BN(vaultPoolPost.amount.toString())
+                .sub(new BN(amount))
+                .toNumber()
+        ).eq(new BN(vaultPoolPre.amount.toString()).toNumber());
     });
 
-    it("Withdraws tokens and reward.", async () => {
+    it("Withdraws tokens and reward for user 1.", async () => {
         const [vault] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("vault"),
@@ -869,109 +777,115 @@ describe("reflect-tokenised-bonds", () => {
             program.programId
         );
 
+        const [vaultPool] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("vault_pool"),
+                vault.toBuffer()
+            ],
+            program.programId
+        );
+
         let {
-            rewardPool,
             depositTokenMint,
             receiptTokenMint,
-            depositPool,
-            minLockup
         }  = await Vault.fromAccountAddress(
             provider.connection,
             vault
         );
 
-        console.log(`Awaiting ${ parseInt(minLockup.toString()) } seconds of the lockup.`);
-        await sleep(parseInt(minLockup.toString()) * 1000);
-
-        const [lockup] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("lockup"),
-                (new BN(0)).toArrayLike(Buffer, "le", 8)
-            ],
-            program.programId
-        );
-
-        const userDepositTokenAccount = getAssociatedTokenAddressSync(
+        const signerDepositTokenAccount = getAssociatedTokenAddressSync(
             depositTokenMint,
             user.publicKey
         );
 
-        const lockupReceiptTokenAccount = getAssociatedTokenAddressSync(
+        const signerDepositTokenAccountPre = await getAccount(
+            provider.connection,
+            signerDepositTokenAccount
+        );
+
+        const signerReceiptTokenAccount = getAssociatedTokenAddressSync(
             receiptTokenMint,
-            lockup,
-            true
+            user.publicKey
         );
 
-        const preTxDepositPoolData = await getAccount(
+        const signerReceiptTokenAccountPre = await getAccount(
             provider.connection,
-            depositPool
+            signerReceiptTokenAccount
         );
 
-        const preTxRewardPoolData = await getAccount(
+        const vaultPoolPre = await getAccount(
             provider.connection,
-            rewardPool
+            vaultPool
         );
 
-        const ix = await program
+        const amount = new BN(signerReceiptTokenAccountPre.amount.toString());
+        const receiptTokenMintDataPre = await getMint(
+            provider.connection,
+            receiptTokenMint
+        );
+
+        await program
             .methods
-            .withdraw(
-                new BN(0),
-                new BN(0)
-            )
+            .withdraw({
+                amount,
+                vaultId: new BN(0)
+            })
             .accounts({
-                user: user.publicKey,
+                signer: user.publicKey,
                 vault,
-                rewardPool,
                 receiptMint: receiptTokenMint,
-                lockup,
                 tokenProgram: TOKEN_PROGRAM_ID,
-                depositPool,
-                userDepositTokenAccount,
-                lockupReceiptTokenAccount
+                depositMint: depositTokenMint,
+                pool: vaultPool,
+                signerDepositTokenAccount,
+                signerReceiptTokenAccount
             })
             .signers([user])
-            .instruction();
+            .rpc();
 
-        const transaction = new Transaction();
-        transaction.add(ix);
-
-        const {
-            lastValidBlockHeight,
-            blockhash
-        } = await provider.connection.getLatestBlockhash();
-
-        transaction.feePayer = user.publicKey;
-        transaction.recentBlockhash = blockhash;
-
-        transaction.sign(user);
-        const signature = await provider.connection.sendRawTransaction(transaction.serialize(), { skipPreflight: true });
-
-        await provider.connection.confirmTransaction({
-            blockhash,
-            lastValidBlockHeight,
-            signature
-        }, "confirmed");
-
-        const rewardPoolData = await getAccount(
+        const receiptTokenMintDataPost = await getMint(
             provider.connection,
-            rewardPool
+            receiptTokenMint
         );
 
-        let depositPoolData = await getAccount(
-            provider.connection,
-            depositPool
+        const signerReceiptTokenAccountPost = await getAccount(
+             provider.connection,
+             signerReceiptTokenAccount
         );
 
-        const userDepositTokenAccountData = await getAccount(
+        const signerDepositTokenAccountPost = await getAccount(
             provider.connection,
-            userDepositTokenAccount
+            signerDepositTokenAccount
         );
 
-        expect(rewardPoolData.amount.toString()).eq("0");
-        expect(depositPoolData.amount.toString()).eq("0");
-        expect(userDepositTokenAccountData.amount.toString()).eq(`${
-                parseInt(preTxDepositPoolData.amount.toString())
-                + parseInt(preTxRewardPoolData.amount.toString())
-        }`);
+        // Check that tokens have been burned.
+        expect(
+            new BN(receiptTokenMintDataPost.supply.toString())
+                .toNumber()
+        ).eq(
+            new BN(receiptTokenMintDataPre.supply.toString())
+                .sub(amount)
+                .toNumber()
+        );
+        
+        // Check that tokens have been burned from the user's account.
+        expect(
+            new BN(signerReceiptTokenAccountPre.amount.toString())
+                .sub(new BN(signerReceiptTokenAccountPost.amount.toString()))
+                .toNumber()
+        ).eq(amount.toNumber());
+
+        // Check that user has received the correct share of the vault pool, based on the amount of receipts they burned.
+        expect(
+            new BN(signerReceiptTokenAccountPre.amount.toString())
+                .mul(new BN(vaultPoolPre.amount.toString()))
+                .div(new BN(receiptTokenMintDataPre.supply.toString()))
+                .toNumber()
+        ).approximately(
+            new BN(signerDepositTokenAccountPost.amount.toString())
+                .sub(new BN(signerDepositTokenAccountPre.amount.toString()))
+                .toNumber(),
+            0.01 * LAMPORTS_PER_SOL
+        );
     });
 });

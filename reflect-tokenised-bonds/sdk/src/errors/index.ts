@@ -12,148 +12,257 @@ const createErrorFromCodeLookup: Map<number, () => ErrorWithCode> = new Map()
 const createErrorFromNameLookup: Map<string, () => ErrorWithCode> = new Map()
 
 /**
- * InvalidVaultSeed: 'Vault PDA is derived with invalid vault seed.'
+ * InvalidSigner: 'Invalid transaction signer.'
  *
  * @category Errors
  * @category generated
  */
-export class InvalidVaultSeedError extends Error {
+export class InvalidSignerError extends Error {
   readonly code: number = 0x1770
-  readonly name: string = 'InvalidVaultSeed'
+  readonly name: string = 'InvalidSigner'
   constructor() {
-    super('Vault PDA is derived with invalid vault seed.')
+    super('Invalid transaction signer.')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, InvalidVaultSeedError)
+      Error.captureStackTrace(this, InvalidSignerError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1770, () => new InvalidVaultSeedError())
-createErrorFromNameLookup.set(
-  'InvalidVaultSeed',
-  () => new InvalidVaultSeedError()
-)
+createErrorFromCodeLookup.set(0x1770, () => new InvalidSignerError())
+createErrorFromNameLookup.set('InvalidSigner', () => new InvalidSignerError())
 
 /**
- * InsufficientDeposit: 'Insufficient deposit amount.'
+ * ProgramAccountsMismatch: 'ProgramAccountsMismatch'
  *
  * @category Errors
  * @category generated
  */
-export class InsufficientDepositError extends Error {
+export class ProgramAccountsMismatchError extends Error {
   readonly code: number = 0x1771
-  readonly name: string = 'InsufficientDeposit'
+  readonly name: string = 'ProgramAccountsMismatch'
   constructor() {
-    super('Insufficient deposit amount.')
+    super('ProgramAccountsMismatch')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, InsufficientDepositError)
+      Error.captureStackTrace(this, ProgramAccountsMismatchError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1771, () => new InsufficientDepositError())
+createErrorFromCodeLookup.set(0x1771, () => new ProgramAccountsMismatchError())
 createErrorFromNameLookup.set(
-  'InsufficientDeposit',
-  () => new InsufficientDepositError()
+  'ProgramAccountsMismatch',
+  () => new ProgramAccountsMismatchError()
 )
 
 /**
- * LockupNotExpired: 'Lockup period has not expired.'
+ * InvalidReceiptTokenSupply: 'InvalidReceiptTokenSupply'
  *
  * @category Errors
  * @category generated
  */
-export class LockupNotExpiredError extends Error {
+export class InvalidReceiptTokenSupplyError extends Error {
   readonly code: number = 0x1772
-  readonly name: string = 'LockupNotExpired'
+  readonly name: string = 'InvalidReceiptTokenSupply'
   constructor() {
-    super('Lockup period has not expired.')
+    super('InvalidReceiptTokenSupply')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, LockupNotExpiredError)
+      Error.captureStackTrace(this, InvalidReceiptTokenSupplyError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1772, () => new LockupNotExpiredError())
+createErrorFromCodeLookup.set(
+  0x1772,
+  () => new InvalidReceiptTokenSupplyError()
+)
 createErrorFromNameLookup.set(
-  'LockupNotExpired',
-  () => new LockupNotExpiredError()
+  'InvalidReceiptTokenSupply',
+  () => new InvalidReceiptTokenSupplyError()
 )
 
 /**
- * InvalidMintAuthority: 'Invalid mint authority. Move mint authority of the receipt token to the vault PDA.'
+ * InvalidReceiptTokenMintAuthority: 'InvalidReceiptTokenMintAuthority'
  *
  * @category Errors
  * @category generated
  */
-export class InvalidMintAuthorityError extends Error {
+export class InvalidReceiptTokenMintAuthorityError extends Error {
   readonly code: number = 0x1773
-  readonly name: string = 'InvalidMintAuthority'
+  readonly name: string = 'InvalidReceiptTokenMintAuthority'
   constructor() {
-    super(
-      'Invalid mint authority. Move mint authority of the receipt token to the vault PDA.'
-    )
+    super('InvalidReceiptTokenMintAuthority')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, InvalidMintAuthorityError)
+      Error.captureStackTrace(this, InvalidReceiptTokenMintAuthorityError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1773, () => new InvalidMintAuthorityError())
+createErrorFromCodeLookup.set(
+  0x1773,
+  () => new InvalidReceiptTokenMintAuthorityError()
+)
 createErrorFromNameLookup.set(
-  'InvalidMintAuthority',
-  () => new InvalidMintAuthorityError()
+  'InvalidReceiptTokenMintAuthority',
+  () => new InvalidReceiptTokenMintAuthorityError()
 )
 
 /**
- * InvalidFreezeAuthority: 'Invalid freeze authority. Move freeze authority of the receipt token to the vault PDA, or remove it completely.'
+ * InvalidReceiptTokenFreezeAuthority: 'InvalidReceiptTokenFreezeAuthority'
  *
  * @category Errors
  * @category generated
  */
-export class InvalidFreezeAuthorityError extends Error {
+export class InvalidReceiptTokenFreezeAuthorityError extends Error {
   readonly code: number = 0x1774
-  readonly name: string = 'InvalidFreezeAuthority'
+  readonly name: string = 'InvalidReceiptTokenFreezeAuthority'
   constructor() {
-    super(
-      'Invalid freeze authority. Move freeze authority of the receipt token to the vault PDA, or remove it completely.'
-    )
+    super('InvalidReceiptTokenFreezeAuthority')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, InvalidFreezeAuthorityError)
+      Error.captureStackTrace(this, InvalidReceiptTokenFreezeAuthorityError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1774, () => new InvalidFreezeAuthorityError())
+createErrorFromCodeLookup.set(
+  0x1774,
+  () => new InvalidReceiptTokenFreezeAuthorityError()
+)
 createErrorFromNameLookup.set(
-  'InvalidFreezeAuthority',
-  () => new InvalidFreezeAuthorityError()
+  'InvalidReceiptTokenFreezeAuthority',
+  () => new InvalidReceiptTokenFreezeAuthorityError()
 )
 
 /**
- * NonZeroReceiptSupply: 'Supply of the receipt token has to be 0. Pre-minting is not allowed.'
+ * InvalidReceiptTokenSetup: 'InvalidReceiptTokenSetup'
  *
  * @category Errors
  * @category generated
  */
-export class NonZeroReceiptSupplyError extends Error {
+export class InvalidReceiptTokenSetupError extends Error {
   readonly code: number = 0x1775
-  readonly name: string = 'NonZeroReceiptSupply'
+  readonly name: string = 'InvalidReceiptTokenSetup'
   constructor() {
-    super(
-      'Supply of the receipt token has to be 0. Pre-minting is not allowed.'
-    )
+    super('InvalidReceiptTokenSetup')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, NonZeroReceiptSupplyError)
+      Error.captureStackTrace(this, InvalidReceiptTokenSetupError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1775, () => new NonZeroReceiptSupplyError())
+createErrorFromCodeLookup.set(0x1775, () => new InvalidReceiptTokenSetupError())
 createErrorFromNameLookup.set(
-  'NonZeroReceiptSupply',
-  () => new NonZeroReceiptSupplyError()
+  'InvalidReceiptTokenSetup',
+  () => new InvalidReceiptTokenSetupError()
 )
+
+/**
+ * InvalidReceiptTokenDecimals: 'InvalidReceiptTokenDecimals'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidReceiptTokenDecimalsError extends Error {
+  readonly code: number = 0x1776
+  readonly name: string = 'InvalidReceiptTokenDecimals'
+  constructor() {
+    super('InvalidReceiptTokenDecimals')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidReceiptTokenDecimalsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1776,
+  () => new InvalidReceiptTokenDecimalsError()
+)
+createErrorFromNameLookup.set(
+  'InvalidReceiptTokenDecimals',
+  () => new InvalidReceiptTokenDecimalsError()
+)
+
+/**
+ * ZeroDivision: 'ZeroDivision'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ZeroDivisionError extends Error {
+  readonly code: number = 0x1777
+  readonly name: string = 'ZeroDivision'
+  constructor() {
+    super('ZeroDivision')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ZeroDivisionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1777, () => new ZeroDivisionError())
+createErrorFromNameLookup.set('ZeroDivision', () => new ZeroDivisionError())
+
+/**
+ * MathOverflow: 'MathOverflow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MathOverflowError extends Error {
+  readonly code: number = 0x1778
+  readonly name: string = 'MathOverflow'
+  constructor() {
+    super('MathOverflow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MathOverflowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1778, () => new MathOverflowError())
+createErrorFromNameLookup.set('MathOverflow', () => new MathOverflowError())
+
+/**
+ * MissingAccounts: 'MissingAccounts'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingAccountsError extends Error {
+  readonly code: number = 0x1779
+  readonly name: string = 'MissingAccounts'
+  constructor() {
+    super('MissingAccounts')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingAccountsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1779, () => new MissingAccountsError())
+createErrorFromNameLookup.set(
+  'MissingAccounts',
+  () => new MissingAccountsError()
+)
+
+/**
+ * AmountTooLow: 'AmountTooLow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class AmountTooLowError extends Error {
+  readonly code: number = 0x177a
+  readonly name: string = 'AmountTooLow'
+  constructor() {
+    super('AmountTooLow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, AmountTooLowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x177a, () => new AmountTooLowError())
+createErrorFromNameLookup.set('AmountTooLow', () => new AmountTooLowError())
 
 /**
  * Attempts to resolve a custom program error from the provided error code.

@@ -33,6 +33,8 @@ pub fn deposit(
         deposit_token: _,
     } = ctx.accounts;
 
+    msg!("depositing");
+
     vault.deposit(
         amount,
         signer,
@@ -41,33 +43,20 @@ pub fn deposit(
         token_program
     )?;
 
-    // If normal deposit, compute and mint receipts.
-    // If rewards, just transfer tokens into the pool.
+    msg!("deposited");
+
     if !is_rewards {
-        require!(
-            receipt_token.is_some(),
-            ReflectError::MissingAccounts
-        );
-
-        require!(
-            signer_receipt_token_account.is_some(),
-            ReflectError::MissingAccounts
-        );
-
         let receipts: u64 = vault.compute_receipt_token(
             amount,
             pool.amount,
-            receipt_token
-                .as_ref()
-                .unwrap()
-                .supply
+            receipt_token.supply
         )?;
 
         vault.mint_receipt_tokens(
             receipts,
             vault,
-            signer_receipt_token_account.as_ref().unwrap(),
-            receipt_token.as_ref().unwrap(),
+            signer_receipt_token_account,
+            receipt_token,
             token_program
         )?
     }
@@ -93,6 +82,7 @@ pub struct Deposit<'info> {
     pub vault: Account<'info, Vault>,
 
     #[account(
+        mut,
         seeds = [
             VAULT_POOL_SEED.as_bytes(),
             vault.key().as_ref()
@@ -114,17 +104,17 @@ pub struct Deposit<'info> {
     pub signer_deposit_token_account: Account<'info, TokenAccount>,
 
     #[account(
+        mut,
         address = vault.receipt_token_mint,
     )]
-    pub receipt_token: Option<Account<'info, Mint>>,
+    pub receipt_token: Account<'info, Mint>,
 
     #[account(
         mut,
-        constraint = receipt_token.is_some() @ ReflectError::MissingAccounts,
         token::mint = receipt_token,
         token::authority = signer,
     )]
-    pub signer_receipt_token_account: Option<Account<'info, TokenAccount>>,
+    pub signer_receipt_token_account: Account<'info, TokenAccount>,
 
     #[account()]
     pub token_program: Program<'info, Token>,

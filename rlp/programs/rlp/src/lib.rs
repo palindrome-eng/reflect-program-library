@@ -42,8 +42,9 @@ pub mod rlp {
     // TODO: Add asset should be on liquidity pool level
     pub fn add_asset(
         ctx: Context<AddAsset>,
+        args: AddAssetArgs
     ) -> Result<()> {
-        instructions::add_asset(ctx)
+        instructions::add_asset(ctx, args)
     }
 
     pub fn deposit_rewards(
@@ -96,11 +97,11 @@ pub mod rlp {
         instructions::withdraw(ctx, args)
     }
 
-    pub fn swap_lp(
-        ctx: Context<SwapLp>,
-        args: SwapLpArgs
+    pub fn swap(
+        ctx: Context<Swap>,
+        args: SwapArgs
     ) -> Result<()> {
-        instructions::swap_lp(ctx, args)
+        instructions::swap(ctx, args)
     }
 
     pub fn create_permission_account(

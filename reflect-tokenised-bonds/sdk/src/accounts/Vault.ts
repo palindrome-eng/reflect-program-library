@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 
 /**
@@ -15,15 +15,11 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type VaultArgs = {
-  admin: web3.PublicKey
+  bump: number
+  index: beet.bignum
+  creator: web3.PublicKey
   depositTokenMint: web3.PublicKey
   receiptTokenMint: web3.PublicKey
-  minDeposit: beet.bignum
-  minLockup: beet.bignum
-  targetYieldRate: beet.bignum
-  depositPool: web3.PublicKey
-  rewardPool: web3.PublicKey
-  totalReceiptSupply: beet.bignum
 }
 
 export const vaultDiscriminator = [211, 8, 232, 43, 2, 152, 117, 119]
@@ -36,15 +32,11 @@ export const vaultDiscriminator = [211, 8, 232, 43, 2, 152, 117, 119]
  */
 export class Vault implements VaultArgs {
   private constructor(
-    readonly admin: web3.PublicKey,
+    readonly bump: number,
+    readonly index: beet.bignum,
+    readonly creator: web3.PublicKey,
     readonly depositTokenMint: web3.PublicKey,
-    readonly receiptTokenMint: web3.PublicKey,
-    readonly minDeposit: beet.bignum,
-    readonly minLockup: beet.bignum,
-    readonly targetYieldRate: beet.bignum,
-    readonly depositPool: web3.PublicKey,
-    readonly rewardPool: web3.PublicKey,
-    readonly totalReceiptSupply: beet.bignum
+    readonly receiptTokenMint: web3.PublicKey
   ) {}
 
   /**
@@ -52,15 +44,11 @@ export class Vault implements VaultArgs {
    */
   static fromArgs(args: VaultArgs) {
     return new Vault(
-      args.admin,
+      args.bump,
+      args.index,
+      args.creator,
       args.depositTokenMint,
-      args.receiptTokenMint,
-      args.minDeposit,
-      args.minLockup,
-      args.targetYieldRate,
-      args.depositPool,
-      args.rewardPool,
-      args.totalReceiptSupply
+      args.receiptTokenMint
     )
   }
 
@@ -167,55 +155,21 @@ export class Vault implements VaultArgs {
    */
   pretty() {
     return {
-      admin: this.admin.toBase58(),
+      bump: this.bump,
+      index: (() => {
+        const x = <{ toNumber: () => number }>this.index
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
+      creator: this.creator.toBase58(),
       depositTokenMint: this.depositTokenMint.toBase58(),
       receiptTokenMint: this.receiptTokenMint.toBase58(),
-      minDeposit: (() => {
-        const x = <{ toNumber: () => number }>this.minDeposit
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
-      minLockup: (() => {
-        const x = <{ toNumber: () => number }>this.minLockup
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
-      targetYieldRate: (() => {
-        const x = <{ toNumber: () => number }>this.targetYieldRate
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
-      depositPool: this.depositPool.toBase58(),
-      rewardPool: this.rewardPool.toBase58(),
-      totalReceiptSupply: (() => {
-        const x = <{ toNumber: () => number }>this.totalReceiptSupply
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
     }
   }
 }
@@ -232,15 +186,11 @@ export const vaultBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['admin', beetSolana.publicKey],
+    ['bump', beet.u8],
+    ['index', beet.u64],
+    ['creator', beetSolana.publicKey],
     ['depositTokenMint', beetSolana.publicKey],
     ['receiptTokenMint', beetSolana.publicKey],
-    ['minDeposit', beet.u64],
-    ['minLockup', beet.i64],
-    ['targetYieldRate', beet.u64],
-    ['depositPool', beetSolana.publicKey],
-    ['rewardPool', beetSolana.publicKey],
-    ['totalReceiptSupply', beet.u64],
   ],
   Vault.fromArgs,
   'Vault'

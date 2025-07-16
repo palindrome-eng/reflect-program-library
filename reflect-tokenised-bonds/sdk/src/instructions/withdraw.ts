@@ -8,6 +8,7 @@
 import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import { WithdrawArgs, withdrawArgsBeet } from '../types/WithdrawArgs'
 
 /**
  * @category Instructions
@@ -15,8 +16,7 @@ import * as web3 from '@solana/web3.js'
  * @category generated
  */
 export type WithdrawInstructionArgs = {
-  lockupId: beet.bignum
-  vaultId: beet.bignum
+  args: WithdrawArgs
 }
 /**
  * @category Instructions
@@ -30,35 +30,32 @@ export const withdrawStruct = new beet.BeetArgsStruct<
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['lockupId', beet.u64],
-    ['vaultId', beet.u64],
+    ['args', withdrawArgsBeet],
   ],
   'WithdrawInstructionArgs'
 )
 /**
  * Accounts required by the _withdraw_ instruction
  *
- * @property [_writable_, **signer**] user
- * @property [_writable_] lockup
+ * @property [_writable_, **signer**] signer
  * @property [_writable_] vault
- * @property [_writable_] lockupReceiptTokenAccount
- * @property [_writable_] userDepositTokenAccount
- * @property [_writable_] depositPool
- * @property [_writable_] rewardPool
- * @property [_writable_] receiptMint
+ * @property [_writable_] pool
+ * @property [] receiptMint
+ * @property [] depositMint
+ * @property [_writable_] signerDepositTokenAccount
+ * @property [_writable_] signerReceiptTokenAccount
  * @category Instructions
  * @category Withdraw
  * @category generated
  */
 export type WithdrawInstructionAccounts = {
-  user: web3.PublicKey
-  lockup: web3.PublicKey
+  signer: web3.PublicKey
   vault: web3.PublicKey
-  lockupReceiptTokenAccount: web3.PublicKey
-  userDepositTokenAccount: web3.PublicKey
-  depositPool: web3.PublicKey
-  rewardPool: web3.PublicKey
+  pool: web3.PublicKey
   receiptMint: web3.PublicKey
+  depositMint: web3.PublicKey
+  signerDepositTokenAccount: web3.PublicKey
+  signerReceiptTokenAccount: web3.PublicKey
   tokenProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -88,14 +85,9 @@ export function createWithdrawInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.user,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
-    },
-    {
-      pubkey: accounts.lockup,
-      isWritable: true,
-      isSigner: false,
     },
     {
       pubkey: accounts.vault,
@@ -103,27 +95,27 @@ export function createWithdrawInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.lockupReceiptTokenAccount,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.userDepositTokenAccount,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.depositPool,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.rewardPool,
+      pubkey: accounts.pool,
       isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.receiptMint,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.depositMint,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.signerDepositTokenAccount,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.signerReceiptTokenAccount,
       isWritable: true,
       isSigner: false,
     },

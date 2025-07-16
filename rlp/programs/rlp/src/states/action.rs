@@ -10,35 +10,38 @@ pub enum Action {
     /** Restakes asset. */
     Restake = 0,
     /** Withdraws asset */
-    Withdraw = 2,
+    Withdraw = 1,
 /** Slashes LP */
-    Slash = 4,
-    /** Swaps between two assets in the LP. */
-    Swap = 6,
+    Slash = 2,
+    /** Swaps between two assets of access level Public in the LP. */
+    PublicSwap = 3,
+    /** Swaps between two assets of any access level in the LP. */
+    PrivateSwap = 4,
 
     // Core actions freeze
     /** Freezes Mint action. */
-    FreezeRestake = 1,  
+    FreezeRestake = 5,  
     /** Freezes Redeem action. */
-    FreezeWithdraw = 3,
+    FreezeWithdraw = 6,
     /** Freezes Slash action. */
-    FreezeSlash = 5,
-    /** Freezes Swap action. */
-    FreezeSwap = 7,
+    FreezeSlash = 7,
+    /** Freezes PublicSwap action. */
+    FreezePublicSwap = 8,
+    /** Freezes PrivateSwap action. */
+    FreezePrivateSwap = 9,
 
-    InitializeLiquidityPool = 8,
+    InitializeLiquidityPool = 10,
     /** Adds new asset to the LP. */
-    AddAsset = 9,
+    AddAsset = 11,
     /** Updates how much of asset can be deposited in the LP. */
-    UpdateDepositCap = 10,
+    UpdateDepositCap = 12,
     /** Allows depositing liquidity without increasing supply of LP token. */
-    DepositRewards = 11,
+    DepositRewards = 13,
     /** Generic management. */
-    Management = 12,    
-    SuspendDeposits = 13,     
-    FreezeProgram = 14,    
-    UpdateRole = 15,
-    UpdateAction = 16,
+    Management = 14,
+    SuspendDeposits = 15, 
+    UpdateRole = 16,
+    UpdateAction = 17,
 }
 
 impl Action {
@@ -48,22 +51,23 @@ impl Action {
         let variant = u8::deserialize(buf)?;
         match variant {
             0 => Ok(Action::Restake),
-            1 => Ok(Action::FreezeRestake),
-            2 => Ok(Action::Withdraw),
-            3 => Ok(Action::FreezeWithdraw),
-            4 => Ok(Action::Slash),
-            5 => Ok(Action::FreezeSlash),
-            6 => Ok(Action::Swap),
-            7 => Ok(Action::FreezeSwap),
-            8 => Ok(Action::InitializeLiquidityPool),
-            9 => Ok(Action::AddAsset),
-            10 => Ok(Action::UpdateDepositCap),
-            11 => Ok(Action::DepositRewards),
-            12 => Ok(Action::Management),
-            13 => Ok(Action::SuspendDeposits),
-            14 => Ok(Action::FreezeProgram),
-            15 => Ok(Action::UpdateRole),
-            16 => Ok(Action::UpdateAction),
+            1 => Ok(Action::Withdraw),
+            2 => Ok(Action::Slash),
+            3 => Ok(Action::PublicSwap),
+            4 => Ok(Action::PrivateSwap),
+            5 => Ok(Action::FreezeRestake),
+            6 => Ok(Action::FreezeWithdraw),
+            7 => Ok(Action::FreezeSlash),
+            8 => Ok(Action::FreezePublicSwap),
+            9 => Ok(Action::FreezePrivateSwap),
+            10 => Ok(Action::InitializeLiquidityPool),
+            11 => Ok(Action::AddAsset),
+            12 => Ok(Action::UpdateDepositCap),
+            13 => Ok(Action::DepositRewards),
+            14 => Ok(Action::Management),
+            15 => Ok(Action::SuspendDeposits),
+            16 => Ok(Action::UpdateRole),
+            17 => Ok(Action::UpdateAction),
             _ => Err(error!(InsuranceFundError::InvalidState)),
         }
     }
@@ -72,22 +76,23 @@ impl Action {
     pub fn try_serialise<W: Write>(&self, writer: &mut W) -> Result<()> {
         let variant = match self {
             Action::Restake => 0u8,
-            Action::FreezeRestake => 1u8,
-            Action::Withdraw => 2u8,
-            Action::FreezeWithdraw => 3u8,
-            Action::Slash => 4u8,
-            Action::FreezeSlash => 5u8,
-            Action::Swap => 6u8,
-            Action::FreezeSwap => 7u8,
-            Action::InitializeLiquidityPool => 8u8,
-            Action::AddAsset => 9u8,
-            Action::UpdateDepositCap => 10u8,
-            Action::DepositRewards => 11u8,
-            Action::Management => 12u8,
-            Action::SuspendDeposits => 13u8,
-            Action::FreezeProgram => 14u8,
-            Action::UpdateRole => 15u8,
-            Action::UpdateAction => 16u8,
+            Action::Withdraw => 1u8,
+            Action::Slash => 2u8,
+            Action::PublicSwap => 3u8,
+            Action::PrivateSwap => 4u8,
+            Action::FreezeRestake => 5u8,
+            Action::FreezeWithdraw => 6u8,
+            Action::FreezeSlash => 7u8,
+            Action::FreezePublicSwap => 8u8,
+            Action::FreezePrivateSwap => 9u8,
+            Action::InitializeLiquidityPool => 10u8,
+            Action::AddAsset => 11u8,
+            Action::UpdateDepositCap => 12u8,
+            Action::DepositRewards => 13u8,
+            Action::Management => 14u8,
+            Action::SuspendDeposits => 15u8,
+            Action::UpdateRole => 16u8,
+            Action::UpdateAction => 17u8,
         };
         
         variant.serialize(writer)?;
@@ -97,22 +102,23 @@ impl Action {
     pub fn from_u8(byte: u8) -> Option<Self> {
         match byte {
             0 => Some(Action::Restake),
-            1 => Some(Action::FreezeRestake),
-            2 => Some(Action::Withdraw),
-            3 => Some(Action::FreezeWithdraw),
-            4 => Some(Action::Slash),
-            5 => Some(Action::FreezeSlash),
-            6 => Some(Action::Swap),
-            7 => Some(Action::FreezeSwap),
-            8 => Some(Action::InitializeLiquidityPool),
-            9 => Some(Action::AddAsset),
-            10 => Some(Action::UpdateDepositCap),
-            11 => Some(Action::DepositRewards),
-            12 => Some(Action::Management),
-            13 => Some(Action::SuspendDeposits),
-            14 => Some(Action::FreezeProgram),
-            15 => Some(Action::UpdateRole),
-            16 => Some(Action::UpdateAction),
+            1 => Some(Action::Withdraw),
+            2 => Some(Action::Slash),
+            3 => Some(Action::PublicSwap),
+            4 => Some(Action::PrivateSwap),
+            5 => Some(Action::FreezeRestake),
+            6 => Some(Action::FreezeWithdraw),
+            7 => Some(Action::FreezeSlash),
+            8 => Some(Action::FreezePublicSwap),
+            9 => Some(Action::FreezePrivateSwap),
+            10 => Some(Action::InitializeLiquidityPool),
+            11 => Some(Action::AddAsset),
+            12 => Some(Action::UpdateDepositCap),
+            13 => Some(Action::DepositRewards),
+            14 => Some(Action::Management),
+            15 => Some(Action::SuspendDeposits),
+            16 => Some(Action::UpdateRole),
+            17 => Some(Action::UpdateAction),
             _ => None,
         }
     }
@@ -120,7 +126,7 @@ impl Action {
     /** Checks if the action is recurrant and can be frozen. */
     pub fn is_core(&self) -> bool {
         match self {
-            Action::Restake | Action::Withdraw | Action::Swap | Action::Slash => true,
+            Action::Restake | Action::Withdraw | Action::PublicSwap | Action::PrivateSwap | Action::Slash => true,
             _ => false,
         }
     }
@@ -131,7 +137,8 @@ impl Action {
             Action::FreezeRestake => Ok(Action::Restake),
             Action::FreezeWithdraw => Ok(Action::Withdraw),
             Action::FreezeSlash => Ok(Action::Slash),
-            Action::FreezeSwap => Ok(Action::Swap),
+            Action::FreezePublicSwap => Ok(Action::PublicSwap),
+            Action::FreezePrivateSwap => Ok(Action::PrivateSwap),
             _ => Err(InsuranceFundError::ActionNotFound.into()),
         }
     }

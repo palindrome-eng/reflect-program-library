@@ -329,7 +329,8 @@ impl AccessControl {
 
         // Crank actions.  
         access_control.add_role_to_action(Action::Slash, Role::CRANK)?;
-        access_control.add_role_to_action(Action::Swap, Role::CRANK)?;
+        access_control.add_role_to_action(Action::PublicSwap, Role::CRANK)?;
+        access_control.add_role_to_action(Action::PrivateSwap, Role::CRANK)?;
 
         // User actions - public (test for now).    
         access_control.add_role_to_action(Action::Restake, Role::TESTEE)?;
@@ -339,7 +340,8 @@ impl AccessControl {
         access_control.add_role_to_action(Action::FreezeRestake, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeWithdraw, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeSlash, Role::FREEZE)?;
-        access_control.add_role_to_action(Action::FreezeSwap, Role::FREEZE)?;
+        access_control.add_role_to_action(Action::FreezePublicSwap, Role::FREEZE)?;
+        access_control.add_role_to_action(Action::FreezePrivateSwap, Role::FREEZE)?;
         
         Ok(access_control)
     }

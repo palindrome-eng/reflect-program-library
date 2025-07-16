@@ -93,6 +93,7 @@ pub struct Withdraw<'info> {
     pub pool: Account<'info, TokenAccount>,
 
     #[account(
+        mut,
         address = vault.receipt_token_mint
     )]
     pub receipt_mint: Account<'info, Mint>,

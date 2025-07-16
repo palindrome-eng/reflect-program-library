@@ -5,6 +5,7 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
+import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 
@@ -13,47 +14,34 @@ import * as web3 from '@solana/web3.js'
  * @category CreateVault
  * @category generated
  */
-export type CreateVaultInstructionArgs = {
-  minDeposit: beet.bignum
-  minLockup: beet.bignum
-  targetYieldRate: beet.bignum
-  vaultSeed: beet.bignum
-}
-/**
- * @category Instructions
- * @category CreateVault
- * @category generated
- */
-export const createVaultStruct = new beet.BeetArgsStruct<
-  CreateVaultInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */
-  }
->(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['minDeposit', beet.u64],
-    ['minLockup', beet.i64],
-    ['targetYieldRate', beet.u64],
-    ['vaultSeed', beet.u64],
-  ],
+export const createVaultStruct = new beet.BeetArgsStruct<{
+  instructionDiscriminator: number[] /* size: 8 */
+}>(
+  [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
   'CreateVaultInstructionArgs'
 )
 /**
  * Accounts required by the _createVault_ instruction
  *
- * @property [_writable_, **signer**] admin
- * @property [_writable_] rtbProtocol
+ * @property [_writable_, **signer**] signer
+ * @property [_writable_] config
  * @property [_writable_] vault
+ * @property [] depositMint
+ * @property [] receiptMint
+ * @property [_writable_] vaultPool
  * @category Instructions
  * @category CreateVault
  * @category generated
  */
 export type CreateVaultInstructionAccounts = {
-  admin: web3.PublicKey
-  rtbProtocol: web3.PublicKey
+  signer: web3.PublicKey
+  config: web3.PublicKey
   vault: web3.PublicKey
+  depositMint: web3.PublicKey
+  receiptMint: web3.PublicKey
+  vaultPool: web3.PublicKey
+  tokenProgram?: web3.PublicKey
   systemProgram?: web3.PublicKey
-  rent?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -65,29 +53,25 @@ export const createVaultInstructionDiscriminator = [
  * Creates a _CreateVault_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
- * @param args to provide as instruction data to the program
- *
  * @category Instructions
  * @category CreateVault
  * @category generated
  */
 export function createCreateVaultInstruction(
   accounts: CreateVaultInstructionAccounts,
-  args: CreateVaultInstructionArgs,
   programId = new web3.PublicKey('6ZZ1sxKGuXUBL8HSsHqHaYCg92G9VhMNTcJv1gFURCop')
 ) {
   const [data] = createVaultStruct.serialize({
     instructionDiscriminator: createVaultInstructionDiscriminator,
-    ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.admin,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: accounts.rtbProtocol,
+      pubkey: accounts.config,
       isWritable: true,
       isSigner: false,
     },
@@ -97,12 +81,27 @@ export function createCreateVaultInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      pubkey: accounts.depositMint,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: accounts.rent ?? web3.SYSVAR_RENT_PUBKEY,
+      pubkey: accounts.receiptMint,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.vaultPool,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },

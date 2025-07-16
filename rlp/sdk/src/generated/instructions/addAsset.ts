@@ -7,16 +7,30 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import { AddAssetArgs, addAssetArgsBeet } from '../types/AddAssetArgs'
 
 /**
  * @category Instructions
  * @category AddAsset
  * @category generated
  */
-export const addAssetStruct = new beet.BeetArgsStruct<{
-  instructionDiscriminator: number[] /* size: 8 */
-}>(
-  [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
+export type AddAssetInstructionArgs = {
+  args: AddAssetArgs
+}
+/**
+ * @category Instructions
+ * @category AddAsset
+ * @category generated
+ */
+export const addAssetStruct = new beet.BeetArgsStruct<
+  AddAssetInstructionArgs & {
+    instructionDiscriminator: number[] /* size: 8 */
+  }
+>(
+  [
+    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['args', addAssetArgsBeet],
+  ],
   'AddAssetInstructionArgs'
 )
 /**
@@ -51,16 +65,20 @@ export const addAssetInstructionDiscriminator = [
  * Creates a _AddAsset_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
+ * @param args to provide as instruction data to the program
+ *
  * @category Instructions
  * @category AddAsset
  * @category generated
  */
 export function createAddAssetInstruction(
   accounts: AddAssetInstructionAccounts,
+  args: AddAssetInstructionArgs,
   programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')
 ) {
   const [data] = addAssetStruct.serialize({
     instructionDiscriminator: addAssetInstructionDiscriminator,
+    ...args,
   })
   const keys: web3.AccountMeta[] = [
     {

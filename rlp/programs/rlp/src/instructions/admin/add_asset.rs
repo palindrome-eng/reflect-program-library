@@ -9,8 +9,14 @@ use crate::states::*;
 use crate::constants::*;
 use anchor_spl::token::Mint;
 
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct AddAssetArgs {
+    pub access_level: AccessLevel,
+}
+
 pub fn add_asset(
-    ctx: Context<AddAsset>
+    ctx: Context<AddAsset>,
+    args: AddAssetArgs
 ) -> Result<()> {
     let settings = &mut ctx.accounts.settings;
     let asset = &mut ctx.accounts.asset;
@@ -18,34 +24,36 @@ pub fn add_asset(
     let oracle = &ctx.accounts.oracle;
     let signer = &ctx.accounts.signer;
 
-    asset.mint = asset_mint.key();
-
     let clock = Clock::get()?;
+
+    let oracle = if oracle.owner.eq(&PYTH_PROGRAM_ID) {
+        get_price_from_pyth(oracle, &clock)?;
+        Oracle::Pyth(oracle.key())
+    } else if oracle.owner.eq(&SWITCHBOARD_PROGRAM_ID) {
+        get_price_from_switchboard(oracle, &clock)?;
+        Oracle::Switchboard(oracle.key())
+    } else {
+        return Err(InsuranceFundError::InvalidOracle.into());
+    };
+
+    asset.set_inner(Asset { 
+        mint: asset_mint.key(), 
+        oracle, 
+        access_level: args.access_level 
+    });
+
+    settings.assets = settings
+        .assets
+        .checked_add(1)
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
     emit!(AddAssetEvent {
         admin: signer.key(),
         asset: asset_mint.key(),
-        oracle: oracle.key()
+        oracle: *oracle.key()
     });
 
-    settings.assets = settings
-    .assets
-    .checked_add(1)
-    .ok_or(InsuranceFundError::MathOverflow)?;
-
-    if oracle.owner.eq(&PYTH_PROGRAM_ID) {
-        get_price_from_pyth(oracle, &clock)?;
-        asset.oracle = Oracle::Pyth(oracle.key());
-
-        Ok(())
-    } else if oracle.owner.eq(&SWITCHBOARD_PROGRAM_ID) {
-        get_price_from_switchboard(oracle, &clock)?;
-        asset.oracle = Oracle::Switchboard(oracle.key());
-        
-        Ok(())
-    } else {
-        Err(InsuranceFundError::InvalidOracle.into())
-    }
+    Ok(())
 }
 
 #[derive(Accounts)]

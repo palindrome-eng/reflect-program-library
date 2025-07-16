@@ -9,6 +9,7 @@ import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
 import { Oracle, oracleBeet } from '../types/Oracle'
+import { AccessLevel, accessLevelBeet } from '../types/AccessLevel'
 
 /**
  * Arguments used to create {@link Asset}
@@ -18,6 +19,7 @@ import { Oracle, oracleBeet } from '../types/Oracle'
 export type AssetArgs = {
   mint: web3.PublicKey
   oracle: Oracle
+  accessLevel: AccessLevel
 }
 
 export const assetDiscriminator = [234, 180, 241, 252, 139, 224, 160, 8]
@@ -29,13 +31,17 @@ export const assetDiscriminator = [234, 180, 241, 252, 139, 224, 160, 8]
  * @category generated
  */
 export class Asset implements AssetArgs {
-  private constructor(readonly mint: web3.PublicKey, readonly oracle: Oracle) {}
+  private constructor(
+    readonly mint: web3.PublicKey,
+    readonly oracle: Oracle,
+    readonly accessLevel: AccessLevel
+  ) {}
 
   /**
    * Creates a {@link Asset} instance from the provided args.
    */
   static fromArgs(args: AssetArgs) {
-    return new Asset(args.mint, args.oracle)
+    return new Asset(args.mint, args.oracle, args.accessLevel)
   }
 
   /**
@@ -145,6 +151,7 @@ export class Asset implements AssetArgs {
     return {
       mint: this.mint.toBase58(),
       oracle: this.oracle.__kind,
+      accessLevel: 'AccessLevel.' + AccessLevel[this.accessLevel],
     }
   }
 }
@@ -163,6 +170,7 @@ export const assetBeet = new beet.FixableBeetStruct<
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['mint', beetSolana.publicKey],
     ['oracle', oracleBeet],
+    ['accessLevel', accessLevelBeet],
   ],
   Asset.fromArgs,
   'Asset'

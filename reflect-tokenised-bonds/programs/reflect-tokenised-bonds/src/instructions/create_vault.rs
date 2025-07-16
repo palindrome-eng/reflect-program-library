@@ -17,10 +17,9 @@ pub fn create_vault(
         deposit_mint,
         receipt_mint,
         vault,
-        receipt_mint_freeze_authority: _,
-        vault_pool: __,
-        token_program: ___,
-        system_program: ____
+        vault_pool: _,
+        token_program: __,
+        system_program: ___
     } = ctx.accounts;
 
     vault.set_inner(Vault { 
@@ -68,15 +67,10 @@ pub struct CreateVault<'info> {
     #[account(
         constraint = receipt_mint.supply == 0 @ ReflectError::InvalidReceiptTokenSupply,
         constraint = receipt_mint.mint_authority.unwrap() == vault.key() @ ReflectError::InvalidReceiptTokenMintAuthority,
-        constraint = receipt_mint.freeze_authority.unwrap() == receipt_mint_freeze_authority.key() @ ReflectError::InvalidReceiptTokenFreezeAuthority,
         constraint = receipt_mint.is_initialized @ ReflectError::InvalidReceiptTokenSetup,
         constraint = receipt_mint.decimals == deposit_mint.decimals @ ReflectError::InvalidReceiptTokenDecimals
     )]
     pub receipt_mint: Account<'info, Mint>,
-
-    /// CHECK: Up to the signer.
-    #[account()]
-    pub receipt_mint_freeze_authority: UncheckedAccount<'info>,
 
     #[account(
         init,
