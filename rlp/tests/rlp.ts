@@ -22,6 +22,8 @@ import {
     Action,
     Role,
     Update,
+    KillSwitch,
+    AccessLevel
 } from "../sdk/src/generated";
 import {expect} from "chai";
 import createToken from "./helpers/createToken";
@@ -173,6 +175,11 @@ describe("rlp", () => {
         admin = Restaking.deriveUserPermissions(provider.publicKey);
     });
 
+    function isActionFrozen(killswitch: KillSwitch, action: Action) {
+        const mask = 1 << action;
+        return (killswitch.frozen & mask) !== 0;
+    }
+
     it("Initializes RLP.", async () => {
         const cooldownDuration = new BN(30); // 30 seconds
 
@@ -208,7 +215,9 @@ describe("rlp", () => {
 
         await program
             .methods
-            .addAsset()
+            .addAsset({
+                accessLevel: { public: {} }
+            })
             .accounts({
                 admin,
                 asset,
@@ -250,7 +259,7 @@ describe("rlp", () => {
         );
 
         const killswitch = settingsData.accessControl.killswitch;
-        expect(killswitch.frozen).eq(1);
+        expect(isActionFrozen(killswitch, Action.Restake)).eq(true);
     });
 
     it("Tries to interact with frozen protocol. Succeeds on errors", async () => {
@@ -261,7 +270,9 @@ describe("rlp", () => {
 
         await program
             .methods
-            .addAsset()
+            .addAsset({
+                accessLevel: { private: {} }
+            })
             .accounts({
                 assetMint: wrappedSol,
                 asset,
@@ -321,7 +332,9 @@ describe("rlp", () => {
 
             await program
                 .methods
-                .addAsset()
+                .addAsset({
+                    accessLevel: { private: {} }
+                })
                 .accounts({
                     assetMint: token,
                     asset,
@@ -483,7 +496,7 @@ describe("rlp", () => {
         expect(actionPermissionMap.allowedRoles).include(Role.PUBLIC);
     });
 
-    it("Locks-up tokens in liquidity pool.", async () => {
+    it("Restakes tokens in liquidity pool.", async () => {
         const liquidityPoolId = 0;
         const amount = new BN(LAMPORTS_PER_SOL * 1_000);
 
@@ -563,6 +576,118 @@ describe("rlp", () => {
                 userLpAccount,
                 asset,
                 assetMint: lsts[0],
+                userAssetAccount: userAssetAta,
+                poolAssetAccount,
+                oracle: assetData.oracle.fields[0],
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
+                permissions: null,
+            })
+            .remainingAccounts(anchorRemainingAccounts)
+            .signers([
+                user
+            ])
+            .preInstructions([
+                ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 })
+            ])
+            .rpc()
+            .catch(err => {
+                console.log(err);
+                throw err;
+            });
+
+        await new Promise(resolve => setTimeout(resolve, 15000));
+
+        const userLpAccountData = await getAccount(
+            provider.connection,
+            userLpAccount
+        );
+
+        expect(
+            parseInt(userLpAccountData.amount.toString())
+        ).gt(0);
+    });
+
+    it("Restakes token B in liquidity pool to allow swaps later", async () => {
+        const liquidityPoolId = 0;
+        const amount = new BN(LAMPORTS_PER_SOL * 1_000);
+
+        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
+
+        const liquidityPoolData = await LiquidityPool.fromAccountAddress(
+            provider.connection,
+            liquidityPool
+        );
+
+        const asset = Restaking.deriveAsset(lsts[1]);
+
+        await mintTokens(
+            lsts[1],
+            provider,
+            amount.toNumber(),
+            user.publicKey
+        );
+
+        const userAssetAta = getAssociatedTokenAddressSync(
+            lsts[1],
+            user.publicKey
+        );
+
+        const poolAssetAccount = getAssociatedTokenAddressSync(
+            lsts[1],
+            liquidityPool,
+            true
+        );
+
+        const userLpAccount = getAssociatedTokenAddressSync(
+            liquidityPoolData.lpToken,
+            user.publicKey
+        );
+
+        const assetData = await Asset.fromAccountAddress(
+            provider.connection,
+            asset
+        );
+
+        const restaking = new Restaking(provider.connection);
+        const assets = await restaking.getAssets();
+
+        const anchorRemainingAccounts: AccountMeta[] = assets
+        .map(({ account, pubkey }) => {
+            return [
+                {
+                    isSigner: false,
+                    isWritable: true,
+                    pubkey: getAssociatedTokenAddressSync(account.mint, liquidityPool, true)
+                },
+                {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: Restaking.deriveAsset(account.mint)
+                },
+                {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: account.oracle.fields[0]
+                }
+            ] as AccountMeta[];
+        }).flat();
+
+        await program
+            .methods
+            .restake({
+                liquidityPoolIndex: liquidityPoolId,
+                amount,
+                minLpTokens: new BN(0)
+            })
+            .accounts({
+                signer: user.publicKey,
+                settings,
+                liquidityPool,
+                lpToken: liquidityPoolData.lpToken,
+                userLpAccount,
+                asset,
+                assetMint: lsts[1],
                 userAssetAccount: userAssetAta,
                 poolAssetAccount,
                 oracle: assetData.oracle.fields[0],
@@ -1281,7 +1406,7 @@ describe("rlp", () => {
 
         await program
             .methods
-            .swapLp({
+            .swap({
                 amountIn,
                 minOut: new BN(0)
             })
@@ -1306,7 +1431,11 @@ describe("rlp", () => {
                 tokenToSignerAccount: toSignerTokenAccount,
                 associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
             })
-            .rpc();
+            .rpc()
+            .catch(err => {
+                console.error(err);
+                throw err;
+            });
 
         const {
             amount: fromSignerTokenAccountBalancePost
@@ -1367,18 +1496,20 @@ describe("rlp", () => {
         );
 
         expect(newAdminPermissionsData.authority.toString()).eq(newAdmin.publicKey.toString());
+        expect(newAdminPermissionsData.protocolRoles.roles.length).eq(0);
     });
 
     it("Updates action role - adds role to action", async () => {
         await program
             .methods
+            // @ts-ignore
             .updateActionRole({
                 action: { restake: {} },
-                role: { mANAGER: {} },
+                role: { manager: {} },
                 update: { add: {} }
             })
             .accounts({
-                admin,
+                admin: provider.publicKey,
                 adminPermissions: admin,
                 settings
             })
@@ -1389,21 +1520,21 @@ describe("rlp", () => {
             settings
         );
 
-        // Verify the role was added to the action
-        // This would require checking the access control structure
-        expect(settingsData.accessControl).to.not.be.undefined;
+        const actionPermissionMapping = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.Restake);
+        expect(actionPermissionMapping.allowedRoles.includes(Role.MANAGER)).eq(true);
     });
 
     it("Updates action role - removes role from action", async () => {
         await program
             .methods
+            // @ts-ignore
             .updateActionRole({
                 action: { restake: {} },
-                role: { mANAGER: {} },
-                update: { add: {} }
+                role: { manager: {} },
+                update: { remove: {} }
             })
             .accounts({
-                admin,
+                admin: provider.publicKey,
                 adminPermissions: admin,
                 settings
             })
@@ -1414,8 +1545,8 @@ describe("rlp", () => {
             settings
         );
 
-        // Verify the role was removed from the action
-        expect(settingsData.accessControl).to.not.be.undefined;
+        const actionPermissionMapping = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.Restake);
+        expect(actionPermissionMapping.allowedRoles.includes(Role.MANAGER)).eq(false);
     });
 
     it("Updates role holder - adds role to user", async () => {
@@ -1436,9 +1567,10 @@ describe("rlp", () => {
 
         await program
             .methods
+            // @ts-ignore
             .updateRoleHolder({
                 address: targetUser.publicKey,
-                role: { cRANK: {} },
+                role: { crank: {} },
                 update: { add: {} }
             })
             .accounts({
@@ -1479,9 +1611,10 @@ describe("rlp", () => {
         // Add a role first
         await program
             .methods
+            // @ts-ignore
             .updateRoleHolder({
                 address: targetUser.publicKey,
-                role: { fREEZE: {} },
+                role: { freeze: {} },
                 update: { add: {} }
             })
             .accounts({
@@ -1497,9 +1630,10 @@ describe("rlp", () => {
         // Then remove it
         await program
             .methods
+            // @ts-ignore
             .updateRoleHolder({
                 address: targetUser.publicKey,
-                role: { fREEZE: {} },
+                role: { freeze: {} },
                 update: { remove: {} }
             })
             .accounts({

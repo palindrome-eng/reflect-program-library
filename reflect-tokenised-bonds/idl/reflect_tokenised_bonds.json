@@ -1,18 +1,96 @@
 {
   "version": "0.1.0",
   "name": "reflect_tokenised_bonds",
+  "constants": [
+    {
+      "name": "CONFIG_SEED",
+      "type": "string",
+      "value": "\"config\""
+    },
+    {
+      "name": "ADMIN_SEED",
+      "type": "string",
+      "value": "\"admin\""
+    },
+    {
+      "name": "VAULT_SEED",
+      "type": "string",
+      "value": "\"vault\""
+    },
+    {
+      "name": "VAULT_POOL_SEED",
+      "type": "string",
+      "value": "\"vault_pool\""
+    }
+  ],
   "instructions": [
     {
-      "name": "initializeProtocol",
+      "name": "initialize",
       "accounts": [
         {
-          "name": "payer",
+          "name": "signer",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "rtbProtocol",
+          "name": "admin",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "config",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createVault",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "config",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "receiptMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultPool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -24,146 +102,44 @@
       "args": []
     },
     {
-      "name": "createVault",
-      "accounts": [
-        {
-          "name": "admin",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rtbProtocol",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "minDeposit",
-          "type": "u64"
-        },
-        {
-          "name": "minLockup",
-          "type": "i64"
-        },
-        {
-          "name": "targetYieldRate",
-          "type": "u64"
-        },
-        {
-          "name": "vaultSeed",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "initVaultPools",
-      "accounts": [
-        {
-          "name": "admin",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "depositPool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rewardPool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "depositTokenMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "receiptTokenMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "vaultSeed",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "deposit",
       "accounts": [
         {
-          "name": "user",
-          "isMut": true,
+          "name": "signer",
+          "isMut": false,
           "isSigner": true
         },
         {
           "name": "vault",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "signerDepositTokenAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "depositTokenAccount",
-          "isMut": true,
-          "isSigner": false
+          "name": "receiptToken",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
-          "name": "receiptTokenAccount",
+          "name": "signerReceiptTokenAccount",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rewardPool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "depositPool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "receiptTokenMint",
-          "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "tokenProgram",
@@ -173,68 +149,10 @@
       ],
       "args": [
         {
-          "name": "amount",
-          "type": "u64"
-        },
-        {
-          "name": "vaultId",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "lockup",
-      "accounts": [
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "userAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "lockup",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userReceiptTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "lockupReceiptTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "receiptAmount",
-          "type": "u64"
+          "name": "args",
+          "type": {
+            "defined": "DepositArgs"
+          }
         }
       ]
     },
@@ -242,14 +160,9 @@
       "name": "withdraw",
       "accounts": [
         {
-          "name": "user",
+          "name": "signer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "lockup",
-          "isMut": true,
-          "isSigner": false
         },
         {
           "name": "vault",
@@ -257,27 +170,27 @@
           "isSigner": false
         },
         {
-          "name": "lockupReceiptTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userDepositTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "depositPool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rewardPool",
+          "name": "pool",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "receiptMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "signerDepositTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signerReceiptTokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -289,65 +202,51 @@
       ],
       "args": [
         {
-          "name": "lockupId",
-          "type": "u64"
-        },
-        {
-          "name": "vaultId",
-          "type": "u64"
+          "name": "args",
+          "type": {
+            "defined": "WithdrawArgs"
+          }
         }
       ]
     }
   ],
   "accounts": [
     {
-      "name": "LockupState",
+      "name": "Admin",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "id",
-            "type": "u64"
-          },
-          {
-            "name": "user",
+            "name": "pubkey",
             "type": "publicKey"
           },
           {
-            "name": "vault",
-            "type": "publicKey"
-          },
-          {
-            "name": "receiptAmount",
-            "type": "u64"
-          },
-          {
-            "name": "unlockDate",
-            "type": "i64"
+            "name": "permissions",
+            "type": {
+              "vec": {
+                "defined": "Permissions"
+              }
+            }
           }
         ]
       }
     },
     {
-      "name": "RTBProtocol",
+      "name": "Config",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "nextVaultSeed",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "UserAccount",
-      "type": {
-        "kind": "struct",
-        "fields": [
+            "name": "bump",
+            "type": "u8"
+          },
           {
-            "name": "lockups",
+            "name": "vaults",
             "type": "u64"
+          },
+          {
+            "name": "frozen",
+            "type": "bool"
           }
         ]
       }
@@ -358,7 +257,15 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "admin",
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "index",
+            "type": "u64"
+          },
+          {
+            "name": "creator",
             "type": "publicKey"
           },
           {
@@ -368,30 +275,61 @@
           {
             "name": "receiptTokenMint",
             "type": "publicKey"
-          },
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "DepositArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            "name": "minDeposit",
+            "name": "vaultId",
             "type": "u64"
           },
           {
-            "name": "minLockup",
-            "type": "i64"
-          },
-          {
-            "name": "targetYieldRate",
+            "name": "amount",
             "type": "u64"
           },
           {
-            "name": "depositPool",
-            "type": "publicKey"
-          },
+            "name": "isRewards",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WithdrawArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            "name": "rewardPool",
-            "type": "publicKey"
-          },
-          {
-            "name": "totalReceiptSupply",
+            "name": "vaultId",
             "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Permissions",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InitializeVaults"
+          },
+          {
+            "name": "Freeze"
+          },
+          {
+            "name": "Superadmin"
           }
         ]
       }
@@ -400,33 +338,58 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidVaultSeed",
-      "msg": "Vault PDA is derived with invalid vault seed."
+      "name": "InvalidSigner",
+      "msg": "Invalid transaction signer."
     },
     {
       "code": 6001,
-      "name": "InsufficientDeposit",
-      "msg": "Insufficient deposit amount."
+      "name": "ProgramAccountsMismatch",
+      "msg": "ProgramAccountsMismatch"
     },
     {
       "code": 6002,
-      "name": "LockupNotExpired",
-      "msg": "Lockup period has not expired."
+      "name": "InvalidReceiptTokenSupply",
+      "msg": "InvalidReceiptTokenSupply"
     },
     {
       "code": 6003,
-      "name": "InvalidMintAuthority",
-      "msg": "Invalid mint authority. Move mint authority of the receipt token to the vault PDA."
+      "name": "InvalidReceiptTokenMintAuthority",
+      "msg": "InvalidReceiptTokenMintAuthority"
     },
     {
       "code": 6004,
-      "name": "InvalidFreezeAuthority",
-      "msg": "Invalid freeze authority. Move freeze authority of the receipt token to the vault PDA, or remove it completely."
+      "name": "InvalidReceiptTokenFreezeAuthority",
+      "msg": "InvalidReceiptTokenFreezeAuthority"
     },
     {
       "code": 6005,
-      "name": "NonZeroReceiptSupply",
-      "msg": "Supply of the receipt token has to be 0. Pre-minting is not allowed."
+      "name": "InvalidReceiptTokenSetup",
+      "msg": "InvalidReceiptTokenSetup"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidReceiptTokenDecimals",
+      "msg": "InvalidReceiptTokenDecimals"
+    },
+    {
+      "code": 6007,
+      "name": "ZeroDivision",
+      "msg": "ZeroDivision"
+    },
+    {
+      "code": 6008,
+      "name": "MathOverflow",
+      "msg": "MathOverflow"
+    },
+    {
+      "code": 6009,
+      "name": "MissingAccounts",
+      "msg": "MissingAccounts"
+    },
+    {
+      "code": 6010,
+      "name": "AmountTooLow",
+      "msg": "AmountTooLow"
     }
   ],
   "metadata": {

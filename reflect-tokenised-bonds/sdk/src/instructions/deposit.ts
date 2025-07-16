@@ -8,6 +8,7 @@
 import * as splToken from '@solana/spl-token'
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import { DepositArgs, depositArgsBeet } from '../types/DepositArgs'
 
 /**
  * @category Instructions
@@ -15,8 +16,7 @@ import * as web3 from '@solana/web3.js'
  * @category generated
  */
 export type DepositInstructionArgs = {
-  amount: beet.bignum
-  vaultId: beet.bignum
+  args: DepositArgs
 }
 /**
  * @category Instructions
@@ -30,33 +30,32 @@ export const depositStruct = new beet.BeetArgsStruct<
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['amount', beet.u64],
-    ['vaultId', beet.u64],
+    ['args', depositArgsBeet],
   ],
   'DepositInstructionArgs'
 )
 /**
  * Accounts required by the _deposit_ instruction
  *
- * @property [_writable_, **signer**] user
- * @property [_writable_] vault
- * @property [_writable_] depositTokenAccount
- * @property [_writable_] receiptTokenAccount
- * @property [_writable_] rewardPool
- * @property [_writable_] depositPool
- * @property [_writable_] receiptTokenMint
+ * @property [**signer**] signer
+ * @property [] vault
+ * @property [] pool
+ * @property [] depositToken
+ * @property [_writable_] signerDepositTokenAccount
+ * @property [] receiptToken (optional)
+ * @property [_writable_] signerReceiptTokenAccount (optional)
  * @category Instructions
  * @category Deposit
  * @category generated
  */
 export type DepositInstructionAccounts = {
-  user: web3.PublicKey
+  signer: web3.PublicKey
   vault: web3.PublicKey
-  depositTokenAccount: web3.PublicKey
-  receiptTokenAccount: web3.PublicKey
-  rewardPool: web3.PublicKey
-  depositPool: web3.PublicKey
-  receiptTokenMint: web3.PublicKey
+  pool: web3.PublicKey
+  depositToken: web3.PublicKey
+  signerDepositTokenAccount: web3.PublicKey
+  receiptToken?: web3.PublicKey
+  signerReceiptTokenAccount?: web3.PublicKey
   tokenProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -67,6 +66,9 @@ export const depositInstructionDiscriminator = [
 
 /**
  * Creates a _Deposit_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
@@ -86,38 +88,38 @@ export function createDepositInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.user,
-      isWritable: true,
+      pubkey: accounts.signer,
+      isWritable: false,
       isSigner: true,
     },
     {
       pubkey: accounts.vault,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.pool,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.depositToken,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.signerDepositTokenAccount,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.depositTokenAccount,
-      isWritable: true,
+      pubkey: accounts.receiptToken ?? programId,
+      isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: accounts.receiptTokenAccount,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.rewardPool,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.depositPool,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.receiptTokenMint,
-      isWritable: true,
+      pubkey: accounts.signerReceiptTokenAccount ?? programId,
+      isWritable: accounts.signerReceiptTokenAccount != null,
       isSigner: false,
     },
     {

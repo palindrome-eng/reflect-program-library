@@ -10,63 +10,77 @@ import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
- * @category InitializeProtocol
+ * @category Initialize
  * @category generated
  */
-export const initializeProtocolStruct = new beet.BeetArgsStruct<{
+export const initializeStruct = new beet.BeetArgsStruct<{
   instructionDiscriminator: number[] /* size: 8 */
 }>(
   [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
-  'InitializeProtocolInstructionArgs'
+  'InitializeInstructionArgs'
 )
 /**
- * Accounts required by the _initializeProtocol_ instruction
+ * Accounts required by the _initialize_ instruction
  *
- * @property [_writable_, **signer**] payer
- * @property [_writable_] rtbProtocol
+ * @property [_writable_, **signer**] signer
+ * @property [_writable_] admin
+ * @property [_writable_] config
+ * @property [] program
  * @category Instructions
- * @category InitializeProtocol
+ * @category Initialize
  * @category generated
  */
-export type InitializeProtocolInstructionAccounts = {
-  payer: web3.PublicKey
-  rtbProtocol: web3.PublicKey
+export type InitializeInstructionAccounts = {
+  signer: web3.PublicKey
+  admin: web3.PublicKey
+  config: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const initializeProtocolInstructionDiscriminator = [
-  188, 233, 252, 106, 134, 146, 202, 91,
+export const initializeInstructionDiscriminator = [
+  175, 175, 109, 31, 13, 152, 155, 237,
 ]
 
 /**
- * Creates a _InitializeProtocol_ instruction.
+ * Creates a _Initialize_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @category Instructions
- * @category InitializeProtocol
+ * @category Initialize
  * @category generated
  */
-export function createInitializeProtocolInstruction(
-  accounts: InitializeProtocolInstructionAccounts,
+export function createInitializeInstruction(
+  accounts: InitializeInstructionAccounts,
   programId = new web3.PublicKey('6ZZ1sxKGuXUBL8HSsHqHaYCg92G9VhMNTcJv1gFURCop')
 ) {
-  const [data] = initializeProtocolStruct.serialize({
-    instructionDiscriminator: initializeProtocolInstructionDiscriminator,
+  const [data] = initializeStruct.serialize({
+    instructionDiscriminator: initializeInstructionDiscriminator,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.payer,
+      pubkey: accounts.signer,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: accounts.rtbProtocol,
+      pubkey: accounts.admin,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.config,
       isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

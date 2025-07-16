@@ -1,20 +1,20 @@
-use std::ops::Div;
-use crate::constants::{PERMISSIONS_SEED, SETTINGS_SEED};
+use crate::{constants::*, helpers::action_check_protocol, instructions::admin};
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{transfer, Mint, Token, TokenAccount, Transfer}};
-use crate::{constants::{ASSET_SEED, LIQUIDITY_POOL_SEED}, errors::InsuranceFundError, states::{UserPermissions, Asset, LiquidityPool, Settings, Action}};
+use crate::errors::InsuranceFundError;
+use crate::states::*;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct SwapLpArgs {
+pub struct SwapArgs {
     pub amount_in: u64,
     pub min_out: Option<u64>
 }
 
-pub fn swap_lp(
-    ctx: Context<SwapLp>,
-    args: SwapLpArgs
+pub fn swap(
+    ctx: Context<Swap>,
+    args: SwapArgs
 ) -> Result<()> {
-    let SwapLpArgs {
+    let SwapArgs {
         min_out,
         amount_in
     } = args;
@@ -42,6 +42,35 @@ pub fn swap_lp(
     let token_from_asset = &ctx.accounts.token_from_asset;
     let token_to_asset = &ctx.accounts.token_to_asset;
 
+    let admin = &ctx.accounts.admin;
+    let settings = &ctx.accounts.settings;
+
+    // If any of the assets are private, require admin permissions.
+    if (token_from_asset.access_level == AccessLevel::Private || token_to_asset.access_level == AccessLevel::Private) {
+        // Check if PrivateSwap is frozen
+        require!(
+            !settings.access_control.killswitch.is_frozen(&Action::PrivateSwap),
+            InsuranceFundError::Frozen
+        );
+        
+        require!(
+            admin.is_some() && admin.as_ref().unwrap().can_perform_protocol_action(Action::PrivateSwap, &settings.access_control),
+            InsuranceFundError::PermissionsTooLow
+        );
+    } else {
+        // Check if PublicSwap is frozen
+        require!(
+            !settings.access_control.killswitch.is_frozen(&Action::PublicSwap),
+            InsuranceFundError::Frozen
+        );
+        
+        action_check_protocol(
+            Action::PublicSwap,
+            admin.as_deref(),
+            &settings.access_control
+        )?;
+    }
+
     let token_from_oracle = &ctx.accounts.token_from_oracle;
     let token_to_oracle = &ctx.accounts.token_to_oracle;
 
@@ -59,9 +88,10 @@ pub fn swap_lp(
     // Check if pool has sufficient balance for the swap
     let amount_out: u64 = token_from_price
         .mul(amount_in)?
-        .div(token_to_price
+        .checked_div(token_to_price
             .mul(1)?
         )
+        .ok_or(InsuranceFundError::MathOverflow)?
         .try_into()
         .map_err(|_| InsuranceFundError::MathOverflow)?;
 
@@ -113,7 +143,7 @@ pub fn swap_lp(
 }
 
 #[derive(Accounts)]
-pub struct SwapLp<'info> {
+pub struct Swap<'info> {
     #[account(
         mut
     )]
@@ -125,10 +155,8 @@ pub struct SwapLp<'info> {
             signer.key().as_ref(),
         ],
         bump,
-        constraint = admin.can_perform_protocol_action(Action::Swap, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Swap) @ InsuranceFundError::Frozen,
     )]
-    pub admin: Account<'info, UserPermissions>,
+    pub admin: Option<Account<'info, UserPermissions>>,
 
     #[account(
         seeds = [

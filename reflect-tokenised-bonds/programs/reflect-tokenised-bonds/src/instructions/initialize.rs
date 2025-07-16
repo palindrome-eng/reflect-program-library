@@ -19,8 +19,7 @@ pub fn initialize(
         admin,
         config,
         program: _,
-        program_data: __,
-        system_program: ___
+        system_program: __
     } = ctx.accounts;
 
     config.set_inner(Config {
@@ -49,7 +48,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = signer,
-        space = Admin::INIT_SPACE,
+        space = 8 + Admin::INIT_SPACE,
         seeds = [
             ADMIN_SEED.as_bytes(),
             signer.key().as_ref()
@@ -74,13 +73,4 @@ pub struct Initialize<'info> {
 
     #[account()]
     pub program: Program<'info, ReflectTokenisedBonds>,
-
-    #[account(
-        constraint = program
-            .programdata_address()?
-            .is_some_and(|result| result.eq(&program_data.key())) @ ReflectError::ProgramAccountsMismatch,
-        
-        constraint = program_data.upgrade_authority_address.eq(&Some(signer.key())) @ ReflectError::InvalidSigner
-    )]
-    pub program_data: Account<'info, ProgramData>,
 }

@@ -267,7 +267,14 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddAssetArgs"
+          }
+        }
+      ]
     },
     {
       "name": "depositRewards",
@@ -670,7 +677,7 @@
       ]
     },
     {
-      "name": "swapLp",
+      "name": "swap",
       "accounts": [
         {
           "name": "signer",
@@ -680,7 +687,8 @@
         {
           "name": "admin",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "settings",
@@ -757,7 +765,7 @@
         {
           "name": "args",
           "type": {
-            "defined": "SwapLpArgs"
+            "defined": "SwapArgs"
           }
         }
       ]
@@ -884,6 +892,12 @@
             "name": "oracle",
             "type": {
               "defined": "Oracle"
+            }
+          },
+          {
+            "name": "accessLevel",
+            "type": {
+              "defined": "AccessLevel"
             }
           }
         ]
@@ -1027,6 +1041,20 @@
       }
     },
     {
+      "name": "AddAssetArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accessLevel",
+            "type": {
+              "defined": "AccessLevel"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "FreezeProtocolActionArgs",
       "type": {
         "kind": "struct",
@@ -1155,7 +1183,7 @@
       }
     },
     {
-      "name": "SwapLpArgs",
+      "name": "SwapArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1386,7 +1414,10 @@
             "name": "Slash"
           },
           {
-            "name": "Swap"
+            "name": "PublicSwap"
+          },
+          {
+            "name": "PrivateSwap"
           },
           {
             "name": "FreezeRestake"
@@ -1398,7 +1429,10 @@
             "name": "FreezeSlash"
           },
           {
-            "name": "FreezeSwap"
+            "name": "FreezePublicSwap"
+          },
+          {
+            "name": "FreezePrivateSwap"
           },
           {
             "name": "InitializeLiquidityPool"
@@ -1417,9 +1451,6 @@
           },
           {
             "name": "SuspendDeposits"
-          },
-          {
-            "name": "FreezeProgram"
           },
           {
             "name": "UpdateRole"
@@ -1446,6 +1477,20 @@
             "fields": [
               "publicKey"
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "AccessLevel",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Public"
+          },
+          {
+            "name": "Private"
           }
         ]
       }

@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 pub enum Permissions {
     InitializeVaults,
     Freeze,
-    // FreezeReceiptToken,
     Superadmin
 }
 

@@ -6,19 +6,19 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type SwapLpArgs = {
-  amountIn: beet.bignum
-  minOut: beet.COption<beet.bignum>
+export type WithdrawArgs = {
+  vaultId: beet.bignum
+  amount: beet.bignum
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const swapLpArgsBeet = new beet.FixableBeetArgsStruct<SwapLpArgs>(
+export const withdrawArgsBeet = new beet.BeetArgsStruct<WithdrawArgs>(
   [
-    ['amountIn', beet.u64],
-    ['minOut', beet.coption(beet.u64)],
+    ['vaultId', beet.u64],
+    ['amount', beet.u64],
   ],
-  'SwapLpArgs'
+  'WithdrawArgs'
 )

@@ -3,12 +3,17 @@ use crate::helpers::{
     get_price_from_pyth,
     get_price_from_switchboard, OraclePrice
 };
-use crate::errors::InsuranceFundError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug, InitSpace)]
 pub enum Oracle {
     Pyth(Pubkey),
     Switchboard(Pubkey)
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, PartialEq, Debug)]
+pub enum AccessLevel {
+    Public,
+    Private
 }
 
 impl Oracle {
@@ -26,6 +31,7 @@ impl Oracle {
 pub struct Asset {
     pub mint: Pubkey,
     pub oracle: Oracle,
+    pub access_level: AccessLevel,
 }
 
 impl Asset {
@@ -39,5 +45,9 @@ impl Asset {
             Oracle::Pyth(_) => get_price_from_pyth(account, clock),
             Oracle::Switchboard(_) => get_price_from_switchboard(account, clock)
         }
+    }
+
+    pub fn is_public(&self) -> bool {
+        self.access_level == AccessLevel::Public
     }
 }

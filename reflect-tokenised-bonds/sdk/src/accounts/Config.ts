@@ -10,62 +10,52 @@ import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 
 /**
- * Arguments used to create {@link LockupState}
+ * Arguments used to create {@link Config}
  * @category Accounts
  * @category generated
  */
-export type LockupStateArgs = {
-  id: beet.bignum
-  user: web3.PublicKey
-  vault: web3.PublicKey
-  receiptAmount: beet.bignum
-  unlockDate: beet.bignum
+export type ConfigArgs = {
+  bump: number
+  vaults: beet.bignum
+  frozen: boolean
 }
 
-export const lockupStateDiscriminator = [25, 124, 231, 252, 84, 85, 50, 13]
+export const configDiscriminator = [155, 12, 170, 224, 30, 250, 204, 130]
 /**
- * Holds the data for the {@link LockupState} Account and provides de/serialization
+ * Holds the data for the {@link Config} Account and provides de/serialization
  * functionality for that data
  *
  * @category Accounts
  * @category generated
  */
-export class LockupState implements LockupStateArgs {
+export class Config implements ConfigArgs {
   private constructor(
-    readonly id: beet.bignum,
-    readonly user: web3.PublicKey,
-    readonly vault: web3.PublicKey,
-    readonly receiptAmount: beet.bignum,
-    readonly unlockDate: beet.bignum
+    readonly bump: number,
+    readonly vaults: beet.bignum,
+    readonly frozen: boolean
   ) {}
 
   /**
-   * Creates a {@link LockupState} instance from the provided args.
+   * Creates a {@link Config} instance from the provided args.
    */
-  static fromArgs(args: LockupStateArgs) {
-    return new LockupState(
-      args.id,
-      args.user,
-      args.vault,
-      args.receiptAmount,
-      args.unlockDate
-    )
+  static fromArgs(args: ConfigArgs) {
+    return new Config(args.bump, args.vaults, args.frozen)
   }
 
   /**
-   * Deserializes the {@link LockupState} from the data of the provided {@link web3.AccountInfo}.
+   * Deserializes the {@link Config} from the data of the provided {@link web3.AccountInfo}.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static fromAccountInfo(
     accountInfo: web3.AccountInfo<Buffer>,
     offset = 0
-  ): [LockupState, number] {
-    return LockupState.deserialize(accountInfo.data, offset)
+  ): [Config, number] {
+    return Config.deserialize(accountInfo.data, offset)
   }
 
   /**
    * Retrieves the account info from the provided address and deserializes
-   * the {@link LockupState} from its data.
+   * the {@link Config} from its data.
    *
    * @throws Error if no account info is found at the address or if deserialization fails
    */
@@ -73,15 +63,15 @@ export class LockupState implements LockupStateArgs {
     connection: web3.Connection,
     address: web3.PublicKey,
     commitmentOrConfig?: web3.Commitment | web3.GetAccountInfoConfig
-  ): Promise<LockupState> {
+  ): Promise<Config> {
     const accountInfo = await connection.getAccountInfo(
       address,
       commitmentOrConfig
     )
     if (accountInfo == null) {
-      throw new Error(`Unable to find LockupState account at ${address}`)
+      throw new Error(`Unable to find Config account at ${address}`)
     }
-    return LockupState.fromAccountInfo(accountInfo, 0)[0]
+    return Config.fromAccountInfo(accountInfo, 0)[0]
   }
 
   /**
@@ -95,39 +85,39 @@ export class LockupState implements LockupStateArgs {
       '6ZZ1sxKGuXUBL8HSsHqHaYCg92G9VhMNTcJv1gFURCop'
     )
   ) {
-    return beetSolana.GpaBuilder.fromStruct(programId, lockupStateBeet)
+    return beetSolana.GpaBuilder.fromStruct(programId, configBeet)
   }
 
   /**
-   * Deserializes the {@link LockupState} from the provided data Buffer.
+   * Deserializes the {@link Config} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
-  static deserialize(buf: Buffer, offset = 0): [LockupState, number] {
-    return lockupStateBeet.deserialize(buf, offset)
+  static deserialize(buf: Buffer, offset = 0): [Config, number] {
+    return configBeet.deserialize(buf, offset)
   }
 
   /**
-   * Serializes the {@link LockupState} into a Buffer.
+   * Serializes the {@link Config} into a Buffer.
    * @returns a tuple of the created Buffer and the offset up to which the buffer was written to store it.
    */
   serialize(): [Buffer, number] {
-    return lockupStateBeet.serialize({
-      accountDiscriminator: lockupStateDiscriminator,
+    return configBeet.serialize({
+      accountDiscriminator: configDiscriminator,
       ...this,
     })
   }
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link LockupState}
+   * {@link Config}
    */
   static get byteSize() {
-    return lockupStateBeet.byteSize
+    return configBeet.byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
-   * {@link LockupState} data from rent
+   * {@link Config} data from rent
    *
    * @param connection used to retrieve the rent exemption information
    */
@@ -136,27 +126,28 @@ export class LockupState implements LockupStateArgs {
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      LockupState.byteSize,
+      Config.byteSize,
       commitment
     )
   }
 
   /**
    * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link LockupState} data.
+   * hold {@link Config} data.
    */
   static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === LockupState.byteSize
+    return buf.byteLength - offset === Config.byteSize
   }
 
   /**
-   * Returns a readable version of {@link LockupState} properties
+   * Returns a readable version of {@link Config} properties
    * and can be used to convert to JSON and/or logging
    */
   pretty() {
     return {
-      id: (() => {
-        const x = <{ toNumber: () => number }>this.id
+      bump: this.bump,
+      vaults: (() => {
+        const x = <{ toNumber: () => number }>this.vaults
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -166,30 +157,7 @@ export class LockupState implements LockupStateArgs {
         }
         return x
       })(),
-      user: this.user.toBase58(),
-      vault: this.vault.toBase58(),
-      receiptAmount: (() => {
-        const x = <{ toNumber: () => number }>this.receiptAmount
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
-      unlockDate: (() => {
-        const x = <{ toNumber: () => number }>this.unlockDate
-        if (typeof x.toNumber === 'function') {
-          try {
-            return x.toNumber()
-          } catch (_) {
-            return x
-          }
-        }
-        return x
-      })(),
+      frozen: this.frozen,
     }
   }
 }
@@ -198,20 +166,18 @@ export class LockupState implements LockupStateArgs {
  * @category Accounts
  * @category generated
  */
-export const lockupStateBeet = new beet.BeetStruct<
-  LockupState,
-  LockupStateArgs & {
+export const configBeet = new beet.BeetStruct<
+  Config,
+  ConfigArgs & {
     accountDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['id', beet.u64],
-    ['user', beetSolana.publicKey],
-    ['vault', beetSolana.publicKey],
-    ['receiptAmount', beet.u64],
-    ['unlockDate', beet.i64],
+    ['bump', beet.u8],
+    ['vaults', beet.u64],
+    ['frozen', beet.bool],
   ],
-  LockupState.fromArgs,
-  'LockupState'
+  Config.fromArgs,
+  'Config'
 )

@@ -1,11 +1,9 @@
-export * from './LockupState'
-export * from './RTBProtocol'
-export * from './UserAccount'
+export * from './Admin'
+export * from './Config'
 export * from './Vault'
 
-import { LockupState } from './LockupState'
-import { RTBProtocol } from './RTBProtocol'
-import { UserAccount } from './UserAccount'
+import { Admin } from './Admin'
+import { Config } from './Config'
 import { Vault } from './Vault'
 
-export const accountProviders = { LockupState, RTBProtocol, UserAccount, Vault }
+export const accountProviders = { Admin, Config, Vault }
