@@ -17,6 +17,13 @@ fn check_action_permission(
             })?;
         }
     }
+
+    // msg!("is public {:?}", access_controls[0].is_public_action(Action::PublicSwap));
+    // msg!("allowed roles: {:?}", access_controls[0].access_map.get_action_allowees(Action::PublicSwap));
+    
+    // for ac in access_controls[0].access_map.action_permissions.iter() {
+    //     msg!("{:?}: {:?}", ac.action, ac.allowed_roles);
+    // }
     
     // Check if action is public at any level.
     if access_controls.iter().any(|ac| ac.is_public_action(action)) {

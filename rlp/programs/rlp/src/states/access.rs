@@ -313,7 +313,9 @@ impl AccessControl {
     
     /** Initialise with default permissions. */
     pub fn new_defaults() -> Result<Self> {
-        let mut access_control: AccessControl = Self::default();                
+        let mut access_control: AccessControl = Self::default();  
+
+        access_control.add_role_to_action(Action::PublicSwap, Role::PUBLIC)?;          
                 
         // Manager actions (everything except deploying new strategies/accounts).
         access_control.add_role_to_action(Action::UpdateDepositCap, Role::MANAGER)?;
@@ -329,7 +331,7 @@ impl AccessControl {
 
         // Crank actions.  
         access_control.add_role_to_action(Action::Slash, Role::CRANK)?;
-        access_control.add_role_to_action(Action::PublicSwap, Role::CRANK)?;
+        // access_control.add_role_to_action(Action::PublicSwap, Role::CRANK)?;
         access_control.add_role_to_action(Action::PrivateSwap, Role::CRANK)?;
 
         // User actions - public (test for now).    

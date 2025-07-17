@@ -60,14 +60,12 @@ pub fn withdraw<'a>(
         InsuranceFundError::InvalidInput
     );
 
-    // Liquidity pool signer seeds for transfers
     let lp_seeds = &[
         LIQUIDITY_POOL_SEED.as_bytes(),
         &liquidity_pool.index.to_le_bytes(),
         &[liquidity_pool.bump]
     ];
 
-    // Iterate through remaining accounts to calculate and transfer user's share of each asset
     let mut i = 0;
     while i < remaining_accounts.len() {
         let pool_token_account_info = &remaining_accounts[i];
@@ -113,7 +111,6 @@ pub fn withdraw<'a>(
             InsuranceFundError::InvalidInput
         );
 
-        // Verify this is the correct associated token account for the liquidity pool and asset
         let expected_pool_token_account = associated_token::get_associated_token_address(
             &liquidity_pool.key(), 
             &asset.mint
@@ -136,7 +133,6 @@ pub fn withdraw<'a>(
         let user_token_account = TokenAccount::try_deserialize(&mut user_token_account_info.try_borrow_mut_data()?.as_ref())
             .map_err(|_| InsuranceFundError::InvalidInput)?;
 
-        msg!("user_token_account owner: {}", user_token_account.owner);
 
         require!(
             user_token_account.owner.eq(&signer.key()),
@@ -165,7 +161,6 @@ pub fn withdraw<'a>(
             .to_u64()
             .ok_or(InsuranceFundError::MathOverflow)?;
 
-        // Transfer user's share from pool to user
         if user_pool_share_amount > 0 {
             transfer(
                 CpiContext::new_with_signer(
@@ -184,7 +179,8 @@ pub fn withdraw<'a>(
         i += 3;
     }
 
-    // Burn the user's LP tokens
+    msg!("burning lp tokens");
+
     burn(
         CpiContext::new_with_signer(
             token_program.to_account_info(), 

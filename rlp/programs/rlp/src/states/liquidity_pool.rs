@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{
     mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer
 };
+use anchor_spl::associated_token::get_associated_token_address;
 use crate::constants::*;
 use crate::helpers::OraclePrice;
 use spl_math::precise_number::PreciseNumber;
@@ -63,8 +64,6 @@ impl LiquidityPool {
         while i < remaining_accounts.len() {
             let token_account_info = &remaining_accounts[i];
             
-            msg!("token_account_info.owner: {}", token_account_info.owner);
-
             require!(
                 token_account_info.owner == &anchor_spl::token::ID,
                 crate::errors::InsuranceFundError::InvalidInput
@@ -99,6 +98,17 @@ impl LiquidityPool {
                     &asset.mint.to_bytes()
                 ],
                 &crate::ID
+            );
+
+            // Verify this is the correct associated token account for the liquidity pool and asset
+            let expected_pool_token_account = get_associated_token_address(
+                &liquidity_pool.key(), 
+                &asset.mint
+            );
+
+            require!(
+                token_account_info.key() == expected_pool_token_account,
+                crate::errors::InsuranceFundError::InvalidInput
             );
     
             require!(
@@ -137,19 +147,14 @@ impl LiquidityPool {
         deposit_value: PreciseNumber,
     ) -> Result<u64> {
         let lp_tokens_to_mint = if lp_token.supply == 0 {
-            msg!("route1");
             deposit_value
                 .to_imprecise()
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
                 .try_into()
                 .map_err(|_| crate::errors::InsuranceFundError::MathOverflow)?
         } else {
-            msg!("route2");
             let lp_supply_precise = PreciseNumber::new(lp_token.supply as u128)
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
-
-            msg!("lp_supply_precise: {}", lp_supply_precise.to_imprecise().unwrap());
-            msg!("total_pool_value: {}", total_pool_value.to_imprecise().unwrap());
 
             let deposit_ratio = deposit_value
                 .checked_mul(&lp_supply_precise)
@@ -157,7 +162,6 @@ impl LiquidityPool {
                 .checked_div(&total_pool_value)
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
 
-            msg!("deposit_ratio: {}", deposit_ratio.to_imprecise().unwrap());
             
             deposit_ratio
                 .to_imprecise()

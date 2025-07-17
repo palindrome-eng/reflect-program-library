@@ -30,7 +30,7 @@ pub fn initialize_rlp(
     settings.set_inner(Settings {
         bump: ctx.bumps.settings,
         assets: 0,
-        access_control: AccessControl::default(),
+        access_control: AccessControl::new_defaults()?,
         frozen: false,
         liquidity_pools: 0
     });

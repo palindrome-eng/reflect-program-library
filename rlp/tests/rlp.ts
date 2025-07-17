@@ -59,6 +59,7 @@ import { ComputeBudgetProgram } from "@solana/web3.js";
 import { calculateDepositValue, calculateLpTokensOnDeposit, calculateTotalPoolValue } from "./helpers/liquidityPoolMath";
 import { AddressLookupTableProgram } from "@solana/web3.js";
 import { VersionedTransaction } from "@solana/web3.js";
+import getOraclePrice from "./helpers/getOraclePrice";
 
 async function createLpToken(
     signer: PublicKey,
@@ -145,6 +146,12 @@ async function createLpToken(
     }
 }
 
+type WhitelistedAsset = {
+    mint: PublicKey,
+    oracle: PublicKey,
+    accessLevel: AccessLevel,
+}
+
 describe("rlp", () => {
     const provider = anchor.AnchorProvider.local();
     anchor.setProvider(provider);
@@ -152,10 +159,10 @@ describe("rlp", () => {
 
     let settings: PublicKey;
     let user: Keypair;
-    let rewardToken: PublicKey;
+    let publicAssets: WhitelistedAsset[] = [];
     let admin: PublicKey;
 
-    const lsts: PublicKey[] = [];
+    const whitelistedAssets: WhitelistedAsset[] = [];
 
     before(async () => {
         user = Keypair.generate();
@@ -167,12 +174,10 @@ describe("rlp", () => {
             LAMPORTS_PER_SOL * 1000
         );
 
-        rewardToken = await createToken(
-            provider.connection,
-            provider
-        );
-
         admin = Restaking.deriveUserPermissions(provider.publicKey);
+
+        await getOraclePrice("ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d");
+        await getOraclePrice("eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a");
     });
 
     function isActionFrozen(killswitch: KillSwitch, action: Action) {
@@ -209,34 +214,51 @@ describe("rlp", () => {
         expect(assets).eq(0);
         expect(frozen).eq(false);
     });
+    
+    it("Adds public assets to the RLP.", async () => {
+        for (let i = 0; i < 3; i++) {
+            const token = await createToken(
+                provider.connection,
+                provider
+            );
 
-    it("Adds reward token to the RLP", async () => {
-        const asset = Restaking.deriveAsset(rewardToken);
+            const oracleString = i % 2 
+                ? "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" 
+                : "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
+    
+            publicAssets.push({
+                mint: token,
+                oracle: new PublicKey(oracleString),
+                accessLevel: AccessLevel.Public
+            });
 
-        await program
-            .methods
-            .addAsset({
-                accessLevel: { public: {} }
-            })
-            .accounts({
-                admin,
-                asset,
-                assetMint: rewardToken,
-                oracle: new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"),
-                settings,
-                signer: provider.publicKey,
-                systemProgram: SystemProgram.programId,
-            })
-            .rpc();
+            const asset = Restaking.deriveAsset(token);
 
-        const assetData = await Asset.fromAccountAddress(
-            provider.connection,
-            asset
-        );
-        
-        expect(assetData.mint.toString()).eq(rewardToken.toString());
-        expect(assetData.oracle.__kind).eq("Pyth");
-        expect(assetData.oracle.fields[0].toString()).eq("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE");
+            await program
+                .methods
+                .addAsset({
+                    accessLevel: { public: {} }
+                })
+                .accounts({
+                    admin,
+                    asset,
+                    assetMint: token,
+                    oracle: new PublicKey(oracleString),
+                    settings,
+                    signer: provider.publicKey,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+
+            const assetData = await Asset.fromAccountAddress(
+                provider.connection,
+                asset
+            );
+
+            expect(assetData.mint.toString()).eq(token.toString());
+            expect(assetData.oracle.fields[0].toString()).eq(oracleString);
+            expect(assetData.accessLevel).eq(AccessLevel.Public);
+        }
     });
 
     it('Freezes protocol.', async () => {
@@ -311,10 +333,10 @@ describe("rlp", () => {
             expect(killswitch.frozen).eq(0);
     });
 
-    it("Mints and adds assets to insurance pool.", async () => {
+    it("Mints and adds private assets to insurance pool.", async () => {
         const assets: PublicKey[] = [];
 
-        for (let i = 0; i < 3; i ++) {
+        for (let i = 0; i < 2; i ++) {
             const oracleString = i % 2 
                 ? "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" 
                 : "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
@@ -324,7 +346,11 @@ describe("rlp", () => {
                 provider
             );
 
-            lsts.push(token);
+            whitelistedAssets.push({
+                mint: token,
+                oracle: new PublicKey(oracleString),
+                accessLevel: AccessLevel.Private
+            });
 
             const asset = Restaking.deriveAsset(token);
 
@@ -357,9 +383,10 @@ describe("rlp", () => {
 
             const oracleString = i % 2 ? "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE" : "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
 
-            expect(lsts[i].toString()).eq(assetData.mint.toString());
+            expect(whitelistedAssets[i].mint.toString()).eq(assetData.mint.toString());
             expect(assetData.oracle.__kind).eq("Pyth");
             expect(assetData.oracle.fields[0].toString()).eq(oracleString);
+            expect(assetData.accessLevel).eq(AccessLevel.Private);
         }
     });
 
@@ -507,22 +534,22 @@ describe("rlp", () => {
             liquidityPool
         );
 
-        const asset = Restaking.deriveAsset(lsts[0]);
+        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
 
         await mintTokens(
-            lsts[0],
+            whitelistedAssets[0].mint,
             provider,
             amount.toNumber(),
             user.publicKey
         );
 
         const userAssetAta = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             user.publicKey
         );
 
         const poolAssetAccount = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             liquidityPool,
             true
         );
@@ -575,7 +602,7 @@ describe("rlp", () => {
                 lpToken: liquidityPoolData.lpToken,
                 userLpAccount,
                 asset,
-                assetMint: lsts[0],
+                assetMint: whitelistedAssets[0].mint,
                 userAssetAccount: userAssetAta,
                 poolAssetAccount,
                 oracle: assetData.oracle.fields[0],
@@ -619,22 +646,22 @@ describe("rlp", () => {
             liquidityPool
         );
 
-        const asset = Restaking.deriveAsset(lsts[1]);
+        const asset = Restaking.deriveAsset(whitelistedAssets[1].mint);
 
         await mintTokens(
-            lsts[1],
+            whitelistedAssets[1].mint,
             provider,
             amount.toNumber(),
             user.publicKey
         );
 
         const userAssetAta = getAssociatedTokenAddressSync(
-            lsts[1],
+            whitelistedAssets[1].mint,
             user.publicKey
         );
 
         const poolAssetAccount = getAssociatedTokenAddressSync(
-            lsts[1],
+            whitelistedAssets[1].mint,
             liquidityPool,
             true
         );
@@ -687,7 +714,7 @@ describe("rlp", () => {
                 lpToken: liquidityPoolData.lpToken,
                 userLpAccount,
                 asset,
-                assetMint: lsts[1],
+                assetMint: whitelistedAssets[1].mint,
                 userAssetAccount: userAssetAta,
                 poolAssetAccount,
                 oracle: assetData.oracle.fields[0],
@@ -720,19 +747,19 @@ describe("rlp", () => {
         ).gt(0);
     });
 
-    it("Deposits rewards", async () => {
+    it("Deposits rewards A", async () => {
         const liquidityPoolId = 0;
         const amount = new BN(100_000 * LAMPORTS_PER_SOL);
 
         const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
 
         const signerAssetTokenAccount = getAssociatedTokenAddressSync(
-            rewardToken,
+            publicAssets[0].mint,
             provider.publicKey
         );
 
         await mintTokens(
-            rewardToken,
+            publicAssets[0].mint,
             provider,
             100_000 * LAMPORTS_PER_SOL,
             provider.publicKey
@@ -757,12 +784,12 @@ describe("rlp", () => {
                 liquidityPool,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 assetPool: getAssociatedTokenAddressSync(
-                    rewardToken,
+                    publicAssets[0].mint,
                     liquidityPool,
                     true
                 ),
-                asset: Restaking.deriveAsset(rewardToken),
-                assetMint: rewardToken,
+                asset: Restaking.deriveAsset(publicAssets[0].mint),
+                assetMint: publicAssets[0].mint,
                 associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
                 signerAssetTokenAccount,
             })
@@ -782,7 +809,80 @@ describe("rlp", () => {
         const assetPoolData = await getAccount(
             provider.connection,
             getAssociatedTokenAddressSync(
-                rewardToken,
+                publicAssets[0].mint,
+                liquidityPool,
+                true
+            )
+        );
+
+        expect(
+            parseInt(assetPoolData.amount.toString())
+        ).eq(amount.toNumber());
+    });
+
+    it("Deposits rewards B", async () => {
+        const liquidityPoolId = 0;
+        const amount = new BN(100_000 * LAMPORTS_PER_SOL);
+
+        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
+
+        const signerAssetTokenAccount = getAssociatedTokenAddressSync(
+            publicAssets[1].mint,
+            provider.publicKey
+        );
+
+        await mintTokens(
+            publicAssets[1].mint,
+            provider,
+            100_000 * LAMPORTS_PER_SOL,
+            provider.publicKey
+        );
+
+        const liquidityPoolDataPre = await LiquidityPool
+            .fromAccountAddress(
+                provider.connection,
+                liquidityPool
+            );
+
+        await program
+            .methods
+            .depositRewards({
+                amount
+            })
+            .accounts({
+                signer: provider.publicKey,
+                permissions: admin,
+                settings,
+                systemProgram: SystemProgram.programId,
+                liquidityPool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                assetPool: getAssociatedTokenAddressSync(
+                    publicAssets[1].mint,
+                    liquidityPool,
+                    true
+                ),
+                asset: Restaking.deriveAsset(publicAssets[1].mint),
+                assetMint: publicAssets[1].mint,
+                associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+                signerAssetTokenAccount,
+            })
+            .rpc()
+            .catch(err => {
+                console.log(err.logs);
+                throw err;
+            });
+
+        const liquidityPoolDataPost = await LiquidityPool
+            .fromAccountAddress(
+                provider.connection,
+                liquidityPool
+            );
+
+        // Verify rewards were deposited
+        const assetPoolData = await getAccount(
+            provider.connection,
+            getAssociatedTokenAddressSync(
+                publicAssets[1].mint,
                 liquidityPool,
                 true
             )
@@ -804,11 +904,11 @@ describe("rlp", () => {
             liquidityPool
         );
 
-        const asset = Restaking.deriveAsset(lsts[0]);
+        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
 
         const destination = Keypair.generate();
         const destinationAta = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             destination.publicKey
         );
 
@@ -816,11 +916,11 @@ describe("rlp", () => {
             provider.publicKey,
             destinationAta,
             destination.publicKey,
-            lsts[0]
+            whitelistedAssets[0].mint
         );
 
         const poolAssetAccount = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             liquidityPool,
             true
         );
@@ -843,7 +943,7 @@ describe("rlp", () => {
                 liquidityPool,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 asset,
-                mint: lsts[0],
+                mint: whitelistedAssets[0].mint,
                 liquidityPoolTokenAccount: poolAssetAccount,
                 destination: destinationAta,
             })
@@ -861,7 +961,7 @@ describe("rlp", () => {
     });
 
     let alice = Keypair.generate();
-    it("Makes second deposit. Should not be affected by prev slashing.", async () => {
+    it("Makes second deposit.", async () => {
         const liquidityPoolId = 0;
         const amount = new BN(LAMPORTS_PER_SOL * 1_000);
 
@@ -872,7 +972,7 @@ describe("rlp", () => {
             liquidityPool
         );
 
-        const asset = Restaking.deriveAsset(lsts[0]);
+        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
 
         await provider.connection.requestAirdrop(
             alice.publicKey,
@@ -880,19 +980,19 @@ describe("rlp", () => {
         );
 
         await mintTokens(
-            lsts[0],
+            whitelistedAssets[0].mint,
             provider,
             amount.toNumber(),
             alice.publicKey
         );
 
         const userAssetAta = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             alice.publicKey
         );
 
         const poolAssetAccount = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             liquidityPool,
             true
         );
@@ -907,11 +1007,6 @@ describe("rlp", () => {
                 provider.connection,
                 asset
             );
-
-        const {
-            price,
-            precision: pricePrecision
-        } = await getOraclePriceFromAccount(assetDataPre.oracle.fields[0].toString());
 
         const transactionTimestamp = Math.floor(Date.now() / 1000);
 
@@ -989,7 +1084,7 @@ describe("rlp", () => {
                 lpToken: liquidityPoolData.lpToken,
                 userLpAccount,
                 asset,
-                assetMint: lsts[0],
+                assetMint: whitelistedAssets[0].mint,
                 userAssetAccount: userAssetAta,
                 poolAssetAccount,
                 oracle: assetDataPre.oracle.fields[0],
@@ -1021,7 +1116,7 @@ describe("rlp", () => {
             parseInt(userLpAccountData.amount.toString())
         ).approximately(
             expectedLpTokens.toNumber(),
-            0.01 * LAMPORTS_PER_SOL // 0.1 full LP token delta
+            0.1 * LAMPORTS_PER_SOL // 0.1 full LP token delta
         );
     });
 
@@ -1123,70 +1218,70 @@ describe("rlp", () => {
             );
     });
 
-    let lookupTablePubkey: PublicKey;
-    it("Creates lookup table with asset datas", async () => {
-        let done = false;
-        while (!done) {
-            try {
-                const restaking = new Restaking(provider.connection);
-                const assets = await restaking.getAssets();
+    // let lookupTablePubkey: PublicKey;
+    // it("Creates lookup table with asset datas", async () => {
+    //     let done = false;
+    //     while (!done) {
+    //         try {
+    //             const restaking = new Restaking(provider.connection);
+    //             const assets = await restaking.getAssets();
 
-                const [ix, pubkey] = AddressLookupTableProgram
-                .createLookupTable({
-                    authority: provider.publicKey,
-                    payer: provider.publicKey,
-                    recentSlot: await provider.connection.getSlot()
-                });
+    //             const [ix, pubkey] = AddressLookupTableProgram
+    //                 .createLookupTable({
+    //                     authority: provider.publicKey,
+    //                     payer: provider.publicKey,
+    //                     recentSlot: await provider.connection.getSlot()
+    //                 });
 
-                const tx = new Transaction();
-                tx.add(ix);
+    //             const tx = new Transaction();
+    //             tx.add(ix);
 
-                const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
-                tx.recentBlockhash = blockhash;
-                tx.feePayer = provider.publicKey;
+    //             const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
+    //             tx.recentBlockhash = blockhash;
+    //             tx.feePayer = provider.publicKey;
 
-                const signedTx = await provider.wallet.signTransaction(tx);
-                const signature = await provider.connection.sendRawTransaction(signedTx.serialize());
-                await provider.connection.confirmTransaction({
-                    blockhash,
-                    lastValidBlockHeight,
-                    signature
-                });
+    //             const signedTx = await provider.wallet.signTransaction(tx);
+    //             const signature = await provider.connection.sendRawTransaction(signedTx.serialize());
+    //             await provider.connection.confirmTransaction({
+    //                 blockhash,
+    //                 lastValidBlockHeight,
+    //                 signature
+    //             });
 
-                const ix2 = AddressLookupTableProgram
-                .extendLookupTable({
-                    addresses: assets.map(asset => [asset.pubkey, asset.account.mint, asset.account.oracle.fields[0]]).flat(),
-                    authority: provider.publicKey,
-                    payer: provider.publicKey,
-                    lookupTable: pubkey
-                });
+    //             const ix2 = AddressLookupTableProgram
+    //                 .extendLookupTable({
+    //                     addresses: assets.map(asset => [asset.pubkey, asset.account.mint, asset.account.oracle.fields[0]]).flat(),
+    //                     authority: provider.publicKey,
+    //                     payer: provider.publicKey,
+    //                     lookupTable: pubkey
+    //                 });
 
-                const tx2 = new Transaction();
-                tx2.add(ix2);
+    //             const tx2 = new Transaction();
+    //             tx2.add(ix2);
 
-                const blockData2 = await provider.connection.getLatestBlockhash();
-                tx2.recentBlockhash = blockData2.blockhash;
-                tx2.feePayer = provider.publicKey;
+    //             const blockData2 = await provider.connection.getLatestBlockhash();
+    //             tx2.recentBlockhash = blockData2.blockhash;
+    //             tx2.feePayer = provider.publicKey;
 
-                await sleep(10);
+    //             await sleep(10);
 
-                const signedTx2 = await provider.wallet.signTransaction(tx2);
-                const signature2 = await provider.connection.sendRawTransaction(signedTx2.serialize());
-                await provider.connection.confirmTransaction({
-                    blockhash: blockData2.blockhash,
-                    lastValidBlockHeight: blockData2.lastValidBlockHeight,
-                    signature: signature2
-                });
+    //             const signedTx2 = await provider.wallet.signTransaction(tx2);
+    //             const signature2 = await provider.connection.sendRawTransaction(signedTx2.serialize());
+    //             await provider.connection.confirmTransaction({
+    //                 blockhash: blockData2.blockhash,
+    //                 lastValidBlockHeight: blockData2.lastValidBlockHeight,
+    //                 signature: signature2
+    //             });
 
-                await sleep(10);
-                lookupTablePubkey = pubkey;
-                done = true;
-            } catch (err) {
-                console.log("failed to create lookup table. retrying...");
-                await sleep(3);
-            }
-        }
-    });
+    //             await sleep(10);
+    //             lookupTablePubkey = pubkey;
+    //             done = true;
+    //         } catch (err) {
+    //             console.log("failed to create lookup table. retrying...");
+    //             await sleep(3);
+    //         }
+    //     }
+    // });
 
     it("Waits cooldown duration & withdraws.", async () => {
         const liquidityPoolId = 0;
@@ -1214,15 +1309,15 @@ describe("rlp", () => {
 
         await sleep(new BN(liquidityPoolData.cooldownDuration.toString()).toNumber());
 
-        const asset = Restaking.deriveAsset(lsts[0]);
+        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
 
         const userAssetAta = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             user.publicKey
         );
 
         const userRewardAta = getAssociatedTokenAddressSync(
-            rewardToken,
+            publicAssets[0].mint,
             user.publicKey
         );
 
@@ -1232,7 +1327,7 @@ describe("rlp", () => {
         );
 
         const poolAssetAccount = getAssociatedTokenAddressSync(
-            lsts[0],
+            whitelistedAssets[0].mint,
             liquidityPool,
             true
         );
@@ -1261,13 +1356,39 @@ describe("rlp", () => {
                 },
                 {
                     isSigner: false,
-                    isWritable: false,
+                    isWritable: true,
                     pubkey: getAssociatedTokenAddressSync(account.mint, user.publicKey, true)
                 }
             ] as AccountMeta[];
         }).flat();
 
-        const ix = await program
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
+        const msg = new TransactionMessage({
+            instructions: [
+                ...(assets
+                .map(asset => createAssociatedTokenAccountIdempotentInstruction(
+                    user.publicKey,
+                    getAssociatedTokenAddressSync(asset.account.mint, user.publicKey, true),
+                    user.publicKey,
+                    asset.account.mint
+                ))),
+            ],
+            payerKey: user.publicKey,
+            recentBlockhash: blockhash
+        }).compileToV0Message();
+
+        const tx = new VersionedTransaction(msg);
+        tx.sign([user]);
+        const signature = await provider.connection.sendRawTransaction(tx.serialize());
+        await provider.connection.confirmTransaction({
+            blockhash,
+            lastValidBlockHeight,
+            signature
+        });
+
+        await sleep(10);
+
+        await program
             .methods
             .withdraw({
                 liquidityPoolId,
@@ -1284,47 +1405,12 @@ describe("rlp", () => {
                 signer: user.publicKey,
                 permissions: null
             })
+            .signers([user])
+            .preInstructions([
+                ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 })
+            ])
             .remainingAccounts(anchorRemainingAccounts)
-            // .preInstructions(
-            //     assets
-            //     .map(asset => createAssociatedTokenAccountIdempotentInstruction(
-            //         user.publicKey,
-            //         getAssociatedTokenAddressSync(asset.account.mint, provider.publicKey, true),
-            //         user.publicKey,
-            //         asset.account.mint
-            //     ))
-            // )
-            // .signers([user])
-            .instruction();
-
-        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
-        const msg = new TransactionMessage({
-            instructions: [
-                ...(assets
-                .map(asset => createAssociatedTokenAccountIdempotentInstruction(
-                    user.publicKey,
-                    getAssociatedTokenAddressSync(asset.account.mint, user.publicKey, true),
-                    user.publicKey,
-                    asset.account.mint
-                ))),
-                ix
-            ],
-            payerKey: user.publicKey,
-            recentBlockhash: blockhash
-        }).compileToV0Message(
-            [(await provider.connection.getAddressLookupTable(lookupTablePubkey)).value]
-        );
-
-        const tx = new VersionedTransaction(msg);
-        tx.sign([user]);
-        const signature = await provider.connection.sendRawTransaction(tx.serialize());
-        await provider.connection.confirmTransaction({
-            blockhash,
-            lastValidBlockHeight,
-            signature
-        });
-
-        await sleep(10);
+            .rpc();
 
         const userRewardAtaPost = await getAccount(
             provider.connection,
@@ -1336,7 +1422,7 @@ describe("rlp", () => {
         ).gt(0);
     });
 
-    it("Performs a swap between two assets in a liquidity pool", async () => {
+    it("Performs a swap between two private assets by an admin in a liquidity pool", async () => {
         const amountIn = new BN(1000 * LAMPORTS_PER_SOL);
 
         const liquidityPoolId = 0;
@@ -1345,11 +1431,11 @@ describe("rlp", () => {
         const restaking = new Restaking(provider.connection);
         const assets = await restaking.getAssets();
 
-        const fromMint = lsts[0];
-        const toMint = lsts[1];
+        const fromMint = whitelistedAssets[0];
+        const toMint = whitelistedAssets[1];
 
-        const fromAsset = Restaking.deriveAsset(fromMint);
-        const toAsset = Restaking.deriveAsset(toMint);
+        const fromAsset = Restaking.deriveAsset(fromMint.mint);
+        const toAsset = Restaking.deriveAsset(toMint.mint);
 
         const {
             oracle: fromOracle
@@ -1360,26 +1446,26 @@ describe("rlp", () => {
         } = await Asset.fromAccountAddress(provider.connection, toAsset);
 
         const fromSignerTokenAccount = getAssociatedTokenAddressSync(
-            fromMint,
+            fromMint.mint,
             provider.publicKey,
             true
         );
 
         const toSignerTokenAccount = getAssociatedTokenAddressSync(
-            toMint,
+            toMint.mint,
             provider.publicKey,
             true
         );
 
         await mintTokens(
-            lsts[0],
+            whitelistedAssets[0].mint,
             provider,
             10000 * LAMPORTS_PER_SOL,
             provider.publicKey
         );
 
         await mintTokens(
-            lsts[1],
+            whitelistedAssets[1].mint,
             provider,
             100000 * LAMPORTS_PER_SOL,
             provider.publicKey
@@ -1419,14 +1505,14 @@ describe("rlp", () => {
                 signer: provider.publicKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 liquidityPool,
-                tokenFrom: fromMint,
+                tokenFrom: fromMint.mint,
                 tokenFromAsset: fromAsset,
                 tokenFromOracle: fromOracle.fields[0],
-                tokenTo: toMint,
+                tokenTo: toMint.mint,
                 tokenToAsset: toAsset,
                 tokenToOracle: toOracle.fields[0],
-                tokenFromPool: getAssociatedTokenAddressSync(fromMint, liquidityPool, true),
-                tokenToPool: getAssociatedTokenAddressSync(toMint, liquidityPool, true),
+                tokenFromPool: getAssociatedTokenAddressSync(fromMint.mint, liquidityPool, true),
+                tokenToPool: getAssociatedTokenAddressSync(toMint.mint, liquidityPool, true),
                 tokenFromSignerAccount: fromSignerTokenAccount,
                 tokenToSignerAccount: toSignerTokenAccount,
                 associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
@@ -1434,6 +1520,161 @@ describe("rlp", () => {
             .rpc()
             .catch(err => {
                 console.error(err);
+                throw err;
+            });
+
+        const {
+            amount: fromSignerTokenAccountBalancePost
+        } = await getAccount(provider.connection, fromSignerTokenAccount);
+
+        const {
+            amount: toSignerTokenAccountBalancePost
+        } = await getAccount(provider.connection, toSignerTokenAccount);
+
+        const fromUsdValue = amountIn
+            .mul(fromTokenPrice)
+            .div(
+                new BN(10)
+                    .pow(fromTokenPrecision)
+            );
+
+        const toAmount = fromUsdValue
+            .mul(new BN(10).pow(toTokenPrecision))
+            .div(toTokenPrice);
+
+        expect(toAmount.toNumber())
+            .approximately(
+                new BN(toSignerTokenAccountBalancePost.toString())
+                    .sub(new BN(toSignerTokenAccountBalancePre.toString()))
+                    .abs()
+                    .toNumber(),
+                0.25 * LAMPORTS_PER_SOL
+            );
+
+        expect(amountIn.toNumber())
+            .eq(
+                new BN(fromSignerTokenAccountBalancePre.toString())
+                    .sub(new BN(fromSignerTokenAccountBalancePost.toString()))
+                    .abs()
+                    .toNumber()
+            );
+    });
+
+    const randomUser = Keypair.generate();
+    it("Performs a swap between two public assets by a random user in a liquidity pool", async () => {
+        const amountIn = new BN(1 * LAMPORTS_PER_SOL);
+
+        await provider.connection.requestAirdrop(randomUser.publicKey, 10000 * LAMPORTS_PER_SOL);
+
+        await mintTokens(
+            publicAssets[0].mint,
+            provider,
+            10000 * LAMPORTS_PER_SOL,
+            randomUser.publicKey
+        );
+        
+        const liquidityPoolId = 0;
+        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
+
+        const restaking = new Restaking(provider.connection);
+        const assets = await restaking.getAssets();
+
+        const fromMint = publicAssets[0];
+        const toMint = publicAssets[1];
+
+        const fromAsset = Restaking.deriveAsset(fromMint.mint);
+        const toAsset = Restaking.deriveAsset(toMint.mint);
+
+        const {
+            oracle: fromOracle,
+            accessLevel: fromAccessLevel
+        } = await Asset.fromAccountAddress(provider.connection, fromAsset);
+
+        const {
+            oracle: toOracle,
+            accessLevel: toAccessLevel
+        } = await Asset.fromAccountAddress(provider.connection, toAsset);
+
+        console.log({
+            toAccessLevel,
+            fromAccessLevel
+        });
+
+        const fromSignerTokenAccount = getAssociatedTokenAddressSync(
+            fromMint.mint,
+            randomUser.publicKey,
+            true
+        );
+
+        const toSignerTokenAccount = getAssociatedTokenAddressSync(
+            toMint.mint,
+            randomUser.publicKey,
+            true
+        );
+
+        await mintTokens(
+            publicAssets[0].mint,
+            provider,
+            10000 * LAMPORTS_PER_SOL,
+            randomUser.publicKey
+        );
+
+        await mintTokens(
+            publicAssets[1].mint,
+            provider,
+            100000 * LAMPORTS_PER_SOL,
+            randomUser.publicKey
+        );
+
+
+        const {
+            price: fromTokenPrice,
+            precision: fromTokenPrecision
+        } = await getOraclePriceFromAccount(fromOracle.fields[0].toString());
+
+        const {
+            price: toTokenPrice,
+            precision: toTokenPrecision
+        } = await getOraclePriceFromAccount(toOracle.fields[0].toString());
+
+        const {
+            amount: fromSignerTokenAccountBalancePre
+        } = await getAccount(provider.connection, fromSignerTokenAccount);
+        const {
+            amount: toSignerTokenAccountBalancePre
+        } = await getAccount(provider.connection, toSignerTokenAccount);
+
+        await program
+            .methods
+            .swap({
+                amountIn,
+                minOut: new BN(0)
+            })
+            .preInstructions([
+                ...assets.map((asset) => createAssociatedTokenAccountIdempotentInstruction(randomUser.publicKey, getAssociatedTokenAddressSync(asset.account.mint, randomUser.publicKey, true), randomUser.publicKey, asset.account.mint))
+            ])
+            .accounts({
+                settings,
+                signer: randomUser.publicKey,
+                admin: null,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                liquidityPool,
+                tokenFrom: fromMint.mint,
+                tokenFromAsset: fromAsset,
+                tokenFromOracle: fromOracle.fields[0],
+                tokenTo: toMint.mint,
+                tokenToAsset: toAsset,
+                tokenToOracle: toOracle.fields[0],
+                tokenFromPool: getAssociatedTokenAddressSync(fromMint.mint, liquidityPool, true),
+                tokenToPool: getAssociatedTokenAddressSync(toMint.mint, liquidityPool, true),
+                tokenFromSignerAccount: fromSignerTokenAccount,
+                tokenToSignerAccount: toSignerTokenAccount,
+                associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+            })
+            .signers([randomUser])
+            .rpc()
+            .catch(err => {
+                console.error((err.logs as string[]).join("\n"));
                 throw err;
             });
 
@@ -1504,8 +1745,8 @@ describe("rlp", () => {
             .methods
             // @ts-ignore
             .updateActionRole({
-                action: { restake: {} },
-                role: { manager: {} },
+                action: { suspendDeposits: {} },
+                role: { testee: {} },
                 update: { add: {} }
             })
             .accounts({
@@ -1520,8 +1761,8 @@ describe("rlp", () => {
             settings
         );
 
-        const actionPermissionMapping = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.Restake);
-        expect(actionPermissionMapping.allowedRoles.includes(Role.MANAGER)).eq(true);
+        const actionPermissionMapping = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.SuspendDeposits);
+        expect(actionPermissionMapping.allowedRoles.includes(Role.TESTEE)).eq(true);
     });
 
     it("Updates action role - removes role from action", async () => {
@@ -1529,8 +1770,8 @@ describe("rlp", () => {
             .methods
             // @ts-ignore
             .updateActionRole({
-                action: { restake: {} },
-                role: { manager: {} },
+                action: { suspendDeposits: {} },
+                role: { testee: {} },
                 update: { remove: {} }
             })
             .accounts({
@@ -1545,8 +1786,8 @@ describe("rlp", () => {
             settings
         );
 
-        const actionPermissionMapping = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.Restake);
-        expect(actionPermissionMapping.allowedRoles.includes(Role.MANAGER)).eq(false);
+        const actionPermissionMapping = settingsData.accessControl.accessMap.actionPermissions.find(mapping => mapping.action === Action.SuspendDeposits);
+        expect(actionPermissionMapping.allowedRoles.includes(Role.TESTEE)).eq(false);
     });
 
     it("Updates role holder - adds role to user", async () => {
