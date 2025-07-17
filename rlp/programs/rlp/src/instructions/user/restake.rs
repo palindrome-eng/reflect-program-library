@@ -45,8 +45,6 @@ pub fn restake<'a>(
 
     let clock = Clock::get()?;
 
-    msg!("calculating total pool value");
-
     let total_pool_value_before = liquidity_pool.calculate_total_pool_value(
         &ctx.remaining_accounts,
         liquidity_pool,
@@ -54,7 +52,6 @@ pub fn restake<'a>(
         &clock
     )?;
 
-    msg!("depositing");
 
     liquidity_pool.deposit(
         signer,
@@ -68,16 +65,9 @@ pub fn restake<'a>(
     let oracle = &ctx.accounts.oracle;
     let deposit_asset_price = asset.get_price(oracle, &clock)?;
 
-    msg!("calculating deposit value");
-
     let deposit_value = PreciseNumber::new(
         deposit_asset_price.mul(amount)?
     ).ok_or(InsuranceFundError::MathOverflow)?;
-
-    msg!("deposit value: {}", deposit_value.to_imprecise().ok_or(InsuranceFundError::MathOverflow)?);
-    msg!("calculating lp tokens to mint");
-
-    msg!("lp token supply: {}", lp_token.supply);
 
     let lp_tokens_to_mint = liquidity_pool
         .calculate_lp_tokens_on_deposit(
