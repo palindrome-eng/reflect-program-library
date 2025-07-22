@@ -18,8 +18,7 @@ pub fn initialize(
         signer,
         admin,
         config,
-        program: _,
-        system_program: __
+        system_program: _
     } = ctx.accounts;
 
     config.set_inner(Config {
@@ -70,7 +69,4 @@ pub struct Initialize<'info> {
 
     #[account()]
     pub system_program: Program<'info, System>,
-
-    #[account()]
-    pub program: Program<'info, ReflectTokenisedBonds>,
 }
