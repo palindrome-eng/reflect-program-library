@@ -29,7 +29,8 @@ import {
     InitializeLpInstructionArgs,
     InitializeLiquidityPoolArgs,
     createDepositRewardsInstruction,
-    createRestakeInstruction
+    createRestakeInstruction,
+    AccessLevel
 } from "../generated";
 import BN from "bn.js";
 import {
@@ -330,7 +331,8 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
     async addAsset(
         signer: PublicKey,
         assetMint: PublicKey,
-        oracle: PublicKey
+        oracle: PublicKey,
+        accessLevel: AccessLevel
     ) {
         const asset = Restaking.deriveAsset(assetMint);
         const permissions = Restaking.deriveUserPermissions(signer);
@@ -343,6 +345,11 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
                 signer,
                 settings: Restaking.deriveSettings(),
                 admin: permissions,
+            },
+            {
+                args: {
+                    accessLevel
+                }
             },
             PROGRAM_ID
         );

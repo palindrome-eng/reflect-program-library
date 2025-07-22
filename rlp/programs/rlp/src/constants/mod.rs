@@ -43,4 +43,4 @@ pub const LIQUIDITY_POOL_SEED: &str = "liquidity_pool";
 pub const LIQUIDITY_POOL_LOCKUP_SEED: &str = "lp_lockup";
 
 #[constant]
-pub const ORACLE_MAXIMUM_AGE: u64 = 60 * 60; // ?
+pub const ORACLE_MAXIMUM_AGE: u64 = 2 * 60; // 2 minutes, decrease for prod.
