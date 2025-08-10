@@ -90,7 +90,7 @@ pub struct RequestWithdrawal<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ InsuranceFundError::Frozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ RlpError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -139,7 +139,7 @@ pub struct RequestWithdrawal<'info> {
     pub cooldown: Account<'info, Cooldown>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = signer,
         associated_token::mint = lp_token_mint,
         associated_token::authority = cooldown,

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::states::{Role, Action, AccessControl};
 
 /** Handles role management at any hierarchy level (protocol or strategy) with methods for:
@@ -31,7 +31,7 @@ impl LevelRoles {
 
     pub fn add_role(&mut self, role: Role) -> Result<()> {                
         if self.has_role(role) {            
-            return Err(InsuranceFundError::InvalidInput.into());
+            return Err(RlpError::InvalidInput.into());
         }
         
         self.roles.push(role);          
@@ -45,7 +45,7 @@ impl LevelRoles {
         if self.roles.len() < initial_len {
             Ok(())
         } else {
-            Err(InsuranceFundError::InvalidInput.into())
+            Err(RlpError::InvalidInput.into())
         }
     }
 
@@ -116,7 +116,7 @@ impl UserPermissions {
     pub fn validate_supremo(&self) -> Result<()> {
         match self.is_super_admin() {
             true => Ok(()),
-            false => Err(InsuranceFundError::InvalidSigner.into()),
+            false => Err(RlpError::InvalidSigner.into()),
         }
     }   
     

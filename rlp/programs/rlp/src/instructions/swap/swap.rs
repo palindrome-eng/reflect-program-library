@@ -1,7 +1,7 @@
 use crate::{constants::*, helpers::action_check_protocol, instructions::admin};
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{transfer, Mint, Token, TokenAccount, Transfer}};
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::states::*;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -22,7 +22,7 @@ pub fn swap(
     // Input validation
     require!(
         amount_in > 0,
-        InsuranceFundError::InvalidInput
+        RlpError::InvalidInput
     );
 
     let clock = &Clock::get()?;
@@ -36,7 +36,7 @@ pub fn swap(
     // Prevent swapping the same token
     require!(
         token_from.key() != token_to.key(),
-        InsuranceFundError::InvalidInput
+        RlpError::InvalidInput
     );
 
     let token_from_asset = &ctx.accounts.token_from_asset;
@@ -50,18 +50,18 @@ pub fn swap(
         // Check if PrivateSwap is frozen
         require!(
             !settings.access_control.killswitch.is_frozen(&Action::PrivateSwap),
-            InsuranceFundError::Frozen
+            RlpError::Frozen
         );
         
         require!(
             admin.is_some() && admin.as_ref().unwrap().can_perform_protocol_action(Action::PrivateSwap, &settings.access_control),
-            InsuranceFundError::PermissionsTooLow
+            RlpError::PermissionsTooLow
         );
     } else {
         // Check if PublicSwap is frozen
         require!(
             !settings.access_control.killswitch.is_frozen(&Action::PublicSwap),
-            InsuranceFundError::Frozen
+            RlpError::Frozen
         );
         
         action_check_protocol(
@@ -91,20 +91,20 @@ pub fn swap(
         .checked_div(token_to_price
             .mul(1)?
         )
-        .ok_or(InsuranceFundError::MathOverflow)?
+        .ok_or(RlpError::MathOverflow)?
         .try_into()
-        .map_err(|_| InsuranceFundError::MathOverflow)?;
+        .map_err(|_| RlpError::MathOverflow)?;
 
     require!(
         token_to_pool.amount >= amount_out,
-        InsuranceFundError::NotEnoughFunds
+        RlpError::NotEnoughFunds
     );
 
     // Slippage protection
     if let Some(min_amount) = min_out {
         require!(
             amount_out >= min_amount,
-            InsuranceFundError::SlippageExceeded
+            RlpError::SlippageExceeded
         );
     }
 
@@ -163,7 +163,6 @@ pub struct Swap<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

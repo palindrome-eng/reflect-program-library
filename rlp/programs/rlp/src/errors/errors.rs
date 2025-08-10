@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum InsuranceFundError {
+pub enum RlpError {
     #[msg("InvalidSigner")]
     InvalidSigner,
 

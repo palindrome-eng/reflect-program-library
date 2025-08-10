@@ -1,22 +1,16 @@
 use anchor_lang::prelude::*;
 use crate::constants::{
-    CONFIG_SEED,
-    ADMIN_SEED
+    CONFIG_SEED
 };
-use crate::program::ReflectTokenisedBonds;
 use crate::state::{
-    Admin,
     Config,
-    Permissions
 };
-use crate::errors::ReflectError;
 
 pub fn initialize(
     ctx: Context<Initialize>
 ) -> Result<()> {
     let Initialize {
         signer,
-        admin,
         config,
         system_program: _
     } = ctx.accounts;
@@ -25,13 +19,6 @@ pub fn initialize(
         bump: ctx.bumps.config,
         vaults: 0,
         frozen: false,
-    });
-
-    admin.set_inner(Admin {
-        pubkey: signer.key(),
-        permissions: vec![
-            Permissions::Superadmin
-        ]
     });
 
     Ok(())
@@ -43,18 +30,6 @@ pub struct Initialize<'info> {
         mut
     )]
     pub signer: Signer<'info>,
-
-    #[account(
-        init,
-        payer = signer,
-        space = 8 + Admin::INIT_SPACE,
-        seeds = [
-            ADMIN_SEED.as_bytes(),
-            signer.key().as_ref()
-        ],
-        bump
-    )]
-    pub admin: Account<'info, Admin>,
 
     #[account(
         init,

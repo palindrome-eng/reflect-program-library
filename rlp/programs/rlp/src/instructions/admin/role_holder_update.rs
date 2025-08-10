@@ -1,4 +1,4 @@
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::states::*;
 use crate::constants::*;
 use anchor_lang::prelude::*;
@@ -56,11 +56,8 @@ pub struct RlpAdminRoleUpdate<'info> {
     #[account(mut, seeds = [PERMISSIONS_SEED.as_bytes(), admin.key().as_ref()], bump = admin_permissions.bump)]
     pub admin_permissions: Account<'info, UserPermissions>,
 
-    #[account(mut, constraint = update_admin_permissions.key() != admin_permissions.key() @ InsuranceFundError::SameAdmin)]
+    #[account(mut, constraint = update_admin_permissions.key() != admin_permissions.key() @ RlpError::SameAdmin)]
     pub update_admin_permissions: Account<'info, UserPermissions>,
     
-    /// CHECK: Strategy controller verification is done in the instruction.
-    #[account(mut)]
-    pub strategy: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }

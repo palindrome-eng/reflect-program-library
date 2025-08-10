@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use switchboard_solana::ID as SWITCHBOARD_PROGRAM_ID;
 use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::events::AddAssetEvent;
 use crate::helpers::get_price_from_pyth;
 use crate::helpers::get_price_from_switchboard;
@@ -33,10 +33,11 @@ pub fn add_asset(
         get_price_from_switchboard(oracle, &clock)?;
         Oracle::Switchboard(oracle.key())
     } else {
-        return Err(InsuranceFundError::InvalidOracle.into());
+        return Err(RlpError::InvalidOracle.into());
     };
 
     asset.set_inner(Asset { 
+        index: settings.assets,
         mint: asset_mint.key(), 
         oracle, 
         access_level: args.access_level 
@@ -45,7 +46,7 @@ pub fn add_asset(
     settings.assets = settings
         .assets
         .checked_add(1)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+        .ok_or(RlpError::MathOverflow)?;
 
     emit!(AddAssetEvent {
         admin: signer.key(),
@@ -70,7 +71,7 @@ pub struct AddAsset<'info> {
             signer.key().as_ref()
         ],
         bump,
-        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
+        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ RlpError::PermissionsTooLow,
     )]
     pub admin: Account<'info, UserPermissions>,
 

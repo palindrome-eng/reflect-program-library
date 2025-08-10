@@ -9,6 +9,7 @@ use crate::errors::*;
 pub struct InitializeLiquidityPoolArgs {
     pub cooldown_duration: u64,
     pub cooldowns: u64,
+    pub deposit_cap: Option<u64>,
 }
 
 pub fn initialize_lp(
@@ -17,7 +18,8 @@ pub fn initialize_lp(
 ) -> Result<()> {
     let InitializeLiquidityPoolArgs {
         cooldown_duration,
-        cooldowns
+        cooldowns,
+        deposit_cap
     } = args;
 
     let liquidity_pool = &mut ctx.accounts.liquidity_pool;
@@ -30,6 +32,7 @@ pub fn initialize_lp(
         lp_token: lp_token.key(),
         cooldown_duration,
         cooldowns,
+        deposit_cap
     });
 
     settings.liquidity_pools += 1;
@@ -52,7 +55,7 @@ pub struct InitializeLiquidityPool<'info> {
         constraint = permissions.can_perform_protocol_action(
             Action::InitializeLiquidityPool, 
             &settings.access_control
-        ) @ InsuranceFundError::InvalidSigner,
+        ) @ RlpError::InvalidSigner,
     )]
     pub permissions: Account<'info, UserPermissions>,
 
@@ -78,11 +81,11 @@ pub struct InitializeLiquidityPool<'info> {
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
-        constraint = lp_token_mint.supply == 0 @ InsuranceFundError::InvalidReceiptTokenSupply,
-        constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ InsuranceFundError::InvalidReceiptTokenMintAuthority,
-        constraint = lp_token_mint.freeze_authority.is_none() @ InsuranceFundError::InvalidReceiptTokenFreezeAuthority,
-        constraint = lp_token_mint.is_initialized @ InsuranceFundError::InvalidReceiptTokenSetup,
-        constraint = lp_token_mint.decimals == 9 @ InsuranceFundError::InvalidReceiptTokenDecimals
+        constraint = lp_token_mint.supply == 0 @ RlpError::InvalidReceiptTokenSupply,
+        constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ RlpError::InvalidReceiptTokenMintAuthority,
+        constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
+        constraint = lp_token_mint.is_initialized @ RlpError::InvalidReceiptTokenSetup,
+        constraint = lp_token_mint.decimals == 9 @ RlpError::InvalidReceiptTokenDecimals
     )]
     pub lp_token_mint: Box<Account<'info, Mint>>,
 

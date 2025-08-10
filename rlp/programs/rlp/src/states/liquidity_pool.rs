@@ -6,7 +6,7 @@ use anchor_spl::associated_token::get_associated_token_address;
 use crate::constants::*;
 use crate::helpers::OraclePrice;
 use spl_math::precise_number::PreciseNumber;
-use crate::errors::InsuranceFundError;
+
 use crate::states::*;
 
 #[derive(InitSpace)]
@@ -17,6 +17,7 @@ pub struct LiquidityPool {
     pub lp_token: Pubkey,
     pub cooldowns: u64,
     pub cooldown_duration: u64,
+    pub deposit_cap: Option<u64>,
 }
 
 impl LiquidityPool {
@@ -47,94 +48,27 @@ impl LiquidityPool {
 
     pub fn calculate_total_pool_value(
         &self,
-        remaining_accounts: &[AccountInfo],
-        liquidity_pool: &Account<LiquidityPool>,
-        settings: &Account<Settings>,
-        clock: &Clock,
+        reserves: &Vec<&TokenAccount>,
+        oracle_prices: &Vec<OraclePrice>,
     ) -> Result<PreciseNumber> {
         let mut total_pool_value = PreciseNumber::new(0)
-            .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
-        
-        require!(
-            remaining_accounts.len() == settings.assets as usize * 3,
-            crate::errors::InsuranceFundError::InvalidInput
-        );
-        
-        let mut i = 0;
-        while i < remaining_accounts.len() {
-            let token_account_info = &remaining_accounts[i];
-            
-            require!(
-                token_account_info.owner == &anchor_spl::token::ID,
-                crate::errors::InsuranceFundError::InvalidInput
-            );
-    
-            let token_account = TokenAccount::try_deserialize(&mut token_account_info.try_borrow_mut_data()?.as_ref())
-                .map_err(|_| crate::errors::InsuranceFundError::InvalidInput)?;
-    
-            require!(
-                token_account.owner == liquidity_pool.key(),
-                crate::errors::InsuranceFundError::InvalidInput
-            );
-    
-            let asset_info = &remaining_accounts[i + 1];
-            
-            require!(
-                asset_info.owner == &crate::ID,
-                crate::errors::InsuranceFundError::InvalidInput
-            );
-            
-            let asset = Asset::try_deserialize(&mut asset_info.try_borrow_mut_data()?.as_ref())
-                .map_err(|_| crate::errors::InsuranceFundError::InvalidInput)?;
-    
-            require!(
-                asset.mint == token_account.mint,
-                crate::errors::InsuranceFundError::InvalidInput
-            );
-            
-            let (expected_asset_pda, _) = Pubkey::find_program_address(
-                &[
-                    crate::constants::ASSET_SEED.as_bytes(),
-                    &asset.mint.to_bytes()
-                ],
-                &crate::ID
-            );
+            .ok_or(crate::errors::RlpError::MathOverflow)?;
 
-            // Verify this is the correct associated token account for the liquidity pool and asset
-            let expected_pool_token_account = get_associated_token_address(
-                &liquidity_pool.key(), 
-                &asset.mint
-            );
+        for (
+            reserve, 
+            oracle_price
+        ) in reserves.iter().zip(oracle_prices.iter()) {
+            let token_balance = reserve.amount;
 
-            require!(
-                token_account_info.key() == expected_pool_token_account,
-                crate::errors::InsuranceFundError::InvalidInput
-            );
-    
-            require!(
-                asset_info.key() == expected_asset_pda,
-                crate::errors::InsuranceFundError::InvalidInput
-            );
-    
-            let oracle_info = &remaining_accounts[i + 2];
-    
-            require!(
-                oracle_info.key() == *asset.oracle.key(),
-                crate::errors::InsuranceFundError::InvalidInput
-            );
-    
-            let asset_price = asset.get_price(oracle_info, clock)
-                .map_err(|_| crate::errors::InsuranceFundError::InvalidInput)?;
-    
-            let token_balance = token_account.amount;
             if token_balance > 0 {
-                let token_value_precise = PreciseNumber::new(asset_price.mul(token_balance)?)
-                    .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
-                total_pool_value = total_pool_value.checked_add(&token_value_precise)
-                    .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+                let token_value = PreciseNumber::new(
+                    oracle_price.mul(token_balance)?
+                )
+                    .ok_or(crate::errors::RlpError::MathOverflow)?;
+
+                total_pool_value = total_pool_value.checked_add(&token_value)
+                    .ok_or(crate::errors::RlpError::MathOverflow)?;
             }
-    
-            i += 3;
         }
     
         Ok(total_pool_value)
@@ -149,25 +83,25 @@ impl LiquidityPool {
         let lp_tokens_to_mint = if lp_token.supply == 0 {
             deposit_value
                 .to_imprecise()
-                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
+                .ok_or(crate::errors::RlpError::MathOverflow)?
                 .try_into()
-                .map_err(|_| crate::errors::InsuranceFundError::MathOverflow)?
+                .map_err(|_| crate::errors::RlpError::MathOverflow)?
         } else {
             let lp_supply_precise = PreciseNumber::new(lp_token.supply as u128)
-                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+                .ok_or(crate::errors::RlpError::MathOverflow)?;
 
             let deposit_ratio = deposit_value
                 .checked_mul(&lp_supply_precise)
-                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
+                .ok_or(crate::errors::RlpError::MathOverflow)?
                 .checked_div(&total_pool_value)
-                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+                .ok_or(crate::errors::RlpError::MathOverflow)?;
 
             
             deposit_ratio
                 .to_imprecise()
-                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
+                .ok_or(crate::errors::RlpError::MathOverflow)?
                 .try_into()
-                .map_err(|_| crate::errors::InsuranceFundError::MathOverflow)?
+                .map_err(|_| crate::errors::RlpError::MathOverflow)?
         };
 
         Ok(lp_tokens_to_mint)

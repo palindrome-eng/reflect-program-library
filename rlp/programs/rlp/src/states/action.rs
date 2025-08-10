@@ -1,7 +1,7 @@
 use std::io::Write;
 use anchor_lang::prelude::{*, borsh::BorshSchema};
 use strum_macros::EnumIter;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 
 #[derive(BorshSchema, AnchorSerialize,  Default, AnchorDeserialize, Copy, Clone, Debug, PartialEq, Eq, InitSpace, EnumIter)]
 pub enum Action {
@@ -68,7 +68,7 @@ impl Action {
             15 => Ok(Action::SuspendDeposits),
             16 => Ok(Action::UpdateRole),
             17 => Ok(Action::UpdateAction),
-            _ => Err(error!(InsuranceFundError::InvalidState)),
+            _ => Err(error!(RlpError::InvalidState)),
         }
     }
     
@@ -139,7 +139,7 @@ impl Action {
             Action::FreezeSlash => Ok(Action::Slash),
             Action::FreezePublicSwap => Ok(Action::PublicSwap),
             Action::FreezePrivateSwap => Ok(Action::PrivateSwap),
-            _ => Err(InsuranceFundError::ActionNotFound.into()),
+            _ => Err(RlpError::ActionNotFound.into()),
         }
     }
 }

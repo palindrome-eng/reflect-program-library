@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use super::OraclePrice;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use anchor_lang::AccountDeserialize;
 
 #[inline(never)]

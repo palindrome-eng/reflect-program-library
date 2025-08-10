@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::states::*;
 use crate::events::*;
 use anchor_spl::token::{
@@ -78,7 +78,7 @@ pub struct DepositRewards<'info> {
             &signer.key().to_bytes()
         ],
         bump,
-        constraint = permissions.can_perform_protocol_action(Action::DepositRewards, &settings.access_control) @ InsuranceFundError::PermissionsTooLow
+        constraint = permissions.can_perform_protocol_action(Action::DepositRewards, &settings.access_control) @ RlpError::PermissionsTooLow
     )]
     pub permissions: Account<'info, UserPermissions>,
 

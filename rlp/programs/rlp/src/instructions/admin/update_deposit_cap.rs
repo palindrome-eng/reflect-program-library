@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct UpdateDepositCapArgs {
@@ -18,8 +18,8 @@ pub fn update_deposit_cap(
         new_cap
     } = args;
 
-    // let lockup = &mut ctx.accounts.lockup;
-    // lockup.deposit_cap = new_cap;
+    let liquidity_pool = &mut ctx.accounts.liquidity_pool;
+    liquidity_pool.deposit_cap = new_cap;
 
     Ok(())
 }
@@ -39,7 +39,7 @@ pub struct UpdateDepositCap<'info> {
             signer.key().as_ref()
         ],
         bump,
-        constraint = admin.can_perform_protocol_action(Action::UpdateDepositCap, &settings.access_control) @ InsuranceFundError::InvalidSigner,
+        constraint = admin.can_perform_protocol_action(Action::UpdateDepositCap, &settings.access_control) @ RlpError::InvalidSigner,
     )]
     pub admin: Account<'info, UserPermissions>,
 
@@ -49,7 +49,16 @@ pub struct UpdateDepositCap<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::UpdateDepositCap) @ InsuranceFundError::Frozen
     )]
     pub settings: Account<'info, Settings>,
+
+    #[account(
+        mut,
+        seeds = [
+            LIQUIDITY_POOL_SEED.as_bytes(),
+            &liquidity_pool.index.to_le_bytes()
+        ],
+        bump
+    )]
+    pub liquidity_pool: Account<'info, LiquidityPool>,
 }

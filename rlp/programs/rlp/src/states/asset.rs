@@ -17,8 +17,6 @@ pub enum AccessLevel {
 }
 
 impl Oracle {
-    pub const SIZE: usize = 1 + 32;
-
     pub fn key(&self) -> &Pubkey {
         match self {
             Oracle::Pyth(key) | Oracle::Switchboard(key) => key,
@@ -29,6 +27,7 @@ impl Oracle {
 #[account]
 #[derive(InitSpace)]
 pub struct Asset {
+    pub index: u8,
     pub mint: Pubkey,
     pub oracle: Oracle,
     pub access_level: AccessLevel,

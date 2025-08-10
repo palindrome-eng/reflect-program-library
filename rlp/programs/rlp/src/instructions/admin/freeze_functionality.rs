@@ -1,4 +1,4 @@
-use crate::{errors::InsuranceFundError, states::*};
+use crate::{errors::RlpError, states::*};
 use anchor_lang::prelude::*;
 use super::RlpAdminMain;
 use crate::helpers::action_check_protocol;
@@ -32,12 +32,12 @@ pub fn freeze_protocol_action(
     match freeze {
         true => {
             let functionality_frozen = settings.access_control.killswitch.is_frozen(&action);
-            require!(!functionality_frozen, InsuranceFundError::AlreadyFrozen);
+            require!(!functionality_frozen, RlpError::AlreadyFrozen);
             settings.access_control.killswitch.freeze(&action);
         }
         false => {
             let functionality_frozen = settings.access_control.killswitch.is_frozen(&action);
-            require!(functionality_frozen, InsuranceFundError::AlreadyUnfrozen);
+            require!(functionality_frozen, RlpError::AlreadyUnfrozen);
             settings.access_control.killswitch.unfreeze(&action);
         }
     }

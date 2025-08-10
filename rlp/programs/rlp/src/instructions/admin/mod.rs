@@ -13,9 +13,6 @@ pub use update_deposit_cap::*;
 pub mod initialize_lp;
 pub use initialize_lp::*;
 
-pub mod initialize_lp_token_account;
-pub use initialize_lp_token_account::*;
-
 pub mod action_update;
 pub use action_update::*;
 

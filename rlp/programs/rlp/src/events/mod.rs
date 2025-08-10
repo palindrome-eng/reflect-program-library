@@ -4,8 +4,7 @@ use anchor_lang::prelude::*;
 pub struct RestakeEvent {
     pub from: Pubkey,
     pub asset: Pubkey,
-    pub amount: u64,
-    pub lockup_ts: u64
+    pub amount: u64
 }
 
 #[event]
@@ -18,9 +17,7 @@ pub struct RequestWithdrawEvent {
 #[event]
 pub struct WithdrawEvent {
     pub from: Pubkey,
-    pub asset: Pubkey,
-    pub base_amount: u64,
-    pub reward_amount: u64
+    pub amount: u64
 }
 
 #[event]

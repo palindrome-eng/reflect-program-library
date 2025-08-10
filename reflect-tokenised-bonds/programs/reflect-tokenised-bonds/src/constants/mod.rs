@@ -4,9 +4,6 @@ use anchor_lang::prelude::*;
 pub const CONFIG_SEED: &str = "config";
 
 #[constant]
-pub const ADMIN_SEED: &str = "admin";
-
-#[constant]
 pub const VAULT_SEED: &str = "vault";
 
 #[constant]

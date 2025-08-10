@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{errors::InsuranceFundError, states::{AccessControl, Action, UserPermissions}};
+use crate::{errors::RlpError, states::{AccessControl, Action, UserPermissions}};
 
 #[inline(never)]
 fn check_action_permission(
@@ -43,7 +43,7 @@ fn check_action_permission(
         msg!("No credentials provided for action {:?} at protocol level", action);
     }
     
-    Err(InsuranceFundError::IncorrectAdmin.into())
+    Err(RlpError::IncorrectAdmin.into())
 }
 
 #[inline(never)]

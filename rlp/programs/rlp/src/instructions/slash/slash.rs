@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use anchor_spl::token::{
     Mint,
     TokenAccount,
@@ -69,7 +69,7 @@ pub struct Slash<'info> {
             signer.key().as_ref()
         ],
         bump,
-        constraint = permissions.can_perform_protocol_action(Action::Slash, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
+        constraint = permissions.can_perform_protocol_action(Action::Slash, &settings.access_control) @ RlpError::PermissionsTooLow,
     )]
     pub permissions: Account<'info, UserPermissions>,
 
@@ -79,7 +79,7 @@ pub struct Slash<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) @ InsuranceFundError::Frozen,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

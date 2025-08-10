@@ -3,20 +3,9 @@ use crate::states::*;
 use crate::constants::*;
 use crate::events::InitializeRlp as InitializeRlpEvent;
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct InitializeRlpArgs {
-    pub cooldown_duration: u64,
-}
-
 pub fn initialize_rlp(
-    ctx: Context<InitializeRlp>,
-    args: InitializeRlpArgs
+    ctx: Context<InitializeRlp>
 ) -> Result<()> {
-
-    let InitializeRlpArgs {
-        cooldown_duration
-    } = args;
-
     let signer = &ctx.accounts.signer;
     let permissions = &mut ctx.accounts.permissions;
     
@@ -31,7 +20,6 @@ pub fn initialize_rlp(
         bump: ctx.bumps.settings,
         assets: 0,
         access_control: AccessControl::new_defaults()?,
-        frozen: false,
         liquidity_pools: 0
     });
 

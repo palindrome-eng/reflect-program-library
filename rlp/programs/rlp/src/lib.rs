@@ -17,11 +17,9 @@ pub mod rlp {
 
     pub fn initialize_rlp(
         ctx: Context<InitializeRlp>, 
-        args: InitializeRlpArgs
     ) -> Result<()> {
         instructions::initialize_rlp(
-            ctx,
-            args
+            ctx
         )
     }
 
@@ -30,13 +28,6 @@ pub mod rlp {
         args: InitializeLiquidityPoolArgs
     ) -> Result<()> {
         instructions::initialize_lp(ctx, args)
-    }
-
-    pub fn initialize_lp_token_account(
-        ctx: Context<InitializeLpTokenAccount>,
-        args: InitializeLpTokenAccountArgs
-    ) -> Result<()> {
-        instructions::initialize_lp_token_account(ctx, args)
     }
 
     // TODO: Add asset should be on liquidity pool level

@@ -92,7 +92,7 @@ action_check_protocol(
 
 2. **Input Validation**: Ensures valid deposit amount
 ```rust
-require!(amount > 0, InsuranceFundError::InvalidInput);
+require!(amount > 0, RlpError::InvalidInput);
 ```
 
 3. **Pool Value Calculation**: Calculates total pool value before deposit
@@ -121,7 +121,7 @@ liquidity_pool.deposit(
 let deposit_asset_price = asset.get_price(oracle, &clock)?;
 let deposit_value = PreciseNumber::new(
     deposit_asset_price.mul(amount)?
-).ok_or(InsuranceFundError::MathOverflow)?;
+).ok_or(RlpError::MathOverflow)?;
 ```
 
 6. **LP Token Calculation**: Determines LP tokens to mint
@@ -136,7 +136,7 @@ let lp_tokens_to_mint = liquidity_pool
 
 7. **Slippage Protection**: Validates minimum LP tokens received
 ```rust
-require!(min_lp_tokens <= lp_tokens_to_mint, InsuranceFundError::SlippageExceeded);
+require!(min_lp_tokens <= lp_tokens_to_mint, RlpError::SlippageExceeded);
 ```
 
 8. **LP Token Minting**: Mints LP tokens to user
@@ -192,7 +192,7 @@ After cooldown period, user calls `withdraw()` to complete withdrawal:
 ```rust
 require!(
     clock.unix_timestamp as u64 >= cooldown.unlock_ts,
-    InsuranceFundError::CooldownInForce
+    RlpError::CooldownInForce
 );
 ```
 
@@ -200,24 +200,24 @@ require!(
 ```rust
 require!(
     lp_token_amount > 0 && lp_token_supply > 0,
-    InsuranceFundError::InvalidInput
+    RlpError::InvalidInput
 );
 ```
 
 3. **User Share Calculation**: Calculates user's proportional share of each asset
 ```rust
 let user_pool_share_amount = PreciseNumber::new(pool_token_account.amount as u128)
-    .ok_or(InsuranceFundError::MathOverflow)?
+    .ok_or(RlpError::MathOverflow)?
     .checked_mul(&PreciseNumber::new(lp_token_amount as u128)
-        .ok_or(InsuranceFundError::MathOverflow)?)
-    .ok_or(InsuranceFundError::MathOverflow)?
+        .ok_or(RlpError::MathOverflow)?)
+    .ok_or(RlpError::MathOverflow)?
     .checked_div(&PreciseNumber::new(lp_token_supply as u128)
-        .ok_or(InsuranceFundError::MathOverflow)?)
-    .ok_or(InsuranceFundError::MathOverflow)?
+        .ok_or(RlpError::MathOverflow)?)
+    .ok_or(RlpError::MathOverflow)?
     .to_imprecise()
-    .ok_or(InsuranceFundError::MathOverflow)?
+    .ok_or(RlpError::MathOverflow)?
     .to_u64()
-    .ok_or(InsuranceFundError::MathOverflow)?;
+    .ok_or(RlpError::MathOverflow)?;
 ```
 
 4. **Asset Transfers**: Transfers user's share of each asset from pool to user
@@ -257,8 +257,8 @@ The protocol includes a swap mechanism:
 #### Swap Process
 1. **Input Validation**: Validates swap parameters and prevents self-swapping
 ```rust
-require!(amount_in > 0, InsuranceFundError::InvalidInput);
-require!(token_from.key() != token_to.key(), InsuranceFundError::InvalidInput);
+require!(amount_in > 0, RlpError::InvalidInput);
+require!(token_from.key() != token_to.key(), RlpError::InvalidInput);
 ```
 
 2. **Oracle Price Fetching**: Retrieves current prices from configured oracles
@@ -273,18 +273,18 @@ let amount_out: u64 = token_from_price
     .mul(amount_in)?
     .div(token_to_price.mul(1)?)
     .try_into()
-    .map_err(|_| InsuranceFundError::MathOverflow)?;
+    .map_err(|_| RlpError::MathOverflow)?;
 ```
 
 4. **Pool Balance Validation**: Ensures sufficient liquidity for the swap
 ```rust
-require!(token_to_pool.amount >= amount_out, InsuranceFundError::NotEnoughFunds);
+require!(token_to_pool.amount >= amount_out, RlpError::NotEnoughFunds);
 ```
 
 5. **Slippage Protection**: Optional minimum output amount validation
 ```rust
 if let Some(min_amount) = min_out {
-    require!(amount_out >= min_amount, InsuranceFundError::SlippageExceeded);
+    require!(amount_out >= min_amount, RlpError::SlippageExceeded);
 }
 ```
 
@@ -548,7 +548,7 @@ pub fn action_check_protocol(
         }
     }
     
-    Err(InsuranceFundError::IncorrectAdmin.into())
+    Err(RlpError::IncorrectAdmin.into())
 }
 ```
 
@@ -604,9 +604,9 @@ Each instruction validates permissions through Anchor constraints:
     constraint = permissions.can_perform_protocol_action(
         Action::Slash, 
         &settings.access_control
-    ) @ InsuranceFundError::PermissionsTooLow,
+    ) @ RlpError::PermissionsTooLow,
     constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) 
-        @ InsuranceFundError::Frozen,
+        @ RlpError::Frozen,
 )]
 pub permissions: Account<'info, UserPermissions>,
 ```
