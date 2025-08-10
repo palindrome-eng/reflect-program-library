@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::RlpError;
+use crate::events::UpdateDepositCapEvent;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct UpdateDepositCapArgs {
@@ -20,6 +21,12 @@ pub fn update_deposit_cap(
 
     let liquidity_pool = &mut ctx.accounts.liquidity_pool;
     liquidity_pool.deposit_cap = new_cap;
+
+    emit!(UpdateDepositCapEvent {
+        admin: ctx.accounts.signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        new_cap
+    });
 
     Ok(())
 }

@@ -2,6 +2,7 @@ use crate::{errors::RlpError, states::*};
 use anchor_lang::prelude::*;
 use super::RlpAdminMain;
 use crate::helpers::action_check_protocol;
+use crate::events::FreezeProtocolActionEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct FreezeProtocolActionArgs {
@@ -41,6 +42,11 @@ pub fn freeze_protocol_action(
             settings.access_control.killswitch.unfreeze(&action);
         }
     }
+
+    emit!(FreezeProtocolActionEvent {
+        action,
+        freeze
+    });
 
     Ok(())
 }

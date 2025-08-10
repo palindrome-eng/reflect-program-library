@@ -2,6 +2,7 @@ use crate::{constants::*, helpers::action_check_protocol, instructions::admin};
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{transfer, Mint, Token, TokenAccount, Transfer}};
 use crate::errors::RlpError;
+use crate::events::SwapEvent;
 use crate::states::*;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -138,6 +139,14 @@ pub fn swap(
         ), 
         amount_out
     )?;
+
+    emit!(SwapEvent {
+        signer: signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        amount_in,
+        amount_out,
+        private: token_from_asset.access_level == AccessLevel::Private || token_to_asset.access_level == AccessLevel::Private,
+    });
 
     Ok(())
 }

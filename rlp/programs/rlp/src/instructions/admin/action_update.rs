@@ -1,6 +1,7 @@
 use crate::instructions::*;
 use crate::states::*;
 use crate::helpers::action_check_protocol;
+use crate::events::UpdateActionRoleEvent;
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
@@ -40,5 +41,12 @@ pub fn update_action_role_protocol(
             settings.access_control.remove_role_from_action(action, role)?;
         }
     }
+
+    emit!(UpdateActionRoleEvent {
+        action,
+        role,
+        update
+    });
+
     Ok(())
 }

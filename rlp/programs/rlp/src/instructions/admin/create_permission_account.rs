@@ -1,5 +1,6 @@
 use crate::constants::*;
 use crate::states::*;
+use crate::events::CreatePermissionAccountEvent;
 use anchor_lang::prelude::*;
 
 pub fn create_permission_account(
@@ -8,7 +9,12 @@ pub fn create_permission_account(
 ) -> Result<()> {
     let new_creds: &mut Account<UserPermissions> = &mut ctx.accounts.new_creds;    
     new_creds.bump = ctx.bumps.new_creds;         
-    new_creds.authority = new_admin;              
+    new_creds.authority = new_admin;
+
+    emit!(CreatePermissionAccountEvent {
+        admin: ctx.accounts.caller.key(),
+        new_admin
+    });
 
     Ok(())
 }

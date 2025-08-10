@@ -3,6 +3,7 @@ use crate::states::*;
 use crate::constants::*;
 use anchor_lang::prelude::*;
 use crate::helpers::action_check_protocol;
+use crate::events::UpdateRoleHolderEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct UpdateRoleHolderArgs {
@@ -42,6 +43,13 @@ pub fn update_role_holder_protocol(
             update_admin_permissions.remove_protocol_role(role)?;
         }
     }
+
+    emit!(UpdateRoleHolderEvent {
+        address,
+        role,
+        update
+    });
+
     Ok(())
 }
 

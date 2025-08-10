@@ -9,6 +9,7 @@ use anchor_spl::token::{
     transfer,
     Transfer
 };
+use crate::events::SlashEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SlashArgs {
@@ -22,6 +23,7 @@ pub fn slash(
 ) -> Result<()> {
     let token_program = &ctx.accounts.token_program;
     let destination = &ctx.accounts.destination;
+    let mint = &ctx.accounts.mint;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let liquidity_pool_token_account = &ctx.accounts.liquidity_pool_token_account;
 
@@ -48,6 +50,13 @@ pub fn slash(
         ),
         amount
     )?;
+
+    emit!(SlashEvent {
+        admin: ctx.accounts.signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        amount,
+        mint: mint.key()
+    });
 
     Ok(())
 }

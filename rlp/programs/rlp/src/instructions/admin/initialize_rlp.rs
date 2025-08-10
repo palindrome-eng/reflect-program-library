@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
-use crate::events::InitializeRlp as InitializeRlpEvent;
+use crate::events::InitializeRlpEvent;
 
 pub fn initialize_rlp(
     ctx: Context<InitializeRlp>

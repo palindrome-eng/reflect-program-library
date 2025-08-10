@@ -4,11 +4,11 @@ use anchor_spl::token::{Mint, Token};
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::*;
+use crate::events::InitializeLiquidityPoolEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeLiquidityPoolArgs {
     pub cooldown_duration: u64,
-    pub cooldowns: u64,
     pub deposit_cap: Option<u64>,
 }
 
@@ -18,7 +18,6 @@ pub fn initialize_lp(
 ) -> Result<()> {
     let InitializeLiquidityPoolArgs {
         cooldown_duration,
-        cooldowns,
         deposit_cap
     } = args;
 
@@ -31,11 +30,17 @@ pub fn initialize_lp(
         index: settings.liquidity_pools,
         lp_token: lp_token.key(),
         cooldown_duration,
-        cooldowns,
+        cooldowns: 0,
         deposit_cap
     });
 
     settings.liquidity_pools += 1;
+
+    emit!(InitializeLiquidityPoolEvent {
+        admin: ctx.accounts.signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        lp_token: lp_token.key(),
+    });
 
     Ok(())
 }
