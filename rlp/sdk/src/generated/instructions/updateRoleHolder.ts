@@ -43,7 +43,6 @@ export const updateRoleHolderStruct = new beet.BeetArgsStruct<
  * @property [_writable_] settings
  * @property [_writable_] adminPermissions
  * @property [_writable_] updateAdminPermissions
- * @property [_writable_] strategy
  * @category Instructions
  * @category UpdateRoleHolder
  * @category generated
@@ -53,7 +52,6 @@ export type UpdateRoleHolderInstructionAccounts = {
   settings: web3.PublicKey
   adminPermissions: web3.PublicKey
   updateAdminPermissions: web3.PublicKey
-  strategy: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -99,11 +97,6 @@ export function createUpdateRoleHolderInstruction(
     },
     {
       pubkey: accounts.updateAdminPermissions,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.strategy,
       isWritable: true,
       isSigner: false,
     },

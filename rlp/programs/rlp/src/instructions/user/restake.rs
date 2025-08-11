@@ -18,6 +18,7 @@ pub struct RestakeArgs {
     pub liquidity_pool_index: u8,
     pub amount: u64,
     pub min_lp_tokens: u64,
+    pub asset_id: u8,
 }
 
 pub fn restake<'a>(
@@ -27,7 +28,8 @@ pub fn restake<'a>(
     let RestakeArgs { 
         liquidity_pool_index: _, 
         amount, 
-        min_lp_tokens 
+        min_lp_tokens,
+        asset_id: __
     } = args;
 
     let settings = &ctx.accounts.settings;
@@ -51,13 +53,32 @@ pub fn restake<'a>(
 
     let clock = Clock::get()?;
 
-    let assets = load_assets(settings, liquidity_pool, &ctx.remaining_accounts)?;
+    msg!("asset: {:?}", ctx.accounts.asset.key());
+
+    require!(
+        ctx.remaining_accounts.len() == (settings.assets as usize) * 3,
+        RlpError::InvalidInput
+    );
+
+    for account in ctx.remaining_accounts {
+        msg!("remaining account: {:?}", account.key());
+    }
+
+    msg!("loading accounts");
+
+    let assets = load_assets(settings, &ctx.remaining_accounts)?;
     let assets_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
+
+    msg!("loaded assets");
 
     let reserves = load_reserves(liquidity_pool, &assets_datas, &ctx.remaining_accounts)?;
     let reserves_datas = reserves.iter().map(|(_, reserve)| reserve).collect::<Vec<&TokenAccount>>();
 
+    msg!("loaded reserves");
+
     let oracle_prices = load_oracle_prices(&clock, &assets_datas, &ctx.remaining_accounts)?;
+
+    msg!("loaded oracle prices");
 
     let total_pool_value_before = liquidity_pool.calculate_total_pool_value(
         &reserves_datas,
@@ -173,7 +194,7 @@ pub struct Restake<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            &asset_mint.key().to_bytes()
+            &args.asset_id.to_le_bytes()
         ],
         bump,
     )]

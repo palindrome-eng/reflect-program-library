@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::close_account;
+use anchor_spl::token::CloseAccount;
 use anchor_spl::token::Token;
 use spl_math::precise_number::PreciseNumber;
 use switchboard_solana::rust_decimal::prelude::ToPrimitive;
@@ -72,19 +74,20 @@ pub fn withdraw<'a>(
         &[liquidity_pool.bump]
     ];
 
-    let assets: Vec<(Pubkey, Asset)> = load_assets(settings, liquidity_pool, remaining_accounts)?;
+    let assets: Vec<(Pubkey, Asset)> = load_assets(settings, remaining_accounts)?;
+    msg!("loaded assets");
     let asset_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
 
-    let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
-    let oracle_prices = load_oracle_prices(&clock, &asset_datas, remaining_accounts)?;
 
+    let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
+    msg!("loaded reserves");
     let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;
+    msg!("loaded user token accounts");
 
     for i in 0..assets.len() {
         let (asset_key, asset) = &assets[i];
         let (reserve_key, reserve) = &reserves[i];
         let (user_token_account_key, user_token_account) = &user_token_accounts[i];
-        let oracle_price = &oracle_prices[i];
 
         let user_pool_share_amount = PreciseNumber::new(reserve.amount as u128)
             .ok_or(RlpError::MathOverflow)?
@@ -129,6 +132,12 @@ pub fn withdraw<'a>(
         }
     }
 
+    let cooldown_seeds = &[
+        COOLDOWN_SEED.as_bytes(),
+        &cooldown_id.to_le_bytes(),
+        &[ctx.bumps.cooldown]
+    ];
+
     burn(
         CpiContext::new_with_signer(
             token_program.to_account_info(), 
@@ -137,13 +146,21 @@ pub fn withdraw<'a>(
                 from: cooldown_lp_token_account.to_account_info(),
                 mint: lp_token_mint.to_account_info()
             }, 
-            &[&[
-                COOLDOWN_SEED.as_bytes(),
-                &cooldown_id.to_le_bytes(),
-                &[ctx.bumps.cooldown]
-            ]]
+            &[cooldown_seeds]
         ),
         lp_token_amount
+    )?;
+
+    close_account(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            CloseAccount {
+                account: cooldown_lp_token_account.to_account_info(),
+                destination: signer.to_account_info(),
+                authority: cooldown.to_account_info()
+            },
+            &[cooldown_seeds]
+        )
     )?;
 
     emit!(WithdrawEvent {

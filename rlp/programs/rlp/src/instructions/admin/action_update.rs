@@ -26,7 +26,7 @@ pub fn update_action_role_protocol(
     } = args;
         
     action_check_protocol(
-        action, 
+        Action::UpdateAction, 
         Some(&creds), 
         &settings.access_control
     )?;

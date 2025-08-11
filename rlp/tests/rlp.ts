@@ -186,13 +186,9 @@ describe("rlp", () => {
     }
 
     it("Initializes RLP.", async () => {
-        const cooldownDuration = new BN(30); // 30 seconds
-
         await program
             .methods
-            .initializeRlp({
-                cooldownDuration
-            })
+            .initializeRlp()
             .accounts({
                 signer: provider.publicKey,
                 permissions: admin,
@@ -202,7 +198,6 @@ describe("rlp", () => {
             .rpc();
 
         const {
-            frozen,
             liquidityPools,
             assets
         } = await Settings.fromAccountAddress(
@@ -212,7 +207,6 @@ describe("rlp", () => {
 
         expect(liquidityPools).eq(0);
         expect(assets).eq(0);
-        expect(frozen).eq(false);
     });
     
     it("Adds public assets to the RLP.", async () => {
@@ -232,7 +226,7 @@ describe("rlp", () => {
                 accessLevel: AccessLevel.Public
             });
 
-            const asset = Restaking.deriveAsset(token);
+            const asset = Restaking.deriveAsset(i);
 
             await program
                 .methods
@@ -288,7 +282,7 @@ describe("rlp", () => {
         let error: AnchorError;
 
         const wrappedSol = new PublicKey("So11111111111111111111111111111111111111112");
-        const asset = Restaking.deriveAsset(wrappedSol);
+        const asset = Restaking.deriveAsset(3);
 
         await program
             .methods
@@ -334,6 +328,11 @@ describe("rlp", () => {
     });
 
     it("Mints and adds private assets to insurance pool.", async () => {
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
+
+        const settingsData = await restaking.getSettingsData();
+
         const assets: PublicKey[] = [];
 
         for (let i = 0; i < 2; i ++) {
@@ -352,7 +351,7 @@ describe("rlp", () => {
                 accessLevel: AccessLevel.Private
             });
 
-            const asset = Restaking.deriveAsset(token);
+            const asset = Restaking.deriveAsset(settingsData.assets + i);
 
             assets.push(asset);
 
@@ -407,7 +406,7 @@ describe("rlp", () => {
             .methods
             .initializeLp({
                 cooldownDuration: new BN(30),
-                cooldowns: new BN(0)
+                depositCap: null
             })
             .preInstructions(preInstructions)
             .accounts({
@@ -441,13 +440,11 @@ describe("rlp", () => {
 
     it("Initializes LP-owned token accounts.", async () => {
         const restaking = new Restaking(provider.connection);
+        await restaking.load();
+        
         const assets = await restaking.getAssets();
 
         const liquidityPool = Restaking.deriveLiquidityPool(0);
-        const liquidityPoolData = await LiquidityPool.fromAccountAddress(
-            provider.connection,
-            liquidityPool
-        );
 
         await Promise.all(assets.map(async ({ pubkey, account }) => {
             const lpMintTokenAccount = getAssociatedTokenAddressSync(
@@ -456,43 +453,28 @@ describe("rlp", () => {
                 true
             );
 
-            const instruction = await program
-                .methods
-                .initializeLpTokenAccount({
-                    liquidityPoolIndex: 0
-                })
-                .accounts({
-                    admin,
-                    asset: pubkey,
-                    associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
-                    liquidityPool,
-                    lpMintTokenAccount,
-                    mint: account.mint,
-                    settings,
-                    signer: provider.publicKey,
-                    systemProgram: SystemProgram.programId,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                })
-                .instruction();
+            const instruction = createAssociatedTokenAccountIdempotentInstruction(
+                provider.publicKey,
+                lpMintTokenAccount,
+                liquidityPool,
+                account.mint
+            );
 
-            await program
-                .methods
-                .initializeLpTokenAccount({
-                    liquidityPoolIndex: 0
-                })
-                .accounts({
-                    admin,
-                    asset: pubkey,
-                    associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
-                    liquidityPool,
-                    lpMintTokenAccount,
-                    mint: account.mint,
-                    settings,
-                    signer: provider.publicKey,
-                    systemProgram: SystemProgram.programId,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                })
-                .rpc();
+            const transaction = new Transaction();
+            transaction.add(instruction);
+
+            const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.lastValidBlockHeight = lastValidBlockHeight;
+
+            const signature = await provider
+                .sendAndConfirm(transaction);
+
+            await provider.connection.confirmTransaction({
+                signature,
+                lastValidBlockHeight,
+                blockhash
+            });
         }));
     });
 
@@ -526,6 +508,8 @@ describe("rlp", () => {
     it("Restakes tokens in liquidity pool.", async () => {
         const liquidityPoolId = 0;
         const amount = new BN(LAMPORTS_PER_SOL * 1_000);
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
 
         const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
 
@@ -534,7 +518,17 @@ describe("rlp", () => {
             liquidityPool
         );
 
-        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
+        const assets = await restaking.getAssets();
+        const {
+            account: {
+                index: assetId,
+                oracle: {
+                    fields: [oracleAddress]
+                }
+            },
+            pubkey: asset
+        } = assets.find(({ account }) => account.mint.equals(whitelistedAssets[0].mint));
+        
 
         await mintTokens(
             whitelistedAssets[0].mint,
@@ -559,14 +553,6 @@ describe("rlp", () => {
             user.publicKey
         );
 
-        const assetData = await Asset.fromAccountAddress(
-            provider.connection,
-            asset
-        );
-
-        const restaking = new Restaking(provider.connection);
-        const assets = await restaking.getAssets();
-
         const anchorRemainingAccounts: AccountMeta[] = assets
         .map(({ account, pubkey }) => {
             return [
@@ -578,7 +564,7 @@ describe("rlp", () => {
                 {
                     isSigner: false,
                     isWritable: false,
-                    pubkey: Restaking.deriveAsset(account.mint)
+                    pubkey
                 },
                 {
                     isSigner: false,
@@ -593,7 +579,8 @@ describe("rlp", () => {
             .restake({
                 liquidityPoolIndex: liquidityPoolId,
                 amount,
-                minLpTokens: new BN(0)
+                minLpTokens: new BN(0),
+                assetId
             })
             .accounts({
                 signer: user.publicKey,
@@ -605,7 +592,7 @@ describe("rlp", () => {
                 assetMint: whitelistedAssets[0].mint,
                 userAssetAccount: userAssetAta,
                 poolAssetAccount,
-                oracle: assetData.oracle.fields[0],
+                oracle: oracleAddress,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
                 permissions: null,
@@ -638,6 +625,8 @@ describe("rlp", () => {
     it("Restakes token B in liquidity pool to allow swaps later", async () => {
         const liquidityPoolId = 0;
         const amount = new BN(LAMPORTS_PER_SOL * 1_000);
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
 
         const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
 
@@ -646,7 +635,16 @@ describe("rlp", () => {
             liquidityPool
         );
 
-        const asset = Restaking.deriveAsset(whitelistedAssets[1].mint);
+        const assets = await restaking.getAssets();
+        const {
+            account: {
+                index: assetId,
+                oracle: {
+                    fields: [oracleAddress]
+                }
+            },
+            pubkey: asset
+        } = assets.find(({ account: { mint } }) => mint.equals(whitelistedAssets[1].mint));
 
         await mintTokens(
             whitelistedAssets[1].mint,
@@ -671,14 +669,6 @@ describe("rlp", () => {
             user.publicKey
         );
 
-        const assetData = await Asset.fromAccountAddress(
-            provider.connection,
-            asset
-        );
-
-        const restaking = new Restaking(provider.connection);
-        const assets = await restaking.getAssets();
-
         const anchorRemainingAccounts: AccountMeta[] = assets
         .map(({ account, pubkey }) => {
             return [
@@ -690,7 +680,7 @@ describe("rlp", () => {
                 {
                     isSigner: false,
                     isWritable: false,
-                    pubkey: Restaking.deriveAsset(account.mint)
+                    pubkey: Restaking.deriveAsset(account.index)
                 },
                 {
                     isSigner: false,
@@ -705,7 +695,8 @@ describe("rlp", () => {
             .restake({
                 liquidityPoolIndex: liquidityPoolId,
                 amount,
-                minLpTokens: new BN(0)
+                minLpTokens: new BN(0),
+                assetId
             })
             .accounts({
                 signer: user.publicKey,
@@ -717,7 +708,7 @@ describe("rlp", () => {
                 assetMint: whitelistedAssets[1].mint,
                 userAssetAccount: userAssetAta,
                 poolAssetAccount,
-                oracle: assetData.oracle.fields[0],
+                oracle: oracleAddress,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
                 permissions: null,
@@ -765,16 +756,23 @@ describe("rlp", () => {
             provider.publicKey
         );
 
-        const liquidityPoolDataPre = await LiquidityPool
-            .fromAccountAddress(
-                provider.connection,
-                liquidityPool
-            );
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
+
+        const assets = await restaking.getAssets();
+        const {
+            account: {
+                index: assetId,
+                mint: assetMint
+            },
+            pubkey: asset
+        } = assets.find(({ account: { mint } }) => mint.equals(publicAssets[0].mint));
 
         await program
             .methods
             .depositRewards({
-                amount
+                amount,
+                assetId
             })
             .accounts({
                 signer: provider.publicKey,
@@ -784,12 +782,12 @@ describe("rlp", () => {
                 liquidityPool,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 assetPool: getAssociatedTokenAddressSync(
-                    publicAssets[0].mint,
+                    assetMint,
                     liquidityPool,
                     true
                 ),
-                asset: Restaking.deriveAsset(publicAssets[0].mint),
-                assetMint: publicAssets[0].mint,
+                asset,
+                assetMint,
                 associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
                 signerAssetTokenAccount,
             })
@@ -798,12 +796,6 @@ describe("rlp", () => {
                 console.log(err.logs);
                 throw err;
             });
-
-        const liquidityPoolDataPost = await LiquidityPool
-            .fromAccountAddress(
-                provider.connection,
-                liquidityPool
-            );
 
         // Verify rewards were deposited
         const assetPoolData = await getAccount(
@@ -838,16 +830,23 @@ describe("rlp", () => {
             provider.publicKey
         );
 
-        const liquidityPoolDataPre = await LiquidityPool
-            .fromAccountAddress(
-                provider.connection,
-                liquidityPool
-            );
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
+
+        const assets = await restaking.getAssets();
+        const {
+            account: {
+                index: assetId,
+                mint: assetMint
+            },
+            pubkey: asset
+        } = assets.find(({ account: { mint } }) => mint.equals(publicAssets[1].mint));
 
         await program
             .methods
             .depositRewards({
-                amount
+                amount,
+                assetId
             })
             .accounts({
                 signer: provider.publicKey,
@@ -857,12 +856,12 @@ describe("rlp", () => {
                 liquidityPool,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 assetPool: getAssociatedTokenAddressSync(
-                    publicAssets[1].mint,
+                    assetMint,
                     liquidityPool,
                     true
                 ),
-                asset: Restaking.deriveAsset(publicAssets[1].mint),
-                assetMint: publicAssets[1].mint,
+                asset,
+                assetMint,
                 associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
                 signerAssetTokenAccount,
             })
@@ -871,12 +870,6 @@ describe("rlp", () => {
                 console.log(err.logs);
                 throw err;
             });
-
-        const liquidityPoolDataPost = await LiquidityPool
-            .fromAccountAddress(
-                provider.connection,
-                liquidityPool
-            );
 
         // Verify rewards were deposited
         const assetPoolData = await getAccount(
@@ -899,12 +892,18 @@ describe("rlp", () => {
 
         const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
 
-        const liquidityPoolData = await LiquidityPool.fromAccountAddress(
-            provider.connection,
-            liquidityPool
-        );
 
-        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
+
+        const assets = await restaking.getAssets();
+        const {
+            account: {
+                index: assetId,
+                mint: assetMint
+            },
+            pubkey: asset
+        } = assets.find(({ account: { mint } }) => mint.equals(whitelistedAssets[0].mint));
 
         const destination = Keypair.generate();
         const destinationAta = getAssociatedTokenAddressSync(
@@ -934,7 +933,8 @@ describe("rlp", () => {
             .methods
             .slash({
                 liquidityPoolId,
-                amount: slashAmount
+                amount: slashAmount,
+                assetId
             })
             .accounts({
                 signer: provider.publicKey,
@@ -943,7 +943,7 @@ describe("rlp", () => {
                 liquidityPool,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 asset,
-                mint: whitelistedAssets[0].mint,
+                mint: assetMint,
                 liquidityPoolTokenAccount: poolAssetAccount,
                 destination: destinationAta,
             })
@@ -972,7 +972,17 @@ describe("rlp", () => {
             liquidityPool
         );
 
-        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
+
+        const assets = await restaking.getAssets();
+        const {
+            account: {
+                index: assetId,
+                mint: assetMint
+            },
+            pubkey: asset
+        } = assets.find(({ account: { mint } }) => mint.equals(whitelistedAssets[0].mint));
 
         await provider.connection.requestAirdrop(
             alice.publicKey,
@@ -980,19 +990,19 @@ describe("rlp", () => {
         );
 
         await mintTokens(
-            whitelistedAssets[0].mint,
+            assetMint,
             provider,
             amount.toNumber(),
             alice.publicKey
         );
 
         const userAssetAta = getAssociatedTokenAddressSync(
-            whitelistedAssets[0].mint,
+            assetMint,
             alice.publicKey
         );
 
         const poolAssetAccount = getAssociatedTokenAddressSync(
-            whitelistedAssets[0].mint,
+            assetMint,
             liquidityPool,
             true
         );
@@ -1021,9 +1031,6 @@ describe("rlp", () => {
             liquidityPoolData.lpToken
         );
         const totalLpSupply = new BN(lpToken.supply.toString());
-
-        const restaking = new Restaking(provider.connection);
-        const assets = await restaking.getAssets();
 
         const totalPoolValue = await calculateTotalPoolValue(
             await Promise.all(
@@ -1060,7 +1067,7 @@ describe("rlp", () => {
                     {
                         isSigner: false,
                         isWritable: false,
-                        pubkey: Restaking.deriveAsset(account.mint)
+                        pubkey: Restaking.deriveAsset(account.index)
                     },
                     {
                         isSigner: false,
@@ -1075,7 +1082,8 @@ describe("rlp", () => {
             .restake({
                 liquidityPoolIndex: liquidityPoolId,
                 amount,
-                minLpTokens: new BN(0)
+                minLpTokens: new BN(0),
+                assetId,
             })
             .accounts({
                 signer: alice.publicKey,
@@ -1084,7 +1092,7 @@ describe("rlp", () => {
                 lpToken: liquidityPoolData.lpToken,
                 userLpAccount,
                 asset,
-                assetMint: whitelistedAssets[0].mint,
+                assetMint,
                 userAssetAccount: userAssetAta,
                 poolAssetAccount,
                 oracle: assetDataPre.oracle.fields[0],
@@ -1309,27 +1317,14 @@ describe("rlp", () => {
 
         await sleep(new BN(liquidityPoolData.cooldownDuration.toString()).toNumber());
 
-        const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
+        const restaking = new Restaking(provider.connection);
+        await restaking.load();
 
-        const userAssetAta = getAssociatedTokenAddressSync(
-            whitelistedAssets[0].mint,
-            user.publicKey
-        );
+        const assets = await restaking.getAssets();
 
         const userRewardAta = getAssociatedTokenAddressSync(
             publicAssets[0].mint,
             user.publicKey
-        );
-
-        const userAssetAtaPre = await getAccount(
-            provider.connection,
-            userAssetAta
-        );
-
-        const poolAssetAccount = getAssociatedTokenAddressSync(
-            whitelistedAssets[0].mint,
-            liquidityPool,
-            true
         );
 
         const cooldownLpTokenAccount = getAssociatedTokenAddressSync(
@@ -1337,9 +1332,6 @@ describe("rlp", () => {
             cooldown,
             true
         );
-
-        const restaking = new Restaking(provider.connection);
-        const assets = await restaking.getAssets();
 
         const anchorRemainingAccounts: AccountMeta[] = assets
         .map(({ account, pubkey }) => {
@@ -1352,15 +1344,17 @@ describe("rlp", () => {
                 {
                     isSigner: false,
                     isWritable: false,
-                    pubkey: Restaking.deriveAsset(account.mint)
-                },
-                {
-                    isSigner: false,
-                    isWritable: true,
-                    pubkey: getAssociatedTokenAddressSync(account.mint, user.publicKey, true)
+                    pubkey
                 }
             ] as AccountMeta[];
         }).flat();
+
+        const userAssetTokenAccounts: AccountMeta[] = assets
+            .map(asset => ({
+                isSigner: false,
+                isWritable: true,
+                pubkey: getAssociatedTokenAddressSync(asset.account.mint, user.publicKey, true)
+            }));
 
         const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
         const msg = new TransactionMessage({
@@ -1409,8 +1403,12 @@ describe("rlp", () => {
             .preInstructions([
                 ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 })
             ])
-            .remainingAccounts(anchorRemainingAccounts)
-            .rpc();
+            .remainingAccounts([...userAssetTokenAccounts, ...anchorRemainingAccounts])
+            .rpc()
+            .catch(err => {
+                console.error(err);
+                throw err;
+            });
 
         const userRewardAtaPost = await getAccount(
             provider.connection,
@@ -1434,16 +1432,27 @@ describe("rlp", () => {
         const fromMint = whitelistedAssets[0];
         const toMint = whitelistedAssets[1];
 
-        const fromAsset = Restaking.deriveAsset(fromMint.mint);
-        const toAsset = Restaking.deriveAsset(toMint.mint);
-
         const {
-            oracle: fromOracle
-        } = await Asset.fromAccountAddress(provider.connection, fromAsset);
-
+            pubkey: fromAsset,
+            account: {
+                index: fromAssetId,
+                oracle: {
+                    fields: [fromOracle]
+                }
+            }
+        } = assets
+            .find(({ account: { mint } }) => mint.equals(fromMint.mint));
+            
         const {
-            oracle: toOracle
-        } = await Asset.fromAccountAddress(provider.connection, toAsset);
+            pubkey: toAsset,
+            account: {
+                index: toAssetId,
+                oracle: {
+                    fields: [toOracle]
+                }
+            }
+        } = assets
+            .find(({ account: { mint } }) => mint.equals(toMint.mint));
 
         const fromSignerTokenAccount = getAssociatedTokenAddressSync(
             fromMint.mint,
@@ -1476,12 +1485,12 @@ describe("rlp", () => {
         const {
             price: fromTokenPrice,
             precision: fromTokenPrecision
-        } = await getOraclePriceFromAccount(fromOracle.fields[0].toString());
+        } = await getOraclePriceFromAccount(fromOracle.toString());
 
         const {
             price: toTokenPrice,
             precision: toTokenPrecision
-        } = await getOraclePriceFromAccount(toOracle.fields[0].toString());
+        } = await getOraclePriceFromAccount(toOracle.toString());
 
         const {
             amount: fromSignerTokenAccountBalancePre
@@ -1494,7 +1503,9 @@ describe("rlp", () => {
             .methods
             .swap({
                 amountIn,
-                minOut: new BN(0)
+                minOut: new BN(0),
+                fromAssetId,
+                toAssetId
             })
             .preInstructions([
                 ...assets.map((asset) => createAssociatedTokenAccountIdempotentInstruction(provider.publicKey, getAssociatedTokenAddressSync(asset.account.mint, provider.publicKey, true), provider.publicKey, asset.account.mint))
@@ -1507,10 +1518,10 @@ describe("rlp", () => {
                 liquidityPool,
                 tokenFrom: fromMint.mint,
                 tokenFromAsset: fromAsset,
-                tokenFromOracle: fromOracle.fields[0],
+                tokenFromOracle: fromOracle,
                 tokenTo: toMint.mint,
                 tokenToAsset: toAsset,
-                tokenToOracle: toOracle.fields[0],
+                tokenToOracle: toOracle,
                 tokenFromPool: getAssociatedTokenAddressSync(fromMint.mint, liquidityPool, true),
                 tokenToPool: getAssociatedTokenAddressSync(toMint.mint, liquidityPool, true),
                 tokenFromSignerAccount: fromSignerTokenAccount,
@@ -1582,23 +1593,27 @@ describe("rlp", () => {
         const fromMint = publicAssets[0];
         const toMint = publicAssets[1];
 
-        const fromAsset = Restaking.deriveAsset(fromMint.mint);
-        const toAsset = Restaking.deriveAsset(toMint.mint);
+        const {
+            pubkey: fromAsset,
+            account: {
+                index: fromAssetId,
+                oracle: {
+                    fields: [fromOracle]
+                }
+            }
+        } = assets
+            .find(({ account: { mint } }) => mint.equals(fromMint.mint));
 
         const {
-            oracle: fromOracle,
-            accessLevel: fromAccessLevel
-        } = await Asset.fromAccountAddress(provider.connection, fromAsset);
-
-        const {
-            oracle: toOracle,
-            accessLevel: toAccessLevel
-        } = await Asset.fromAccountAddress(provider.connection, toAsset);
-
-        console.log({
-            toAccessLevel,
-            fromAccessLevel
-        });
+            pubkey: toAsset,
+            account: {
+                index: toAssetId,
+                oracle: {
+                    fields: [toOracle]
+                }
+            }
+        } = assets
+            .find(({ account: { mint } }) => mint.equals(toMint.mint));
 
         const fromSignerTokenAccount = getAssociatedTokenAddressSync(
             fromMint.mint,
@@ -1630,12 +1645,12 @@ describe("rlp", () => {
         const {
             price: fromTokenPrice,
             precision: fromTokenPrecision
-        } = await getOraclePriceFromAccount(fromOracle.fields[0].toString());
+        } = await getOraclePriceFromAccount(fromOracle.toString());
 
         const {
             price: toTokenPrice,
             precision: toTokenPrecision
-        } = await getOraclePriceFromAccount(toOracle.fields[0].toString());
+        } = await getOraclePriceFromAccount(toOracle.toString());
 
         const {
             amount: fromSignerTokenAccountBalancePre
@@ -1648,7 +1663,9 @@ describe("rlp", () => {
             .methods
             .swap({
                 amountIn,
-                minOut: new BN(0)
+                minOut: new BN(0),
+                fromAssetId,
+                toAssetId
             })
             .preInstructions([
                 ...assets.map((asset) => createAssociatedTokenAccountIdempotentInstruction(randomUser.publicKey, getAssociatedTokenAddressSync(asset.account.mint, randomUser.publicKey, true), randomUser.publicKey, asset.account.mint))
@@ -1661,10 +1678,10 @@ describe("rlp", () => {
                 liquidityPool,
                 tokenFrom: fromMint.mint,
                 tokenFromAsset: fromAsset,
-                tokenFromOracle: fromOracle.fields[0],
+                tokenFromOracle: fromOracle,
                 tokenTo: toMint.mint,
                 tokenToAsset: toAsset,
-                tokenToOracle: toOracle.fields[0],
+                tokenToOracle: toOracle,
                 tokenFromPool: getAssociatedTokenAddressSync(fromMint.mint, liquidityPool, true),
                 tokenToPool: getAssociatedTokenAddressSync(toMint.mint, liquidityPool, true),
                 tokenFromSignerAccount: fromSignerTokenAccount,
@@ -1819,7 +1836,6 @@ describe("rlp", () => {
                 settings,
                 adminPermissions: admin,
                 updateAdminPermissions: targetUserPermissions,
-                strategy: provider.publicKey, // Placeholder
                 systemProgram: SystemProgram.programId,
             })
             .rpc();
@@ -1863,7 +1879,6 @@ describe("rlp", () => {
                 settings,
                 adminPermissions: admin,
                 updateAdminPermissions: targetUserPermissions,
-                strategy: provider.publicKey, // Placeholder
                 systemProgram: SystemProgram.programId,
             })
             .rpc();
@@ -1882,7 +1897,6 @@ describe("rlp", () => {
                 settings,
                 adminPermissions: admin,
                 updateAdminPermissions: targetUserPermissions,
-                strategy: provider.publicKey, // Placeholder
                 systemProgram: SystemProgram.programId,
             })
             .rpc();

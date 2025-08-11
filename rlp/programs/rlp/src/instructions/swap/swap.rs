@@ -8,7 +8,9 @@ use crate::states::*;
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct SwapArgs {
     pub amount_in: u64,
-    pub min_out: Option<u64>
+    pub min_out: Option<u64>,
+    pub from_asset_id: u8,
+    pub to_asset_id: u8,
 }
 
 pub fn swap(
@@ -17,7 +19,9 @@ pub fn swap(
 ) -> Result<()> {
     let SwapArgs {
         min_out,
-        amount_in
+        amount_in,
+        from_asset_id: _,
+        to_asset_id: _
     } = args;
 
     // Input validation
@@ -86,7 +90,6 @@ pub fn swap(
 
     let token_program = &ctx.accounts.token_program;
 
-    // Check if pool has sufficient balance for the swap
     let amount_out: u64 = token_from_price
         .mul(amount_in)?
         .checked_div(token_to_price
@@ -152,6 +155,7 @@ pub fn swap(
 }
 
 #[derive(Accounts)]
+#[instruction(args: SwapArgs)]
 pub struct Swap<'info> {
     #[account(
         mut
@@ -190,8 +194,9 @@ pub struct Swap<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            token_from.key().as_ref()
+            &args.from_asset_id.to_le_bytes()
         ],
+        constraint = token_from_asset.mint == token_from.key(),
         bump
     )]
     pub token_from_asset: Account<'info, Asset>,
@@ -208,8 +213,9 @@ pub struct Swap<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            token_to.key().as_ref()
+            &args.to_asset_id.to_le_bytes()
         ],
+        constraint = token_to_asset.mint == token_to.key(),
         bump
     )]
     pub token_to_asset: Account<'info, Asset>,

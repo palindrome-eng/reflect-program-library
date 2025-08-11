@@ -8,6 +8,7 @@
 import * as beet from '@metaplex-foundation/beet'
 export type DepositRewardsArgs = {
   amount: beet.bignum
+  assetId: number
 }
 
 /**
@@ -16,6 +17,9 @@ export type DepositRewardsArgs = {
  */
 export const depositRewardsArgsBeet =
   new beet.BeetArgsStruct<DepositRewardsArgs>(
-    [['amount', beet.u64]],
+    [
+      ['amount', beet.u64],
+      ['assetId', beet.u8],
+    ],
     'DepositRewardsArgs'
   )

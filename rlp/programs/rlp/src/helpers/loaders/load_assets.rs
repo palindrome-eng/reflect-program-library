@@ -6,7 +6,6 @@ use crate::errors::RlpError;
 #[inline(never)]
 pub fn load_assets(
     settings: &Account<Settings>,
-    liquidity_pool: &Account<LiquidityPool>,
     remaining_accounts: &[AccountInfo],
 ) -> Result<Vec<(Pubkey, Asset)>> {
     let remaining_accounts_iter = &mut remaining_accounts.iter();
@@ -16,18 +15,21 @@ pub fn load_assets(
         let (asset_address, _) = Pubkey::find_program_address(
             &[
                 ASSET_SEED.as_bytes(),
-                &asset_index.to_le_bytes(),
+                &(asset_index as u8).to_le_bytes(),
             ], 
             &crate::ID
         );
+
+        msg!("looking for asset: {:?}", asset_address);
 
         let maybe_account = remaining_accounts_iter
                 .find(|account| account.key().eq(&asset_address));
 
         let result = match maybe_account {
             Some(account_info) => {
+                msg!("found account: {:?}", account_info.key());
                 let account_mut_data = account_info.try_borrow_mut_data()?;
-                let asset = Asset::deserialize(&mut account_mut_data.as_ref())?;
+                let asset = Asset::try_deserialize(&mut account_mut_data.as_ref())?;
                     
                 Ok(asset)
             },

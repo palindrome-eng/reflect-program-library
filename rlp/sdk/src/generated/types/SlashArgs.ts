@@ -9,6 +9,7 @@ import * as beet from '@metaplex-foundation/beet'
 export type SlashArgs = {
   liquidityPoolId: number
   amount: beet.bignum
+  assetId: number
 }
 
 /**
@@ -19,6 +20,7 @@ export const slashArgsBeet = new beet.BeetArgsStruct<SlashArgs>(
   [
     ['liquidityPoolId', beet.u8],
     ['amount', beet.u64],
+    ['assetId', beet.u8],
   ],
   'SlashArgs'
 )

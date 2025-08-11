@@ -36,11 +36,11 @@ pub fn add_asset(
         return Err(RlpError::InvalidOracle.into());
     };
 
-    asset.set_inner(Asset { 
+    asset.set_inner(Asset {
         index: settings.assets,
         mint: asset_mint.key(), 
         oracle, 
-        access_level: args.access_level 
+        access_level: args.access_level
     });
 
     settings.assets = settings
@@ -89,7 +89,7 @@ pub struct AddAsset<'info> {
         payer = signer,
         seeds = [
             ASSET_SEED.as_bytes(),
-            &asset_mint.key().to_bytes()
+            &settings.assets.to_le_bytes()
         ],
         bump,
         space = 8 + Asset::INIT_SPACE

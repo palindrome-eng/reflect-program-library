@@ -7,33 +7,16 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import {
-  InitializeRlpArgs,
-  initializeRlpArgsBeet,
-} from '../types/InitializeRlpArgs'
 
 /**
  * @category Instructions
  * @category InitializeRlp
  * @category generated
  */
-export type InitializeRlpInstructionArgs = {
-  args: InitializeRlpArgs
-}
-/**
- * @category Instructions
- * @category InitializeRlp
- * @category generated
- */
-export const initializeRlpStruct = new beet.BeetArgsStruct<
-  InitializeRlpInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */
-  }
->(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', initializeRlpArgsBeet],
-  ],
+export const initializeRlpStruct = new beet.BeetArgsStruct<{
+  instructionDiscriminator: number[] /* size: 8 */
+}>(
+  [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
   'InitializeRlpInstructionArgs'
 )
 /**
@@ -62,20 +45,16 @@ export const initializeRlpInstructionDiscriminator = [
  * Creates a _InitializeRlp_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
- * @param args to provide as instruction data to the program
- *
  * @category Instructions
  * @category InitializeRlp
  * @category generated
  */
 export function createInitializeRlpInstruction(
   accounts: InitializeRlpInstructionAccounts,
-  args: InitializeRlpInstructionArgs,
   programId = new web3.PublicKey('rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D')
 ) {
   const [data] = initializeRlpStruct.serialize({
     instructionDiscriminator: initializeRlpInstructionDiscriminator,
-    ...args,
   })
   const keys: web3.AccountMeta[] = [
     {

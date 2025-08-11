@@ -14,7 +14,8 @@ use anchor_spl::associated_token::AssociatedToken;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositRewardsArgs {
-    pub amount: u64
+    pub amount: u64,
+    pub asset_id: u8,
 }
 
 pub fn deposit_rewards(
@@ -23,6 +24,7 @@ pub fn deposit_rewards(
 ) -> Result<()> {
     let DepositRewardsArgs {
         amount,
+        asset_id: _
     } = args;
 
     let signer = &ctx.accounts.signer;
@@ -106,8 +108,9 @@ pub struct DepositRewards<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            &asset_mint.key().to_bytes()
+            &args.asset_id.to_le_bytes()
         ],
+        constraint = asset.mint == asset_mint.key(),
         bump
     )]
     pub asset: Account<'info, Asset>,

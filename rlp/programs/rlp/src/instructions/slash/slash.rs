@@ -15,6 +15,7 @@ use crate::events::SlashEvent;
 pub struct SlashArgs {
     liquidity_pool_id: u8,
     amount: u64,
+    asset_id: u8,
 }
 
 pub fn slash(
@@ -29,7 +30,8 @@ pub fn slash(
 
     let SlashArgs {
         amount,
-        liquidity_pool_id
+        liquidity_pool_id,
+        asset_id: _
     } = args;
 
     let seeds = &[
@@ -110,8 +112,9 @@ pub struct Slash<'info> {
         mut,
         seeds = [
             ASSET_SEED.as_bytes(),
-            mint.key().as_ref()
+            &args.asset_id.to_le_bytes()
         ],
+        constraint = asset.mint == mint.key(),
         bump
     )]
     pub asset: Account<'info, Asset>,

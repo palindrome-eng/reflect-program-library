@@ -28,6 +28,8 @@ pub fn request_withdrawal(
         amount
     } = args;
 
+    msg!("this works");
+
     let settings = &ctx.accounts.settings;
     let permissions = &ctx.accounts.permissions;
 
@@ -37,21 +39,28 @@ pub fn request_withdrawal(
         &settings.access_control
     )?;
 
+    msg!("this works 2");
+
     let signer = &ctx.accounts.signer;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let cooldown = &mut ctx.accounts.cooldown;
     let token_program = &ctx.accounts.token_program;
 
-    cooldown.set_inner(Cooldown {
-        liquidity_pool_id,
-        authority: signer.key(),
-        ..Default::default()
-    });
+    msg!("this works 2.5");
+
+    cooldown.liquidity_pool_id = liquidity_pool_id;
+    cooldown.authority = signer.key();
+
+    msg!("this works 2.6");
 
     cooldown.lock(liquidity_pool.cooldown_duration)?;
 
+    msg!("this works 2.7");
+
     let signer_lp_token_account = &ctx.accounts.signer_lp_token_account;
     let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
+
+    msg!("this works 3");
 
     transfer(
         CpiContext::new(
@@ -64,6 +73,11 @@ pub fn request_withdrawal(
         ),
         amount
     )?;
+
+    liquidity_pool
+        .cooldowns
+        .checked_add(1)
+        .ok_or(RlpError::MathOverflow)?;
 
     emit!(RequestWithdrawEvent {
         amount,
@@ -111,20 +125,20 @@ pub struct RequestWithdrawal<'info> {
         ],
         bump
     )]
-    pub liquidity_pool: Account<'info, LiquidityPool>,
+    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
 
     #[account(
         mut,
         address = liquidity_pool.lp_token
     )]
-    pub lp_token_mint: Account<'info, Mint>,
+    pub lp_token_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         token::mint = lp_token_mint,
         token::authority = signer,
     )]
-    pub signer_lp_token_account: Account<'info, TokenAccount>,
+    pub signer_lp_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -136,7 +150,7 @@ pub struct RequestWithdrawal<'info> {
         payer = signer,
         space = 8 + Cooldown::INIT_SPACE,
     )]
-    pub cooldown: Account<'info, Cooldown>,
+    pub cooldown: Box<Account<'info, Cooldown>>,
 
     #[account(
         init_if_needed,

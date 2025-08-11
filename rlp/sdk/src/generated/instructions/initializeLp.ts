@@ -26,7 +26,7 @@ export type InitializeLpInstructionArgs = {
  * @category InitializeLp
  * @category generated
  */
-export const initializeLpStruct = new beet.BeetArgsStruct<
+export const initializeLpStruct = new beet.FixableBeetArgsStruct<
   InitializeLpInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }

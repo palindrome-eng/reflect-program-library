@@ -7,6 +7,7 @@ node_modules
 test-ledger
 .yarn
 sdk/dist
+sdk/node_modules
 .env
 .idea
 .crates
