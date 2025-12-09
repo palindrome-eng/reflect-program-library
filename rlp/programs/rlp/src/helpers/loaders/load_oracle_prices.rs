@@ -19,12 +19,8 @@ pub fn load_oracle_prices(
     for asset in assets.iter() {
         let oracle_key  = asset.oracle.key();
 
-        msg!("looking for oracle key: {}", oracle_key.to_string());
-
         let maybe_account = remaining_accounts_iter
                 .find(|account| account.key().eq(&oracle_key));
-
-        msg!("found oracle key?: {}", maybe_account.is_some());
 
         let result = match maybe_account {
             Some(account_info) => {
