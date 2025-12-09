@@ -84,13 +84,11 @@ impl UserPermissions {
     pub const BUMP_SIZE: usize = 1;
     // Adjust vector size estimates based on your expected usage
     pub const PROTOCOL_ROLES_SIZE: usize = 4 + (5 * 1); // Vec length + max 5 roles
-    pub const STRATEGY_PERMISSIONS_SIZE: usize = 4 + (20 * (1 + 4 + (5 * 1))); // Vec + max 20 strategies
     
     pub const TOTAL_SIZE: usize = 
         Self::DISCRIMINATOR_SIZE +
         (Self::PUBKEY_SIZE) + // authority + user
         Self::PROTOCOL_ROLES_SIZE +
-        Self::STRATEGY_PERMISSIONS_SIZE +
         Self::BUMP_SIZE;   
     
     

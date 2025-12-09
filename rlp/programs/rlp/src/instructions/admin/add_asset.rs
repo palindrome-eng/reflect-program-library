@@ -37,6 +37,7 @@ pub fn add_asset(
     };
 
     asset.set_inner(Asset {
+        bump: ctx.bumps.asset,
         index: settings.assets,
         mint: asset_mint.key(), 
         oracle, 
@@ -70,7 +71,7 @@ pub struct AddAsset<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump,
+        bump = admin.bump,
         constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ RlpError::PermissionsTooLow,
     )]
     pub admin: Account<'info, UserPermissions>,
@@ -80,7 +81,7 @@ pub struct AddAsset<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump
+        bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,
     

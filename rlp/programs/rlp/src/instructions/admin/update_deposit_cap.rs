@@ -45,7 +45,7 @@ pub struct UpdateDepositCap<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump,
+        bump = admin.bump,
         constraint = admin.can_perform_protocol_action(Action::UpdateDepositCap, &settings.access_control) @ RlpError::InvalidSigner,
     )]
     pub admin: Account<'info, UserPermissions>,
@@ -55,7 +55,8 @@ pub struct UpdateDepositCap<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
+        bump = settings.bump,
+        constraint = settings.access_control.killswitch.is_frozen(&Action::UpdateDepositCap) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -65,7 +66,7 @@ pub struct UpdateDepositCap<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &liquidity_pool.index.to_le_bytes()
         ],
-        bump
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 }

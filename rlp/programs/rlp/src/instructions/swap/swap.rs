@@ -167,7 +167,7 @@ pub struct Swap<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref(),
         ],
-        bump,
+        bump = admin.bump,
     )]
     pub admin: Option<Account<'info, UserPermissions>>,
 
@@ -175,7 +175,7 @@ pub struct Swap<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
+        bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -184,7 +184,7 @@ pub struct Swap<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &liquidity_pool.index.to_le_bytes()
         ],
-        bump,
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
@@ -197,7 +197,7 @@ pub struct Swap<'info> {
             &args.from_asset_id.to_le_bytes()
         ],
         constraint = token_from_asset.mint == token_from.key(),
-        bump
+        bump = token_from_asset.bump,
     )]
     pub token_from_asset: Account<'info, Asset>,
 
@@ -216,7 +216,7 @@ pub struct Swap<'info> {
             &args.to_asset_id.to_le_bytes()
         ],
         constraint = token_to_asset.mint == token_to.key(),
-        bump
+        bump = token_to_asset.bump,
     )]
     pub token_to_asset: Account<'info, Asset>,
 

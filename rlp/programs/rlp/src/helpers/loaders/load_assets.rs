@@ -20,17 +20,19 @@ pub fn load_assets(
             &crate::ID
         );
 
-        msg!("looking for asset: {:?}", asset_address);
-
         let maybe_account = remaining_accounts_iter
                 .find(|account| account.key().eq(&asset_address));
 
         let result = match maybe_account {
             Some(account_info) => {
-                msg!("found account: {:?}", account_info.key());
                 let account_mut_data = account_info.try_borrow_mut_data()?;
                 let asset = Asset::try_deserialize(&mut account_mut_data.as_ref())?;
-                    
+
+                require!(
+                    asset.index as usize == asset_index,
+                    RlpError::InvalidInput
+                );
+
                 Ok(asset)
             },
             None => Err(RlpError::InvalidInput)

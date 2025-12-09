@@ -9,5 +9,3 @@ pub struct Settings {
     pub assets: u8,
     pub access_control: AccessControl,
 }
-
-impl Settings {}

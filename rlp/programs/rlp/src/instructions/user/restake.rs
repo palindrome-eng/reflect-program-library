@@ -153,7 +153,7 @@ pub struct Restake<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes(),
         ],
-        bump,
+        bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ RlpError::Frozen,
     )]
     pub settings: Box<Account<'info, Settings>>,
@@ -172,7 +172,7 @@ pub struct Restake<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &args.liquidity_pool_index.to_le_bytes()
         ],
-        bump,
+        bump = liquidity_pool.bump,
         constraint = liquidity_pool.index == args.liquidity_pool_index,
     )]
     pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
@@ -184,8 +184,7 @@ pub struct Restake<'info> {
     pub lp_token: Box<Account<'info, Mint>>,
 
     #[account(
-        init_if_needed,
-        payer = signer,
+        mut,
         associated_token::mint = lp_token,
         associated_token::authority = signer,
     )]
@@ -196,7 +195,7 @@ pub struct Restake<'info> {
             ASSET_SEED.as_bytes(),
             &args.asset_id.to_le_bytes()
         ],
-        bump,
+        bump = asset.bump,
     )]
     pub asset: Box<Account<'info, Asset>>,
 

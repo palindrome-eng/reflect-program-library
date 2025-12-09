@@ -79,7 +79,7 @@ pub struct Slash<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump,
+        bump = permissions.bump,
         constraint = permissions.can_perform_protocol_action(Action::Slash, &settings.access_control) @ RlpError::PermissionsTooLow,
     )]
     pub permissions: Account<'info, UserPermissions>,
@@ -89,7 +89,7 @@ pub struct Slash<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
+        bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
@@ -99,7 +99,7 @@ pub struct Slash<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &args.liquidity_pool_id.to_le_bytes()
         ],
-        bump,
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
@@ -115,7 +115,7 @@ pub struct Slash<'info> {
             &args.asset_id.to_le_bytes()
         ],
         constraint = asset.mint == mint.key(),
-        bump
+        bump = asset.bump,
     )]
     pub asset: Account<'info, Asset>,
 

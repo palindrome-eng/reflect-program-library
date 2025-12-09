@@ -27,6 +27,7 @@ impl Oracle {
 #[account]
 #[derive(InitSpace)]
 pub struct Asset {
+    pub bump: u8,
     pub index: u8,
     pub mint: Pubkey,
     pub oracle: Oracle,

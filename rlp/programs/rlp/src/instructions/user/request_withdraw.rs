@@ -103,7 +103,7 @@ pub struct RequestWithdrawal<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
+        bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ RlpError::Frozen
     )]
     pub settings: Account<'info, Settings>,
@@ -113,7 +113,7 @@ pub struct RequestWithdrawal<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump = permissions.bump
+        bump = permissions.bump,
     )]
     pub permissions: Option<Account<'info, UserPermissions>>,
 
@@ -123,7 +123,7 @@ pub struct RequestWithdrawal<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &args.liquidity_pool_id.to_le_bytes()
         ],
-        bump
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
 

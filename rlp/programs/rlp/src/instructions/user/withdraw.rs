@@ -184,7 +184,7 @@ pub struct Withdraw<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
+        bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ RlpError::Frozen
     )]
     pub settings: Account<'info, Settings>,
@@ -194,7 +194,7 @@ pub struct Withdraw<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump = permissions.bump
+        bump = permissions.bump,
     )]
     pub permissions: Option<Account<'info, UserPermissions>>,
 
@@ -204,7 +204,7 @@ pub struct Withdraw<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &args.liquidity_pool_id.to_le_bytes()
         ],
-        bump
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
@@ -227,7 +227,7 @@ pub struct Withdraw<'info> {
             COOLDOWN_SEED.as_bytes(),
             &args.cooldown_id.to_le_bytes(),
         ],
-        bump,
+        bump = cooldown.bump,
         close = signer,
         constraint = cooldown.liquidity_pool_id == args.liquidity_pool_id,
         constraint = cooldown.authority == signer.key()
