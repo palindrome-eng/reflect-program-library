@@ -2,10 +2,7 @@ use anchor_lang::prelude::*;
 use crate::helpers::OraclePrice;
 use crate::states::*;
 use crate::errors::RlpError;
-use crate::helpers::{
-    get_price_from_pyth,
-    get_price_from_switchboard
-};
+use crate::helpers::get_price_from_pyth;
 
 #[inline(never)]
 pub fn load_oracle_prices(
@@ -28,9 +25,6 @@ pub fn load_oracle_prices(
                     Oracle::Pyth(_) => {
                         get_price_from_pyth(account_info, clock)
                     },
-                    Oracle::Switchboard(_) => {
-                        get_price_from_switchboard(account_info, clock)
-                    }
                 }
             },
             None => Err(RlpError::InvalidInput.into())

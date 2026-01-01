@@ -44,3 +44,6 @@ pub const LIQUIDITY_POOL_LOCKUP_SEED: &str = "lp_lockup";
 
 #[constant]
 pub const ORACLE_MAXIMUM_AGE: u64 = 2 * 60; // 2 minutes, decrease for prod.
+
+#[constant]
+pub const DEAD_SHARES: u64 = 1_000_000_000;

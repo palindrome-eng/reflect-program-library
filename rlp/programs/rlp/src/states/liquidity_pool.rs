@@ -4,6 +4,7 @@ use anchor_spl::token::{
 };
 use anchor_spl::associated_token::get_associated_token_address;
 use crate::constants::*;
+use crate::errors::RlpError;
 use crate::helpers::OraclePrice;
 use spl_math::precise_number::PreciseNumber;
 
@@ -72,7 +73,7 @@ impl LiquidityPool {
         }
     
         Ok(total_pool_value)
-    } 
+    }
 
     pub fn calculate_lp_tokens_on_deposit(
         &self,
@@ -80,29 +81,24 @@ impl LiquidityPool {
         total_pool_value: PreciseNumber,
         deposit_value: PreciseNumber,
     ) -> Result<u64> {
-        let lp_tokens_to_mint = if lp_token.supply == 0 {
-            deposit_value
-                .to_imprecise()
-                .ok_or(crate::errors::RlpError::MathOverflow)?
-                .try_into()
-                .map_err(|_| crate::errors::RlpError::MathOverflow)?
-        } else {
-            let lp_supply_precise = PreciseNumber::new(lp_token.supply as u128)
-                .ok_or(crate::errors::RlpError::MathOverflow)?;
+        let lp_supply_precise = PreciseNumber::new(
+            lp_token
+                .supply
+                .checked_add(DEAD_SHARES)
+                .ok_or(RlpError::MathOverflow)? as u128
+        )
+            .ok_or(crate::errors::RlpError::MathOverflow)?;
 
-            let deposit_ratio = deposit_value
-                .checked_mul(&lp_supply_precise)
-                .ok_or(crate::errors::RlpError::MathOverflow)?
-                .checked_div(&total_pool_value)
-                .ok_or(crate::errors::RlpError::MathOverflow)?;
+        let deposit_ratio = deposit_value
+            .checked_mul(&lp_supply_precise)
+            .ok_or(RlpError::MathOverflow)?
+            .checked_div(&total_pool_value)
+            .ok_or(RlpError::MathOverflow)?;
 
-            
-            deposit_ratio
-                .to_imprecise()
-                .ok_or(crate::errors::RlpError::MathOverflow)?
-                .try_into()
-                .map_err(|_| crate::errors::RlpError::MathOverflow)?
-        };
+        let lp_tokens_to_mint = deposit_ratio.to_imprecise()
+            .ok_or(RlpError::MathOverflow)?
+            .try_into()
+            .map_err(|_| RlpError::MathOverflow)?;
 
         Ok(lp_tokens_to_mint)
     }

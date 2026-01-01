@@ -1,13 +1,12 @@
 use anchor_lang::prelude::*;
 use crate::helpers::{
     get_price_from_pyth,
-    get_price_from_switchboard, OraclePrice
+    OraclePrice
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug, InitSpace)]
 pub enum Oracle {
     Pyth(Pubkey),
-    Switchboard(Pubkey)
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, PartialEq, Debug)]
@@ -19,7 +18,7 @@ pub enum AccessLevel {
 impl Oracle {
     pub fn key(&self) -> &Pubkey {
         match self {
-            Oracle::Pyth(key) | Oracle::Switchboard(key) => key,
+            Oracle::Pyth(key) => key,
         }
     }
 }
@@ -43,7 +42,6 @@ impl Asset {
     ) -> Result<OraclePrice> {
         match self.oracle {
             Oracle::Pyth(_) => get_price_from_pyth(account, clock),
-            Oracle::Switchboard(_) => get_price_from_switchboard(account, clock)
         }
     }
 

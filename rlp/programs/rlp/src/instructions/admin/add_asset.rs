@@ -1,10 +1,8 @@
 use anchor_lang::prelude::*;
-use switchboard_solana::ID as SWITCHBOARD_PROGRAM_ID;
 use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
 use crate::errors::RlpError;
 use crate::events::AddAssetEvent;
 use crate::helpers::get_price_from_pyth;
-use crate::helpers::get_price_from_switchboard;
 use crate::states::*;
 use crate::constants::*;
 use anchor_spl::token::Mint;
@@ -26,12 +24,10 @@ pub fn add_asset(
 
     let clock = Clock::get()?;
 
+    // Only Pyth oracles are supported
     let oracle = if oracle.owner.eq(&PYTH_PROGRAM_ID) {
         get_price_from_pyth(oracle, &clock)?;
         Oracle::Pyth(oracle.key())
-    } else if oracle.owner.eq(&SWITCHBOARD_PROGRAM_ID) {
-        get_price_from_switchboard(oracle, &clock)?;
-        Oracle::Switchboard(oracle.key())
     } else {
         return Err(RlpError::InvalidOracle.into());
     };

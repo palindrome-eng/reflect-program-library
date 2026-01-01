@@ -92,8 +92,20 @@ pub fn swap(
 
     let amount_out: u64 = token_from_price
         .mul(amount_in)?
+        .checked_mul(
+            10_u64
+                .checked_pow(token_to.decimals as u32)
+                .ok_or(RlpError::MathOverflow)?
+                .into()
+        )
+        .ok_or(RlpError::MathOverflow)?
         .checked_div(token_to_price
-            .mul(1)?
+            .mul(
+                10_u64
+                    .checked_pow(token_from.decimals as u32)
+                    .ok_or(RlpError::MathOverflow)?
+                    .into()
+            )?
         )
         .ok_or(RlpError::MathOverflow)?
         .try_into()

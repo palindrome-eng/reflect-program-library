@@ -3,7 +3,7 @@ use anchor_spl::token::close_account;
 use anchor_spl::token::CloseAccount;
 use anchor_spl::token::Token;
 use spl_math::precise_number::PreciseNumber;
-use switchboard_solana::rust_decimal::prelude::ToPrimitive;
+use num_traits::ToPrimitive;
 use crate::errors::RlpError;
 use crate::states::*;
 use crate::constants::*;
@@ -75,19 +75,13 @@ pub fn withdraw<'a>(
     ];
 
     let assets: Vec<(Pubkey, Asset)> = load_assets(settings, remaining_accounts)?;
-    msg!("loaded assets");
     let asset_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
-
-
     let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
-    msg!("loaded reserves");
     let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;
-    msg!("loaded user token accounts");
 
     for i in 0..assets.len() {
-        let (asset_key, asset) = &assets[i];
         let (reserve_key, reserve) = &reserves[i];
-        let (user_token_account_key, user_token_account) = &user_token_accounts[i];
+        let (user_token_account_key, _) = &user_token_accounts[i];
 
         let user_pool_share_amount = PreciseNumber::new(reserve.amount as u128)
             .ok_or(RlpError::MathOverflow)?
@@ -97,7 +91,11 @@ pub fn withdraw<'a>(
             )
             .ok_or(RlpError::MathOverflow)?
             .checked_div(
-                &PreciseNumber::new(lp_token_supply as u128)
+                &PreciseNumber::new(
+                    lp_token_supply as u128
+                        // .checked_add(DEAD_SHARES)
+                        // .ok_or(RlpError::MathOverflow)? as u128
+                )
                 .ok_or(RlpError::MathOverflow)?
             )
             .ok_or(RlpError::MathOverflow)?
@@ -135,7 +133,7 @@ pub fn withdraw<'a>(
     let cooldown_seeds = &[
         COOLDOWN_SEED.as_bytes(),
         &cooldown_id.to_le_bytes(),
-        &[ctx.bumps.cooldown]
+        &[cooldown.bump]
     ];
 
     burn(
