@@ -1,29 +1,23 @@
-use crate::{constants::*, helpers::action_check_protocol, instructions::admin};
-use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token::{transfer, Mint, Token, TokenAccount, Transfer}};
 use crate::errors::InsuranceFundError;
 use crate::states::*;
+use crate::{constants::*, helpers::action_check_protocol, instructions::admin};
+use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{transfer, Mint, Token, TokenAccount, Transfer},
+};
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct SwapArgs {
     pub amount_in: u64,
-    pub min_out: Option<u64>
+    pub min_out: Option<u64>,
 }
 
-pub fn swap(
-    ctx: Context<Swap>,
-    args: SwapArgs
-) -> Result<()> {
-    let SwapArgs {
-        min_out,
-        amount_in
-    } = args;
+pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
+    let SwapArgs { min_out, amount_in } = args;
 
     // Input validation
-    require!(
-        amount_in > 0,
-        InsuranceFundError::InvalidInput
-    );
+    require!(amount_in > 0, InsuranceFundError::InvalidInput);
 
     let clock = &Clock::get()?;
 
@@ -46,28 +40,40 @@ pub fn swap(
     let settings = &ctx.accounts.settings;
 
     // If any of the assets are private, require admin permissions.
-    if (token_from_asset.access_level == AccessLevel::Private || token_to_asset.access_level == AccessLevel::Private) {
+    if (token_from_asset.access_level == AccessLevel::Private
+        || token_to_asset.access_level == AccessLevel::Private)
+    {
         // Check if PrivateSwap is frozen
         require!(
-            !settings.access_control.killswitch.is_frozen(&Action::PrivateSwap),
+            !settings
+                .access_control
+                .killswitch
+                .is_frozen(&Action::PrivateSwap),
             InsuranceFundError::Frozen
         );
-        
+
         require!(
-            admin.is_some() && admin.as_ref().unwrap().can_perform_protocol_action(Action::PrivateSwap, &settings.access_control),
+            admin.is_some()
+                && admin
+                    .as_ref()
+                    .unwrap()
+                    .can_perform_protocol_action(Action::PrivateSwap, &settings.access_control),
             InsuranceFundError::PermissionsTooLow
         );
     } else {
         // Check if PublicSwap is frozen
         require!(
-            !settings.access_control.killswitch.is_frozen(&Action::PublicSwap),
+            !settings
+                .access_control
+                .killswitch
+                .is_frozen(&Action::PublicSwap),
             InsuranceFundError::Frozen
         );
-        
+
         action_check_protocol(
             Action::PublicSwap,
             admin.as_deref(),
-            &settings.access_control
+            &settings.access_control,
         )?;
     }
 
@@ -88,9 +94,7 @@ pub fn swap(
     // Check if pool has sufficient balance for the swap
     let amount_out: u64 = token_from_price
         .mul(amount_in)?
-        .checked_div(token_to_price
-            .mul(1)?
-        )
+        .checked_div(token_to_price.mul(1)?)
         .ok_or(InsuranceFundError::MathOverflow)?
         .try_into()
         .map_err(|_| InsuranceFundError::MathOverflow)?;
@@ -111,32 +115,32 @@ pub fn swap(
     let lp_seeds = &[
         LIQUIDITY_POOL_SEED.as_bytes(),
         &liquidity_pool.index.to_le_bytes(),
-        &[liquidity_pool.bump]
+        &[liquidity_pool.bump],
     ];
 
     transfer(
         CpiContext::new(
-            token_program.to_account_info(), 
-            Transfer { 
-                from: token_from_signer_account.to_account_info(), 
-                to: token_from_pool.to_account_info(), 
-                authority: signer.to_account_info() 
-            }
+            token_program.to_account_info(),
+            Transfer {
+                from: token_from_signer_account.to_account_info(),
+                to: token_from_pool.to_account_info(),
+                authority: signer.to_account_info(),
+            },
         ),
-        amount_in
+        amount_in,
     )?;
 
     transfer(
         CpiContext::new_with_signer(
-            token_program.to_account_info(), 
-            Transfer { 
-                from: token_to_pool.to_account_info(), 
-                to: token_to_signer_account.to_account_info(), 
-                authority: liquidity_pool.to_account_info()
-            }, 
-            &[lp_seeds]
-        ), 
-        amount_out
+            token_program.to_account_info(),
+            Transfer {
+                from: token_to_pool.to_account_info(),
+                to: token_to_signer_account.to_account_info(),
+                authority: liquidity_pool.to_account_info(),
+            },
+            &[lp_seeds],
+        ),
+        amount_out,
     )?;
 
     Ok(())
@@ -144,9 +148,7 @@ pub fn swap(
 
 #[derive(Accounts)]
 pub struct Swap<'info> {
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(
@@ -190,7 +192,8 @@ pub struct Swap<'info> {
 
     /// CHECK: Directly checking the address
     #[account(
-        address = *token_from_asset.oracle.key()
+        // address = *token_from_asset.oracle.key()
+        constraint = token_from_oracle.key() == *token_to_asset.oracle.key() @ InsuranceFundError::InvalidOracle
     )]
     pub token_from_oracle: AccountInfo<'info>,
 
@@ -208,7 +211,8 @@ pub struct Swap<'info> {
 
     /// CHECK: Directly checking the address
     #[account(
-        address = *token_to_asset.oracle.key()
+        constraint = token_to_oracle.key() == *token_to_asset.oracle.key() @ InsuranceFundError::InvalidOracle
+        // address = *token_to_asset.oracle.key()
     )]
     pub token_to_oracle: AccountInfo<'info>,
 
@@ -246,3 +250,4 @@ pub struct Swap<'info> {
     #[account()]
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
+

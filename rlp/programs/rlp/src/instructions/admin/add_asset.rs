@@ -26,10 +26,10 @@ pub fn add_asset(
 
     let clock = Clock::get()?;
 
-    let oracle = if oracle.owner.eq(&PYTH_PROGRAM_ID) {
+    let oracle = if oracle.owner.as_ref() == PYTH_PROGRAM_ID.as_ref() {
         get_price_from_pyth(oracle, &clock)?;
         Oracle::Pyth(oracle.key())
-    } else if oracle.owner.eq(&SWITCHBOARD_PROGRAM_ID) {
+    } else if oracle.owner.as_ref() == SWITCHBOARD_PROGRAM_ID.as_ref() {
         get_price_from_switchboard(oracle, &clock)?;
         Oracle::Switchboard(oracle.key())
     } else {
