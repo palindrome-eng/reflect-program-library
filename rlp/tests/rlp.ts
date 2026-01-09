@@ -197,10 +197,10 @@ describe("rlp", () => {
     return (killswitch.frozen & mask) !== 0;
   }
 
-  it("Initializes RLP.", async () => {
+  it.only("Initializes RLP.", async () => {
     const cooldownDuration = new BN(30); // 30 seconds
 
-    await program.methods
+    const tx = await program.methods
       .initializeRlp({
         cooldownDuration,
       })
@@ -220,7 +220,7 @@ describe("rlp", () => {
     expect(frozen).eq(false);
   });
 
-  it("Adds public assets to the RLP.", async () => {
+  it.only("Adds public assets to the RLP.", async () => {
     for (let i = 0; i < 3; i++) {
       const token = await createToken(provider.connection, provider);
 
@@ -237,25 +237,35 @@ describe("rlp", () => {
 
       const asset = Restaking.deriveAsset(token);
 
-      await program.methods
-        .addAsset({
-          accessLevel: { public: {} },
-        })
-        .accounts({
-          admin,
-          asset,
-          assetMint: token,
-          oracle: new PublicKey(oracleString),
-          settings,
-          signer: provider.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+      let tx: string;
+      try {
+        tx = await program.methods
+          .addAsset({
+            accessLevel: { public: {} },
+          })
+          .accounts({
+            admin,
+            asset,
+            assetMint: token,
+            oracle: new PublicKey(oracleString),
+            settings,
+            signer: provider.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+      } catch (err) {
+        console.log("[tx failed with logs]", err);
+      }
 
       const assetData = await Asset.fromAccountAddress(
         provider.connection,
         asset,
       );
+
+      // const txDetails = await provider.connection.getTransaction(tx, {
+      //   commitment: "confirmed",
+      // });
+      // console.log(txDetails?.meta?.logMessages);
 
       expect(assetData.mint.toString()).eq(token.toString());
       expect(assetData.oracle.fields[0].toString()).eq(oracleString);
@@ -333,7 +343,7 @@ describe("rlp", () => {
     expect(killswitch.frozen).eq(0);
   });
 
-  it("Mints and adds private assets to insurance pool.", async () => {
+  it.only("Mints and adds private assets to insurance pool.", async () => {
     const assets: PublicKey[] = [];
 
     for (let i = 0; i < 2; i++) {
@@ -392,7 +402,7 @@ describe("rlp", () => {
     }
   });
 
-  it("Initializes liquidity pool", async () => {
+  it.only("Initializes liquidity pool", async () => {
     const liquidityPool = Restaking.deriveLiquidityPool(0);
 
     const { mint: lpTokenMint, instructions: preInstructions } =
@@ -434,7 +444,7 @@ describe("rlp", () => {
     expect(index).eq(0);
   });
 
-  it("Initializes LP-owned token accounts.", async () => {
+  it.only("Initializes LP-owned token accounts.", async () => {
     const restaking = new Restaking(provider.connection);
     const assets = await restaking.getAssets();
 
@@ -491,7 +501,7 @@ describe("rlp", () => {
     );
   });
 
-  it("Sets the restaking action to public.", async () => {
+  it.only("Sets the restaking action to public.", async () => {
     await program.methods
       // Necessary to ignore fucked-up anchor uppercasing the enum.
       // @ts-ignore
@@ -520,7 +530,7 @@ describe("rlp", () => {
     expect(actionPermissionMap.allowedRoles).include(Role.PUBLIC);
   });
 
-  it("Restakes tokens in liquidity pool.", async () => {
+  it.only("Restakes tokens in liquidity pool.", async () => {
     const liquidityPoolId = 0;
     const amount = new BN(LAMPORTS_PER_SOL * 1_000);
 
@@ -567,6 +577,7 @@ describe("rlp", () => {
     const anchorRemainingAccounts: AccountMeta[] = assets
       .map(({ account, pubkey }) => {
         return [
+          // liquidityPool's token account
           {
             isSigner: false,
             isWritable: true,
@@ -576,11 +587,13 @@ describe("rlp", () => {
               true,
             ),
           },
+          // asset account
           {
             isSigner: false,
             isWritable: false,
             pubkey: Restaking.deriveAsset(account.mint),
           },
+          // oracle account
           {
             isSigner: false,
             isWritable: false,

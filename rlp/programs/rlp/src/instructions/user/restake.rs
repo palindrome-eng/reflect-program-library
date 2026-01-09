@@ -1,11 +1,11 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount, Token, transfer, Transfer};
-use spl_math::precise_number::PreciseNumber;
-use crate::errors::InsuranceFundError;
-use crate::states::{Asset, LiquidityPool, Settings, UserPermissions, Action};
 use crate::constants::*;
-use anchor_spl::associated_token::AssociatedToken;
+use crate::errors::InsuranceFundError;
 use crate::helpers::action_check_protocol;
+use crate::states::{Action, Asset, LiquidityPool, Settings, UserPermissions};
+use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
+use spl_math::precise_number::PreciseNumber;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RestakeArgs {
@@ -14,14 +14,11 @@ pub struct RestakeArgs {
     pub min_lp_tokens: u64,
 }
 
-pub fn restake<'a>(
-    ctx: Context<'_, '_, 'a, 'a, Restake<'a>>,
-    args: RestakeArgs
-) -> Result<()> {
-    let RestakeArgs { 
-        liquidity_pool_index: _, 
-        amount, 
-        min_lp_tokens 
+pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs) -> Result<()> {
+    let RestakeArgs {
+        liquidity_pool_index: _,
+        amount,
+        min_lp_tokens,
     } = args;
 
     let settings = &ctx.accounts.settings;
@@ -30,7 +27,7 @@ pub fn restake<'a>(
     action_check_protocol(
         Action::Restake,
         permissions.as_deref(),
-        &settings.access_control
+        &settings.access_control,
     )?;
 
     let signer = &ctx.accounts.signer;
@@ -38,10 +35,7 @@ pub fn restake<'a>(
     let lp_token = &ctx.accounts.lp_token;
     let token_program = &ctx.accounts.token_program;
 
-    require!(
-        amount > 0,
-        crate::errors::InsuranceFundError::InvalidInput
-    );
+    require!(amount > 0, crate::errors::InsuranceFundError::InvalidInput);
 
     let clock = Clock::get()?;
 
@@ -49,37 +43,39 @@ pub fn restake<'a>(
         &ctx.remaining_accounts,
         liquidity_pool,
         settings,
-        &clock
+        &clock,
     )?;
 
+    msg!(
+        "[restake] total_pool_value_before: {:?}",
+        total_pool_value_before.to_imprecise()
+    );
 
     liquidity_pool.deposit(
         signer,
         amount,
         &ctx.accounts.user_asset_account,
         &ctx.accounts.pool_asset_account,
-        token_program
+        token_program,
     )?;
 
     let asset = &ctx.accounts.asset;
     let oracle = &ctx.accounts.oracle;
     let deposit_asset_price = asset.get_price(oracle, &clock)?;
 
-    let deposit_value = PreciseNumber::new(
-        deposit_asset_price.mul(amount)?
-    ).ok_or(InsuranceFundError::MathOverflow)?;
+    let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount)?)
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
-    let lp_tokens_to_mint = liquidity_pool
-        .calculate_lp_tokens_on_deposit(
-            lp_token,
-            total_pool_value_before,
-            deposit_value
-        )?;
+    let lp_tokens_to_mint = liquidity_pool.calculate_lp_tokens_on_deposit(
+        lp_token,
+        total_pool_value_before,
+        deposit_value,
+    )?;
 
     require!(
         min_lp_tokens <= lp_tokens_to_mint,
         InsuranceFundError::SlippageExceeded
-    );  
+    );
 
     msg!("minting lp tokens");
 
@@ -88,7 +84,7 @@ pub fn restake<'a>(
         liquidity_pool,
         lp_token,
         &ctx.accounts.user_lp_account,
-        token_program
+        token_program,
     )?;
 
     Ok(())
@@ -188,3 +184,4 @@ pub struct Restake<'info> {
     #[account()]
     pub system_program: Program<'info, System>,
 }
+
