@@ -13,6 +13,7 @@ import {
   TransactionInstruction,
   TokenBalance,
   Transaction,
+  MessageV0,
 } from "@solana/web3.js";
 import { before, it } from "mocha";
 import {
@@ -261,11 +262,6 @@ describe("rlp", () => {
         provider.connection,
         asset,
       );
-
-      // const txDetails = await provider.connection.getTransaction(tx, {
-      //   commitment: "confirmed",
-      // });
-      // console.log(txDetails?.meta?.logMessages);
 
       expect(assetData.mint.toString()).eq(token.toString());
       expect(assetData.oracle.fields[0].toString()).eq(oracleString);
@@ -566,6 +562,14 @@ describe("rlp", () => {
       user.publicKey,
     );
 
+    // Init userLpAccount
+    const userCreateLpAccountIx = createAssociatedTokenAccountInstruction(
+      user.publicKey, // payer
+      userLpAccount, // ATA address
+      user.publicKey, // owner
+      liquidityPoolData.lpToken, // mint
+    );
+
     const assetData = await Asset.fromAccountAddress(
       provider.connection,
       asset,
@@ -603,7 +607,7 @@ describe("rlp", () => {
       })
       .flat();
 
-    await program.methods
+    const tx = await program.methods
       .restake({
         liquidityPoolIndex: liquidityPoolId,
         amount,
@@ -628,6 +632,7 @@ describe("rlp", () => {
       .signers([user])
       .preInstructions([
         ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 }),
+        userCreateLpAccountIx,
       ])
       .rpc()
       .catch((err) => {
@@ -635,12 +640,18 @@ describe("rlp", () => {
         throw err;
       });
 
-    await new Promise((resolve) => setTimeout(resolve, 15000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const userLpAccountData = await getAccount(
       provider.connection,
       userLpAccount,
     );
+
+    const txDetails = await provider.connection.getTransaction(tx, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    console.log(txDetails?.meta?.logMessages);
 
     expect(parseInt(userLpAccountData.amount.toString())).gt(0);
   });

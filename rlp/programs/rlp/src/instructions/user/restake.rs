@@ -63,14 +63,23 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
     let oracle = &ctx.accounts.oracle;
     let deposit_asset_price = asset.get_price(oracle, &clock)?;
 
+    msg!("[restake] deposit_asset_price: {:?}", deposit_asset_price);
+
     let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount)?)
         .ok_or(InsuranceFundError::MathOverflow)?;
+
+    msg!(
+        "[restake] deposit_value: {:?}",
+        deposit_value.to_imprecise().unwrap()
+    );
 
     let lp_tokens_to_mint = liquidity_pool.calculate_lp_tokens_on_deposit(
         lp_token,
         total_pool_value_before,
         deposit_value,
     )?;
+
+    msg!("[restake] lp_tokens_to_mint: {:?}", lp_tokens_to_mint);
 
     require!(
         min_lp_tokens <= lp_tokens_to_mint,
@@ -104,7 +113,7 @@ pub struct Restake<'info> {
         bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ InsuranceFundError::Frozen,
     )]
-    pub settings: Box<Account<'info, Settings>>,
+    pub settings: Account<'info, Settings>,
 
     #[account(
         seeds = [
@@ -123,21 +132,20 @@ pub struct Restake<'info> {
         bump,
         constraint = liquidity_pool.index == args.liquidity_pool_index,
     )]
-    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
+    pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
         mut,
         address = liquidity_pool.lp_token
     )]
-    pub lp_token: Box<Account<'info, Mint>>,
+    pub lp_token: Account<'info, Mint>,
 
     #[account(
-        init_if_needed,
-        payer = signer,
+        mut,
         associated_token::mint = lp_token,
         associated_token::authority = signer,
     )]
-    pub user_lp_account: Box<Account<'info, TokenAccount>>,
+    pub user_lp_account: Account<'info, TokenAccount>,
 
     #[account(
         seeds = [
@@ -146,28 +154,27 @@ pub struct Restake<'info> {
         ],
         bump,
     )]
-    pub asset: Box<Account<'info, Asset>>,
+    pub asset: Account<'info, Asset>,
 
     #[account(
         mut,
         address = asset.mint
     )]
-    pub asset_mint: Box<Account<'info, Mint>>,
+    pub asset_mint: Account<'info, Mint>,
 
     #[account(
         mut,
         token::mint = asset_mint,
         token::authority = signer,
     )]
-    pub user_asset_account: Box<Account<'info, TokenAccount>>,
+    pub user_asset_account: Account<'info, TokenAccount>,
 
     #[account(
-        init_if_needed,
-        payer = signer,
+        mut,
         associated_token::mint = asset_mint,
         associated_token::authority = liquidity_pool,
     )]
-    pub pool_asset_account: Box<Account<'info, TokenAccount>>,
+    pub pool_asset_account: Account<'info, TokenAccount>,
 
     /// CHECK: Directly checking the address
     #[account(
@@ -184,4 +191,3 @@ pub struct Restake<'info> {
     #[account()]
     pub system_program: Program<'info, System>,
 }
-
