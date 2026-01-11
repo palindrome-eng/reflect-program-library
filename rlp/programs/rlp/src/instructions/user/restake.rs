@@ -34,6 +34,7 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let lp_token = &ctx.accounts.lp_token;
     let token_program = &ctx.accounts.token_program;
+    let token_decimals = &ctx.accounts.asset_mint.decimals;
 
     require!(amount > 0, crate::errors::InsuranceFundError::InvalidInput);
 
@@ -65,7 +66,7 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
 
     msg!("[restake] deposit_asset_price: {:?}", deposit_asset_price);
 
-    let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount)?)
+    let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount, *token_decimals)?)
         .ok_or(InsuranceFundError::MathOverflow)?;
 
     msg!(

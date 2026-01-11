@@ -54,14 +54,18 @@ impl LiquidityPool {
             PreciseNumber::new(0).ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
 
         require!(
-            remaining_accounts.len() == settings.assets as usize * 3,
+            remaining_accounts.len() == settings.assets as usize * 4,
             crate::errors::InsuranceFundError::InvalidInput
         );
 
         let mut i = 0;
         while i < remaining_accounts.len() {
             let token_account_info = &remaining_accounts[i];
+            let asset_info = &remaining_accounts[i + 1];
+            let oracle_info = &remaining_accounts[i + 2];
+            let mint_info = &remaining_accounts[i + 3];
 
+            // Validate token account
             require!(
                 token_account_info.owner == &anchor_spl::token::ID,
                 crate::errors::InsuranceFundError::InvalidInput
@@ -77,8 +81,9 @@ impl LiquidityPool {
                 crate::errors::InsuranceFundError::InvalidInput
             );
 
-            let asset_info = &remaining_accounts[i + 1];
+            // let asset_info = &remaining_accounts[i + 1];
 
+            // Validate asset info
             require!(
                 asset_info.owner == &crate::ID,
                 crate::errors::InsuranceFundError::InvalidInput
@@ -115,8 +120,7 @@ impl LiquidityPool {
                 crate::errors::InsuranceFundError::InvalidInput
             );
 
-            let oracle_info = &remaining_accounts[i + 2];
-
+            // Verify oracle key matches assets'
             require!(
                 oracle_info.key() == *asset.oracle.key(),
                 crate::errors::InsuranceFundError::InvalidInput
@@ -126,16 +130,34 @@ impl LiquidityPool {
                 .get_price(oracle_info, clock)
                 .map_err(|_| crate::errors::InsuranceFundError::InvalidInput)?;
 
+            // Verify token mint owner
+            require!(
+                mint_info.owner == &anchor_spl::token::ID,
+                crate::errors::InsuranceFundError::InvalidInput
+            );
+
+            // Verify token mint address matches assets'
+            require!(
+                mint_info.key() == asset.mint,
+                crate::errors::InsuranceFundError::InvalidInput
+            );
+
+            let mint_data = &mut mint_info.try_borrow_mut_data()?;
+            let mint_account = Mint::try_deserialize(&mut mint_data.as_ref())
+                .map_err(|_| crate::errors::InsuranceFundError::InvalidInput)?;
+
             let token_balance = token_account.amount;
+            let token_decimals = mint_account.decimals;
             if token_balance > 0 {
-                let token_value_precise = PreciseNumber::new(asset_price.mul(token_balance)?)
-                    .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+                let token_value_precise =
+                    PreciseNumber::new(asset_price.mul(token_balance, token_decimals)?)
+                        .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
                 total_pool_value = total_pool_value
                     .checked_add(&token_value_precise)
                     .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
             }
 
-            i += 3;
+            i += 4;
         }
 
         Ok(total_pool_value)
@@ -148,7 +170,13 @@ impl LiquidityPool {
         deposit_value: PreciseNumber,
     ) -> Result<u64> {
         let lp_tokens_to_mint = if lp_token.supply == 0 {
+            let lp_decimals = lp_token.decimals as u32;
+            let scale_down_precise = PreciseNumber::new(10u128.pow(PRECISION - lp_decimals))
+                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+
             deposit_value
+                .checked_div(&scale_down_precise)
+                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
                 .to_imprecise()
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
                 .try_into()
