@@ -1,51 +1,64 @@
-import {Connection, Keypair, SystemProgram, Transaction} from "@solana/web3.js";
-import {AnchorProvider} from "@coral-xyz/anchor";
-import {createInitializeMintInstruction, MINT_SIZE, TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {
+  Connection,
+  Keypair,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
+import { AnchorProvider } from "@coral-xyz/anchor";
+import {
+  createInitializeMintInstruction,
+  MINT_SIZE,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 
 async function createToken(
-    connection: Connection,
-    payer: AnchorProvider
+  connection: Connection,
+  payer: AnchorProvider,
+  decimals: number = 6,
 ) {
-    const keypair = Keypair.generate();
+  const keypair = Keypair.generate();
 
-    const lamports = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
-    const createAccountIx = SystemProgram.createAccount({
-        newAccountPubkey: keypair.publicKey,
-        fromPubkey: payer.publicKey,
-        lamports,
-        programId: TOKEN_PROGRAM_ID,
-        space: MINT_SIZE
-    });
+  const lamports =
+    await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
+  const createAccountIx = SystemProgram.createAccount({
+    newAccountPubkey: keypair.publicKey,
+    fromPubkey: payer.publicKey,
+    lamports,
+    programId: TOKEN_PROGRAM_ID,
+    space: MINT_SIZE,
+  });
 
-    const ix = createInitializeMintInstruction(
-        keypair.publicKey,
-        9,
-        payer.publicKey,
-        payer.publicKey
-    );
+  const ix = createInitializeMintInstruction(
+    keypair.publicKey,
+    decimals,
+    payer.publicKey,
+    payer.publicKey,
+  );
 
-    const tx = new Transaction();
-    tx.add(createAccountIx, ix);
+  const tx = new Transaction();
+  tx.add(createAccountIx, ix);
 
-    const {
-        lastValidBlockHeight,
-        blockhash
-    } = await connection.getLatestBlockhash();
+  const { lastValidBlockHeight, blockhash } =
+    await connection.getLatestBlockhash();
 
-    tx.feePayer = payer.publicKey;
-    tx.recentBlockhash = blockhash;
+  tx.feePayer = payer.publicKey;
+  tx.recentBlockhash = blockhash;
 
-    tx.partialSign(keypair);
-    const signed = await payer.wallet.signTransaction(tx);
+  tx.partialSign(keypair);
+  const signed = await payer.wallet.signTransaction(tx);
 
-    const sent = await connection.sendRawTransaction(signed.serialize());
-    await connection.confirmTransaction({
-        blockhash,
-        lastValidBlockHeight,
-        signature: sent
-    }, "confirmed");
+  const sent = await connection.sendRawTransaction(signed.serialize());
+  await connection.confirmTransaction(
+    {
+      blockhash,
+      lastValidBlockHeight,
+      signature: sent,
+    },
+    "confirmed",
+  );
 
-    return keypair.publicKey;
+  return keypair.publicKey;
 }
 
 export default createToken;
+

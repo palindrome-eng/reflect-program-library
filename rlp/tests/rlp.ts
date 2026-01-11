@@ -223,7 +223,11 @@ describe("rlp", () => {
 
   it.only("Adds public assets to the RLP.", async () => {
     for (let i = 0; i < 3; i++) {
-      const token = await createToken(provider.connection, provider);
+      const token = await createToken(
+        provider.connection,
+        provider,
+        i % 2 ? 9 : 6,
+      );
 
       const oracleString =
         i % 2
@@ -348,7 +352,11 @@ describe("rlp", () => {
           ? "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"
           : "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX";
 
-      const token = await createToken(provider.connection, provider);
+      const token = await createToken(
+        provider.connection,
+        provider,
+        i % 2 ? 9 : 6,
+      );
 
       whitelistedAssets.push({
         mint: token,
@@ -445,10 +453,6 @@ describe("rlp", () => {
     const assets = await restaking.getAssets();
 
     const liquidityPool = Restaking.deriveLiquidityPool(0);
-    const liquidityPoolData = await LiquidityPool.fromAccountAddress(
-      provider.connection,
-      liquidityPool,
-    );
 
     await Promise.all(
       assets.map(async ({ pubkey, account }) => {
@@ -528,8 +532,6 @@ describe("rlp", () => {
 
   it.only("Restakes tokens in liquidity pool.", async () => {
     const liquidityPoolId = 0;
-    const amount = new BN(LAMPORTS_PER_SOL * 1_000);
-
     const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
 
     const liquidityPoolData = await LiquidityPool.fromAccountAddress(
@@ -537,123 +539,258 @@ describe("rlp", () => {
       liquidityPool,
     );
 
-    const asset = Restaking.deriveAsset(whitelistedAssets[0].mint);
+    // Create two fresh users for isolated LP token tracking
+    const userA = Keypair.generate();
+    const userB = Keypair.generate();
 
-    await mintTokens(
-      whitelistedAssets[0].mint,
-      provider,
-      amount.toNumber(),
-      user.publicKey,
+    await provider.connection.requestAirdrop(
+      userA.publicKey,
+      LAMPORTS_PER_SOL * 10,
     );
-
-    const userAssetAta = getAssociatedTokenAddressSync(
-      whitelistedAssets[0].mint,
-      user.publicKey,
+    await provider.connection.requestAirdrop(
+      userB.publicKey,
+      LAMPORTS_PER_SOL * 10,
     );
-
-    const poolAssetAccount = getAssociatedTokenAddressSync(
-      whitelistedAssets[0].mint,
-      liquidityPool,
-      true,
-    );
-
-    const userLpAccount = getAssociatedTokenAddressSync(
-      liquidityPoolData.lpToken,
-      user.publicKey,
-    );
-
-    // Init userLpAccount
-    const userCreateLpAccountIx = createAssociatedTokenAccountInstruction(
-      user.publicKey, // payer
-      userLpAccount, // ATA address
-      user.publicKey, // owner
-      liquidityPoolData.lpToken, // mint
-    );
-
-    const assetData = await Asset.fromAccountAddress(
-      provider.connection,
-      asset,
-    );
+    await sleep(1);
 
     const restaking = new Restaking(provider.connection);
     const assets = await restaking.getAssets();
 
     const anchorRemainingAccounts: AccountMeta[] = assets
-      .map(({ account, pubkey }) => {
-        return [
-          // liquidityPool's token account
-          {
-            isSigner: false,
-            isWritable: true,
-            pubkey: getAssociatedTokenAddressSync(
-              account.mint,
-              liquidityPool,
-              true,
-            ),
-          },
-          // asset account
-          {
-            isSigner: false,
-            isWritable: false,
-            pubkey: Restaking.deriveAsset(account.mint),
-          },
-          // oracle account
-          {
-            isSigner: false,
-            isWritable: false,
-            pubkey: account.oracle.fields[0],
-          },
-        ] as AccountMeta[];
-      })
+      .map(
+        ({ account }) =>
+          [
+            {
+              isSigner: false,
+              isWritable: true,
+              pubkey: getAssociatedTokenAddressSync(
+                account.mint,
+                liquidityPool,
+                true,
+              ),
+            },
+            {
+              isSigner: false,
+              isWritable: false,
+              pubkey: Restaking.deriveAsset(account.mint),
+            },
+            {
+              isSigner: false,
+              isWritable: false,
+              pubkey: account.oracle.fields[0],
+            },
+            { isSigner: false, isWritable: false, pubkey: account.mint },
+          ] as AccountMeta[],
+      )
       .flat();
 
-    const tx = await program.methods
+    // Fetch oracle prices
+    // whitelistedAssets[0] = 6 decimals (USDC-like)
+    // whitelistedAssets[1] = 9 decimals (SOL-like)
+    const usdcOraclePrice = await getOraclePrice(
+      "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
+    );
+    const solOraclePrice = await getOraclePrice(
+      "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
+    );
+
+    console.log(
+      "USDC price:",
+      usdcOraclePrice.price.toString(),
+      "exponent:",
+      usdcOraclePrice.precision.toString(),
+    );
+    console.log(
+      "SOL price:",
+      solOraclePrice.price.toString(),
+      "exponent:",
+      solOraclePrice.precision.toString(),
+    );
+
+    const usdcDecimals = 6;
+    const solDecimals = 9;
+
+    // USDC amount: 1000 USDC
+    const usdcAmount = new BN(1000).mul(new BN(10).pow(new BN(usdcDecimals)));
+
+    // Calculate SOL amount for same USD value
+    const solAmount = usdcAmount
+      .mul(usdcOraclePrice.price)
+      .mul(new BN(10).pow(new BN(solDecimals)))
+      .div(solOraclePrice.price.mul(new BN(10).pow(new BN(usdcDecimals))));
+
+    console.log(
+      "USDC raw amount:",
+      usdcAmount.toString(),
+      "(",
+      usdcAmount.toNumber() / 10 ** usdcDecimals,
+      "USDC )",
+    );
+    console.log(
+      "SOL raw amount:",
+      solAmount.toString(),
+      "(",
+      solAmount.toNumber() / 10 ** solDecimals,
+      "SOL )",
+    );
+
+    // Mint tokens to users
+    await mintTokens(
+      whitelistedAssets[0].mint,
+      provider,
+      usdcAmount.toNumber(),
+      userA.publicKey,
+    );
+    await mintTokens(
+      whitelistedAssets[1].mint,
+      provider,
+      solAmount.toNumber(),
+      userB.publicKey,
+    );
+
+    // === User A deposits USDC-like token (6 decimals) ===
+    const assetA = Restaking.deriveAsset(whitelistedAssets[0].mint);
+    const assetAData = await Asset.fromAccountAddress(
+      provider.connection,
+      assetA,
+    );
+    const userAAssetAta = getAssociatedTokenAddressSync(
+      whitelistedAssets[0].mint,
+      userA.publicKey,
+    );
+    const poolAssetAccountA = getAssociatedTokenAddressSync(
+      whitelistedAssets[0].mint,
+      liquidityPool,
+      true,
+    );
+    const userALpAccount = getAssociatedTokenAddressSync(
+      liquidityPoolData.lpToken,
+      userA.publicKey,
+    );
+
+    await program.methods
       .restake({
         liquidityPoolIndex: liquidityPoolId,
-        amount,
+        amount: usdcAmount,
         minLpTokens: new BN(0),
       })
       .accounts({
-        signer: user.publicKey,
+        signer: userA.publicKey,
         settings,
         liquidityPool,
         lpToken: liquidityPoolData.lpToken,
-        userLpAccount,
-        asset,
+        userLpAccount: userALpAccount,
+        asset: assetA,
         assetMint: whitelistedAssets[0].mint,
-        userAssetAccount: userAssetAta,
-        poolAssetAccount,
-        oracle: assetData.oracle.fields[0],
+        userAssetAccount: userAAssetAta,
+        poolAssetAccount: poolAssetAccountA,
+        oracle: assetAData.oracle.fields[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         permissions: null,
       })
       .remainingAccounts(anchorRemainingAccounts)
-      .signers([user])
+      .signers([userA])
       .preInstructions([
         ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 }),
-        userCreateLpAccountIx,
+        createAssociatedTokenAccountInstruction(
+          userA.publicKey,
+          userALpAccount,
+          userA.publicKey,
+          liquidityPoolData.lpToken,
+        ),
       ])
-      .rpc()
-      .catch((err) => {
-        console.log(err);
-        throw err;
-      });
+      .rpc();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const userLpAccountData = await getAccount(
+    await sleep(2);
+    const userALpAccountData = await getAccount(
       provider.connection,
-      userLpAccount,
+      userALpAccount,
+    );
+    const lpTokensA = BigInt(userALpAccountData.amount.toString());
+    console.log(
+      "\nUser A (USDC-like, 6 decimals) LP tokens:",
+      lpTokensA.toString(),
     );
 
-    const txDetails = await provider.connection.getTransaction(tx, {
-      commitment: "confirmed",
-      maxSupportedTransactionVersion: 0,
-    });
-    console.log(txDetails?.meta?.logMessages);
+    // === User B deposits SOL-like token (9 decimals) ===
+    const assetB = Restaking.deriveAsset(whitelistedAssets[1].mint);
+    const assetBData = await Asset.fromAccountAddress(
+      provider.connection,
+      assetB,
+    );
+    const userBAssetAta = getAssociatedTokenAddressSync(
+      whitelistedAssets[1].mint,
+      userB.publicKey,
+    );
+    const poolAssetAccountB = getAssociatedTokenAddressSync(
+      whitelistedAssets[1].mint,
+      liquidityPool,
+      true,
+    );
+    const userBLpAccount = getAssociatedTokenAddressSync(
+      liquidityPoolData.lpToken,
+      userB.publicKey,
+    );
 
-    expect(parseInt(userLpAccountData.amount.toString())).gt(0);
+    await program.methods
+      .restake({
+        liquidityPoolIndex: liquidityPoolId,
+        amount: solAmount,
+        minLpTokens: new BN(0),
+      })
+      .accounts({
+        signer: userB.publicKey,
+        settings,
+        liquidityPool,
+        lpToken: liquidityPoolData.lpToken,
+        userLpAccount: userBLpAccount,
+        asset: assetB,
+        assetMint: whitelistedAssets[1].mint,
+        userAssetAccount: userBAssetAta,
+        poolAssetAccount: poolAssetAccountB,
+        oracle: assetBData.oracle.fields[0],
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        permissions: null,
+      })
+      .remainingAccounts(anchorRemainingAccounts)
+      .signers([userB])
+      .preInstructions([
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 }),
+        createAssociatedTokenAccountInstruction(
+          userB.publicKey,
+          userBLpAccount,
+          userB.publicKey,
+          liquidityPoolData.lpToken,
+        ),
+      ])
+      .rpc();
+
+    await sleep(2);
+    const userBLpAccountData = await getAccount(
+      provider.connection,
+      userBLpAccount,
+    );
+    const lpTokensB = BigInt(userBLpAccountData.amount.toString());
+    console.log(
+      "User B (SOL-like, 9 decimals) LP tokens:",
+      lpTokensB.toString(),
+    );
+
+    // Compare LP tokens
+    const ratio = Number(lpTokensA) / Number(lpTokensB);
+    console.log("\n=== RESULTS ===");
+    console.log("LP tokens for equal USD value deposits:");
+    console.log("  User A (6 decimals):", lpTokensA.toString());
+    console.log("  User B (9 decimals):", lpTokensB.toString());
+    console.log("  Ratio (A/B):", ratio.toFixed(6));
+
+    expect(Number(lpTokensA)).gt(0);
+    expect(Number(lpTokensB)).gt(0);
+
+    const tolerance = 0.05;
+    expect(ratio).to.be.closeTo(1.0, tolerance);
   });
 
   it("Restakes token B in liquidity pool to allow swaps later", async () => {
