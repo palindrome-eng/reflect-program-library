@@ -793,6 +793,139 @@ describe("rlp", () => {
     expect(ratio).to.be.closeTo(1.0, tolerance);
   });
 
+  it.only("Rejects restake with duplicate assets in remaining_accounts", async () => {
+    const liquidityPoolId = 0;
+    const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
+
+    const liquidityPoolData = await LiquidityPool.fromAccountAddress(
+      provider.connection,
+      liquidityPool,
+    );
+
+    // Create attacker
+    const attacker = Keypair.generate();
+    await provider.connection.requestAirdrop(
+      attacker.publicKey,
+      LAMPORTS_PER_SOL * 10,
+    );
+    await sleep(1);
+
+    const depositAmount = new BN(1000 * 10 ** 6);
+
+    // Mint tokens to attacker
+    await mintTokens(
+      whitelistedAssets[0].mint,
+      provider,
+      depositAmount.toNumber(),
+      attacker.publicKey,
+    );
+
+    const assetA = Restaking.deriveAsset(whitelistedAssets[0].mint);
+    const assetAData = await Asset.fromAccountAddress(
+      provider.connection,
+      assetA,
+    );
+
+    const attackerAssetAta = getAssociatedTokenAddressSync(
+      whitelistedAssets[0].mint,
+      attacker.publicKey,
+    );
+    const poolAssetAccountA = getAssociatedTokenAddressSync(
+      whitelistedAssets[0].mint,
+      liquidityPool,
+      true,
+    );
+    const attackerLpAccount = getAssociatedTokenAddressSync(
+      liquidityPoolData.lpToken,
+      attacker.publicKey,
+    );
+
+    const restaking = new Restaking(provider.connection);
+    const assets = await restaking.getAssets();
+
+    // Build MALICIOUS remaining_accounts: duplicate assets
+    const maliciousRemainingAccounts: AccountMeta[] = assets
+      .map(
+        () =>
+          [
+            {
+              isSigner: false,
+              isWritable: true,
+              pubkey: getAssociatedTokenAddressSync(
+                whitelistedAssets[0].mint,
+                liquidityPool,
+                true,
+              ),
+            },
+            {
+              isSigner: false,
+              isWritable: false,
+              pubkey: Restaking.deriveAsset(whitelistedAssets[0].mint),
+            },
+            {
+              isSigner: false,
+              isWritable: false,
+              pubkey: whitelistedAssets[0].oracle,
+            },
+            {
+              isSigner: false,
+              isWritable: false,
+              pubkey: whitelistedAssets[0].mint,
+            },
+          ] as AccountMeta[],
+      )
+      .flat();
+
+    console.log(
+      "Attempting restake with duplicated assets in remaining_accounts...",
+    );
+
+    let errorThrown = false;
+    let errorMessage = "";
+
+    try {
+      await program.methods
+        .restake({
+          liquidityPoolIndex: liquidityPoolId,
+          amount: depositAmount,
+          minLpTokens: new BN(0),
+        })
+        .accounts({
+          signer: attacker.publicKey,
+          settings,
+          liquidityPool,
+          lpToken: liquidityPoolData.lpToken,
+          userLpAccount: attackerLpAccount,
+          asset: assetA,
+          assetMint: whitelistedAssets[0].mint,
+          userAssetAccount: attackerAssetAta,
+          poolAssetAccount: poolAssetAccountA,
+          oracle: assetAData.oracle.fields[0],
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          permissions: null,
+        })
+        .remainingAccounts(maliciousRemainingAccounts)
+        .signers([attacker])
+        .preInstructions([
+          ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 }),
+          createAssociatedTokenAccountInstruction(
+            attacker.publicKey,
+            attackerLpAccount,
+            attacker.publicKey,
+            liquidityPoolData.lpToken,
+          ),
+        ])
+        .rpc();
+    } catch (err: any) {
+      errorThrown = true;
+      errorMessage = err.message || err.toString();
+      console.log("Transaction failed as expected:", errorMessage);
+    }
+
+    expect(errorThrown).to.be.true;
+  });
+
   it("Restakes token B in liquidity pool to allow swaps later", async () => {
     const liquidityPoolId = 0;
     const amount = new BN(LAMPORTS_PER_SOL * 1_000);

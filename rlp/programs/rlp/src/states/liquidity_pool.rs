@@ -50,13 +50,16 @@ impl LiquidityPool {
         settings: &Account<Settings>,
         clock: &Clock,
     ) -> Result<PreciseNumber> {
+        let expected_len = settings.assets as usize * 4;
         let mut total_pool_value =
             PreciseNumber::new(0).ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
 
         require!(
-            remaining_accounts.len() == settings.assets as usize * 4,
+            remaining_accounts.len() == expected_len,
             crate::errors::InsuranceFundError::InvalidInput
         );
+
+        let mut visited_mints: Vec<Pubkey> = Vec::with_capacity(settings.assets as usize);
 
         let mut i = 0;
         while i < remaining_accounts.len() {
@@ -91,6 +94,16 @@ impl LiquidityPool {
 
             let asset = Asset::try_deserialize(&mut asset_info.try_borrow_mut_data()?.as_ref())
                 .map_err(|_| crate::errors::InsuranceFundError::InvalidInput)?;
+
+            let asset_mint = asset.mint;
+
+            // Validate asset mint has not already been visited
+            require!(
+                !visited_mints.contains(&asset_mint),
+                crate::errors::InsuranceFundError::InvalidInput
+            );
+
+            visited_mints.push(asset_mint);
 
             require!(
                 asset.mint == token_account.mint,
