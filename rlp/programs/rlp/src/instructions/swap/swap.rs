@@ -89,13 +89,15 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let token_from_pool = &ctx.accounts.token_from_pool;
     let token_to_pool = &ctx.accounts.token_to_pool;
 
+    let token_to_decimals = &ctx.accounts.token_to.decimals;
+    let token_from_decimals = &ctx.accounts.token_from.decimals;
+
     let token_program = &ctx.accounts.token_program;
 
     // Check if pool has sufficient balance for the swap
-    // TODO: FIX amount out to input token decimals instead of hardcoded values
     let amount_out: u64 = token_from_price
-        .mul(amount_in, 6)?
-        .checked_div(token_to_price.mul(1, 6)?)
+        .mul(amount_in, *token_from_decimals)?
+        .checked_div(token_to_price.mul(1, *token_to_decimals)?)
         .ok_or(InsuranceFundError::MathOverflow)?
         .try_into()
         .map_err(|_| InsuranceFundError::MathOverflow)?;
