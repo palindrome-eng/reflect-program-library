@@ -40,8 +40,8 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let settings = &ctx.accounts.settings;
 
     // If any of the assets are private, require admin permissions.
-    if (token_from_asset.access_level == AccessLevel::Private
-        || token_to_asset.access_level == AccessLevel::Private)
+    if token_from_asset.access_level == AccessLevel::Private
+        || token_to_asset.access_level == AccessLevel::Private
     {
         // Check if PrivateSwap is frozen
         require!(
@@ -94,23 +94,69 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
 
     let token_program = &ctx.accounts.token_program;
 
-    // Check if pool has sufficient balance for the swap
-    let amount_out: u64 = token_from_price
+    let fee = &ctx.accounts.settings.swap_fee_bps;
+    let reserve_from_amount = token_from_pool.amount;
+
+    msg!("[swap] fee {}", fee);
+
+    // impact_factor = x / x + a;
+    let impact_factor = (amount_in as u128)
+        .checked_mul(BPS_PRECISION)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(
+            (reserve_from_amount as u128)
+                .checked_add(amount_in as u128)
+                .ok_or(InsuranceFundError::MathOverflow)?,
+        )
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    // calculate oracle based amount out (oracle_amount_out = amount_in * y / x)
+    let oracle_amount_out: u64 = token_from_price
         .mul(amount_in, *token_from_decimals)?
         .checked_div(token_to_price.mul(1, *token_to_decimals)?)
         .ok_or(InsuranceFundError::MathOverflow)?
         .try_into()
         .map_err(|_| InsuranceFundError::MathOverflow)?;
 
+    msg!("[swap] oracle_amount_out {}", oracle_amount_out);
+
+    // calculate amount after impact: oracle_amount_out * (1 - impact_factor)
+    let impact_complement = BPS_PRECISION
+        .checked_sub(impact_factor)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+    let amount_after_impact = (oracle_amount_out as u128)
+        .checked_mul(impact_complement)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(BPS_PRECISION)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    msg!("[swap] amount_after_impact {}", amount_after_impact);
+
+    // apply fee
+    // amount_out = amount_after_impact * (1 - fee)
+    let fee_complement = BPS_PRECISION
+        .checked_sub(*fee as u128)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    msg!("[swap] fee_complement {}", fee_complement);
+
+    let amount_out = amount_after_impact
+        .checked_mul(fee_complement)
+        .ok_or(InsuranceFundError::MathOverflow)?
+        .checked_div(BPS_PRECISION)
+        .ok_or(InsuranceFundError::MathOverflow)?;
+
+    msg!("[swap] amount_out {}", amount_out);
+
     require!(
-        token_to_pool.amount >= amount_out,
+        token_to_pool.amount as u128 >= amount_out,
         InsuranceFundError::NotEnoughFunds
     );
 
     // Slippage protection
     if let Some(min_amount) = min_out {
         require!(
-            amount_out >= min_amount,
+            amount_out as u128 >= min_amount as u128,
             InsuranceFundError::SlippageExceeded
         );
     }
@@ -143,7 +189,7 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
             },
             &[lp_seeds],
         ),
-        amount_out,
+        amount_out as u64,
     )?;
 
     Ok(())
@@ -170,7 +216,7 @@ pub struct Swap<'info> {
         bump,
         constraint = !settings.frozen @ InsuranceFundError::Frozen,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         seeds = [
@@ -195,8 +241,7 @@ pub struct Swap<'info> {
 
     /// CHECK: Directly checking the address
     #[account(
-        // address = *token_from_asset.oracle.key()
-        constraint = token_from_oracle.key() == *token_to_asset.oracle.key() @ InsuranceFundError::InvalidOracle
+        constraint = token_from_oracle.key() == *token_from_asset.oracle.key() @ InsuranceFundError::InvalidOracle
     )]
     pub token_from_oracle: AccountInfo<'info>,
 
@@ -215,7 +260,6 @@ pub struct Swap<'info> {
     /// CHECK: Directly checking the address
     #[account(
         constraint = token_to_oracle.key() == *token_to_asset.oracle.key() @ InsuranceFundError::InvalidOracle
-        // address = *token_to_asset.oracle.key()
     )]
     pub token_to_oracle: AccountInfo<'info>,
 

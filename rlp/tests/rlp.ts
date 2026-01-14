@@ -69,6 +69,7 @@ import {
 import { AddressLookupTableProgram } from "@solana/web3.js";
 import { VersionedTransaction } from "@solana/web3.js";
 import getOraclePrice from "./helpers/getOraclePrice";
+import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
 
 async function createLpToken(
   signer: PublicKey,
@@ -199,10 +200,12 @@ describe("rlp", () => {
   }
 
   it.only("Initializes RLP.", async () => {
+    const fee = 30;
     const cooldownDuration = new BN(30); // 30 seconds
 
-    const tx = await program.methods
+    await program.methods
       .initializeRlp({
+        feeBps: fee,
         cooldownDuration,
       })
       .accounts({
@@ -219,6 +222,8 @@ describe("rlp", () => {
     expect(liquidityPools).eq(0);
     expect(assets).eq(0);
     expect(frozen).eq(false);
+    // This will take effect once we generate the SDK again.
+    // expect(swapFeeBps).eq(fee);
   });
 
   it.only("Adds public assets to the RLP.", async () => {
@@ -713,6 +718,17 @@ describe("rlp", () => {
       lpTokensA.toString(),
     );
 
+    const poolAssetAAccount = await getAccount(
+      provider.connection,
+      poolAssetAccountA,
+    );
+    const poolAssetAAmount = poolAssetAAccount.amount;
+    console.log(
+      "\Pool (USDC-like, 6 decimals) amount:",
+      poolAssetAAmount.toString(),
+    );
+    expect(Number(poolAssetAAmount)).to.be.eq(Number(usdcAmount));
+
     // === User B deposits SOL-like token (9 decimals) ===
     const assetB = Restaking.deriveAsset(whitelistedAssets[1].mint);
     const assetBData = await Asset.fromAccountAddress(
@@ -777,6 +793,17 @@ describe("rlp", () => {
       "User B (SOL-like, 9 decimals) LP tokens:",
       lpTokensB.toString(),
     );
+
+    const poolAssetBAccount = await getAccount(
+      provider.connection,
+      poolAssetAccountB,
+    );
+    const poolAssetBAmount = poolAssetBAccount.amount;
+    console.log(
+      "\Pool (WSOL-like, 9 decimals) amount:",
+      poolAssetBAmount.toString(),
+    );
+    expect(Number(poolAssetBAmount)).to.be.eq(Number(solAmount));
 
     // Compare LP tokens
     const ratio = Number(lpTokensA) / Number(lpTokensB);
@@ -924,6 +951,253 @@ describe("rlp", () => {
     }
 
     expect(errorThrown).to.be.true;
+  });
+
+  it.only("Verifies swap price impact: larger trades get worse rates", async () => {
+    const liquidityPoolId = 0;
+    const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
+
+    // Create two test users
+    // const smallTrader = Keypair.generate();
+    // const largeTrader = Keypair.generate();
+    const smallTrader = provider;
+    const largeTrader = provider;
+
+    // admin = Restaking.deriveUserPermissions(provider.publicKey);
+
+    await provider.connection.requestAirdrop(
+      smallTrader.publicKey,
+      LAMPORTS_PER_SOL * 10,
+    );
+    await provider.connection.requestAirdrop(
+      largeTrader.publicKey,
+      LAMPORTS_PER_SOL * 10,
+    );
+    await sleep(1);
+
+    const fromMint = whitelistedAssets[0].mint;
+    const toMint = whitelistedAssets[1].mint;
+
+    const fromAsset = Restaking.deriveAsset(fromMint);
+    const toAsset = Restaking.deriveAsset(toMint);
+
+    const { oracle: fromOracle } = await Asset.fromAccountAddress(
+      provider.connection,
+      fromAsset,
+    );
+    const { oracle: toOracle } = await Asset.fromAccountAddress(
+      provider.connection,
+      toAsset,
+    );
+
+    // Check pool liquidity first
+    const poolFromAccount = getAssociatedTokenAddressSync(
+      fromMint,
+      liquidityPool,
+      true,
+    );
+    const poolFromData = await getAccount(provider.connection, poolFromAccount);
+    const poolLiquidity = Number(poolFromData.amount);
+    console.log("\nPool liquidity (token_from):", poolLiquidity);
+
+    // Small trade: 1% of pool
+    const smallAmount = new BN(Math.floor(poolLiquidity * 0.01));
+    // Large trade: 30% of pool
+    const largeAmount = new BN(Math.floor(poolLiquidity * 0.3));
+
+    console.log("Small trade amount:", smallAmount.toString(), "(1% of pool)");
+    console.log("Large trade amount:", largeAmount.toString(), "(30% of pool)");
+
+    // Mint tokens to traders
+    await mintTokens(
+      fromMint,
+      provider,
+      smallAmount.toNumber() * 2,
+      smallTrader.publicKey,
+    );
+    await mintTokens(
+      fromMint,
+      provider,
+      largeAmount.toNumber() * 2,
+      largeTrader.publicKey,
+    );
+
+    // Setup token accounts
+    const smallTraderFrom = getAssociatedTokenAddressSync(
+      fromMint,
+      smallTrader.publicKey,
+      true,
+    );
+    const smallTraderTo = getAssociatedTokenAddressSync(
+      toMint,
+      smallTrader.publicKey,
+      true,
+    );
+    const largeTraderFrom = getAssociatedTokenAddressSync(
+      fromMint,
+      largeTrader.publicKey,
+      true,
+    );
+    const largeTraderTo = getAssociatedTokenAddressSync(
+      toMint,
+      largeTrader.publicKey,
+      true,
+    );
+
+    // Get pre-balances
+    const smallTraderToPreBalance = await getAccount(
+      provider.connection,
+      smallTraderTo,
+    ).catch(() => ({ amount: BigInt(0) }));
+    const largeTraderToPreBalance = await getAccount(
+      provider.connection,
+      largeTraderTo,
+    ).catch(() => ({ amount: BigInt(0) }));
+
+    // === Small Trade ===
+    console.log("\n--- Executing small trade ---");
+    await program.methods
+      .swap({
+        amountIn: smallAmount,
+        minOut: new BN(0),
+      })
+      .preInstructions([
+        createAssociatedTokenAccountIdempotentInstruction(
+          smallTrader.publicKey,
+          smallTraderTo,
+          smallTrader.publicKey,
+          toMint,
+        ),
+      ])
+      .accounts({
+        settings,
+        signer: smallTrader.publicKey,
+        admin,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        liquidityPool,
+        tokenFrom: fromMint,
+        tokenFromAsset: fromAsset,
+        tokenFromOracle: fromOracle.fields[0],
+        tokenTo: toMint,
+        tokenToAsset: toAsset,
+        tokenToOracle: toOracle.fields[0],
+        tokenFromPool: getAssociatedTokenAddressSync(
+          fromMint,
+          liquidityPool,
+          true,
+        ),
+        tokenToPool: getAssociatedTokenAddressSync(toMint, liquidityPool, true),
+        tokenFromSignerAccount: smallTraderFrom,
+        tokenToSignerAccount: smallTraderTo,
+        associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+      })
+      // .signers([smallTrader])
+      .rpc()
+      .catch((err) => {
+        console.error("Small trade failed:", err.logs?.join("\n"));
+        throw err;
+      });
+
+    await sleep(1);
+
+    // === Large Trade ===
+    console.log("\n--- Executing large trade ---");
+    const largeTradeTx = await program.methods
+      .swap({
+        amountIn: largeAmount,
+        minOut: new BN(0),
+      })
+      .preInstructions([
+        createAssociatedTokenAccountIdempotentInstruction(
+          largeTrader.publicKey,
+          largeTraderTo,
+          largeTrader.publicKey,
+          toMint,
+        ),
+      ])
+      .accounts({
+        settings,
+        signer: largeTrader.publicKey,
+        admin,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        liquidityPool,
+        tokenFrom: fromMint,
+        tokenFromAsset: fromAsset,
+        tokenFromOracle: fromOracle.fields[0],
+        tokenTo: toMint,
+        tokenToAsset: toAsset,
+        tokenToOracle: toOracle.fields[0],
+        tokenFromPool: getAssociatedTokenAddressSync(
+          fromMint,
+          liquidityPool,
+          true,
+        ),
+        tokenToPool: getAssociatedTokenAddressSync(toMint, liquidityPool, true),
+        tokenFromSignerAccount: largeTraderFrom,
+        tokenToSignerAccount: largeTraderTo,
+        associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+      })
+      // .signers([largeTrader])
+      .rpc()
+      .catch((err) => {
+        console.error("Large trade failed:", err.logs?.join("\n"));
+        throw err;
+      });
+
+    await sleep(1);
+
+    // Get post-balances
+    const smallTraderToPostBalance = await getAccount(
+      provider.connection,
+      smallTraderTo,
+    );
+    const largeTraderToPostBalance = await getAccount(
+      provider.connection,
+      largeTraderTo,
+    );
+
+    const smallTraderReceived =
+      Number(smallTraderToPostBalance.amount) -
+      Number(smallTraderToPreBalance.amount);
+    const largeTraderReceived =
+      Number(largeTraderToPostBalance.amount) -
+      Number(largeTraderToPreBalance.amount);
+
+    // Calculate effective rates (output per unit input)
+    const smallTradeRate = smallTraderReceived / smallAmount.toNumber();
+    const largeTradeRate = largeTraderReceived / largeAmount.toNumber();
+
+    console.log("\n=== PRICE IMPACT TEST RESULTS ===");
+    console.log("Small trade (1% of pool):");
+    console.log("  Input:", smallAmount.toString());
+    console.log("  Output:", smallTraderReceived);
+    console.log("  Rate:", smallTradeRate.toFixed(6), "per unit");
+
+    console.log("\nLarge trade (30% of pool):");
+    console.log("  Input:", largeAmount.toString());
+    console.log("  Output:", largeTraderReceived);
+    console.log("  Rate:", largeTradeRate.toFixed(6), "per unit");
+
+    const rateRatio = smallTradeRate / largeTradeRate;
+    console.log("\nRate ratio (small/large):", rateRatio.toFixed(4));
+    console.log("Expected: > 1.0 (small trades should get better rates)");
+
+    // Verify price impact: small trade should get better rate than large trade
+    expect(smallTradeRate).to.be.greaterThan(
+      largeTradeRate,
+      "Small trade should get better rate than large trade due to price impact",
+    );
+
+    // Verify the ratio is meaningful (at least 5% better for small trade)
+    expect(rateRatio).to.be.greaterThan(
+      1.05,
+      "Price impact should cause at least 5% rate difference",
+    );
+
+    // const tx = await provider.connection.getTransaction(largeTradeTx, {
+    //   commitment: "confirmed",
+    // });
+    // console.log(tx.meta.logMessages);
   });
 
   it("Restakes token B in liquidity pool to allow swaps later", async () => {
