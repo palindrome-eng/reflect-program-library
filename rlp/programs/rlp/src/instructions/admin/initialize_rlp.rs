@@ -1,29 +1,34 @@
-use anchor_lang::prelude::*;
-use crate::states::*;
 use crate::constants::*;
+use crate::errors::InsuranceFundError;
 use crate::events::InitializeRlp as InitializeRlpEvent;
+use crate::states::*;
+use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeRlpArgs {
+    pub swap_fee_bps: u16,
     pub cooldown_duration: u64,
 }
 
-pub fn initialize_rlp(
-    ctx: Context<InitializeRlp>,
-    args: InitializeRlpArgs
-) -> Result<()> {
-
+pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> Result<()> {
     let InitializeRlpArgs {
-        cooldown_duration
+        swap_fee_bps,
+        cooldown_duration: _,
     } = args;
 
     let signer = &ctx.accounts.signer;
     let permissions = &mut ctx.accounts.permissions;
-    
+
+    // validate swap_fee_bps
+    require!(
+        0 >= swap_fee_bps && swap_fee_bps <= 10_000,
+        InsuranceFundError::InvalidInput
+    );
+
     permissions.set_inner(UserPermissions {
         authority: signer.key(),
         bump: ctx.bumps.permissions,
-        protocol_roles: LevelRoles::new(Role::SUPREMO)
+        protocol_roles: LevelRoles::new(Role::SUPREMO),
     });
 
     let settings = &mut ctx.accounts.settings;
@@ -32,7 +37,8 @@ pub fn initialize_rlp(
         assets: 0,
         access_control: AccessControl::new_defaults()?,
         frozen: false,
-        liquidity_pools: 0
+        liquidity_pools: 0,
+        swap_fee_bps,
     });
 
     emit!(InitializeRlpEvent {
@@ -44,9 +50,7 @@ pub fn initialize_rlp(
 
 #[derive(Accounts)]
 pub struct InitializeRlp<'info> {
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(
@@ -73,5 +77,6 @@ pub struct InitializeRlp<'info> {
     pub settings: Account<'info, Settings>,
 
     #[account()]
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
+

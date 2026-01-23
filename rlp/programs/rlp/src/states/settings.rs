@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::states::AccessControl;
+use anchor_lang::prelude::*;
 
 #[account]
 #[derive(InitSpace, Default)]
@@ -9,6 +9,7 @@ pub struct Settings {
     pub assets: u8,
     pub frozen: bool,
     pub access_control: AccessControl,
+    pub swap_fee_bps: u16, // 30 bps = 0.3%
 }
 
 impl Settings {
@@ -20,3 +21,4 @@ impl Settings {
         self.frozen = false;
     }
 }
+
