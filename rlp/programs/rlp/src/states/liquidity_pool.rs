@@ -2,13 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{
     mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer
 };
-use anchor_spl::associated_token::get_associated_token_address;
-use crate::constants::*;
+use crate::constants::LIQUIDITY_POOL_SEED;
 use crate::errors::RlpError;
 use crate::helpers::OraclePrice;
 use spl_math::precise_number::PreciseNumber;
-
-use crate::states::*;
 
 #[derive(InitSpace)]
 #[account]
@@ -81,12 +78,9 @@ impl LiquidityPool {
         total_pool_value: PreciseNumber,
         deposit_value: PreciseNumber,
     ) -> Result<u64> {
-        let lp_supply_precise = PreciseNumber::new(
-            lp_token
-                .supply
-                .checked_add(DEAD_SHARES)
-                .ok_or(RlpError::MathOverflow)? as u128
-        )
+        // Note: DEAD_SHARES are now actually minted on pool initialization
+        // and included in lp_token.supply, so we don't add them virtually here
+        let lp_supply_precise = PreciseNumber::new(lp_token.supply as u128)
             .ok_or(crate::errors::RlpError::MathOverflow)?;
 
         let deposit_ratio = deposit_value

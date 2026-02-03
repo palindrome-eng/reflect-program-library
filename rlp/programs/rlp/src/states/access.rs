@@ -314,8 +314,6 @@ impl AccessControl {
     /** Initialise with default permissions. */
     pub fn new_defaults() -> Result<Self> {
         let mut access_control: AccessControl = Self::default();  
-
-        access_control.add_role_to_action(Action::PublicSwap, Role::PUBLIC)?;          
                 
         // Manager actions (everything except deploying new strategies/accounts).
         access_control.add_role_to_action(Action::UpdateDepositCap, Role::MANAGER)?;
@@ -329,10 +327,9 @@ impl AccessControl {
         access_control.add_role_to_action(Action::SuspendDeposits, Role::MANAGER)?;
         access_control.add_role_to_action(Action::UpdateAction, Role::MANAGER)?;
 
-        // Crank actions.  
+        // Crank actions (includes swap - whitelisted only).
         access_control.add_role_to_action(Action::Slash, Role::CRANK)?;
-        // access_control.add_role_to_action(Action::PublicSwap, Role::CRANK)?;
-        access_control.add_role_to_action(Action::PrivateSwap, Role::CRANK)?;
+        access_control.add_role_to_action(Action::Swap, Role::CRANK)?;
 
         // User actions - public (test for now).    
         access_control.add_role_to_action(Action::Restake, Role::TESTEE)?;
@@ -342,8 +339,7 @@ impl AccessControl {
         access_control.add_role_to_action(Action::FreezeRestake, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeWithdraw, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeSlash, Role::FREEZE)?;
-        access_control.add_role_to_action(Action::FreezePublicSwap, Role::FREEZE)?;
-        access_control.add_role_to_action(Action::FreezePrivateSwap, Role::FREEZE)?;
+        access_control.add_role_to_action(Action::FreezeSwap, Role::FREEZE)?;
         
         Ok(access_control)
     }

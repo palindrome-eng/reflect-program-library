@@ -34,6 +34,19 @@ pub fn slash(
         asset_id: _
     } = args;
 
+    // Security Fix: Limit slash amount to prevent total fund drainage
+    // Maximum slash per transaction is MAX_SLASH_BPS of the pool's token balance
+    let max_slash_amount = liquidity_pool_token_account.amount
+        .checked_mul(MAX_SLASH_BPS)
+        .ok_or(RlpError::MathOverflow)?
+        .checked_div(BPS_DENOMINATOR)
+        .ok_or(RlpError::MathOverflow)?;
+    
+    require!(
+        amount <= max_slash_amount,
+        RlpError::SlashAmountExceedsLimit
+    );
+
     let seeds = &[
         LIQUIDITY_POOL_SEED.as_bytes(),
         &liquidity_pool_id.to_le_bytes(),

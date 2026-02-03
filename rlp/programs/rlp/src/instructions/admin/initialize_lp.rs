@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token};
+use anchor_spl::token::{mint_to, Mint, MintTo, Token, TokenAccount};
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::*;
@@ -24,15 +24,41 @@ pub fn initialize_lp(
     let liquidity_pool = &mut ctx.accounts.liquidity_pool;
     let settings = &mut ctx.accounts.settings;
     let lp_token = &ctx.accounts.lp_token_mint;
+    let dead_shares_vault = &ctx.accounts.dead_shares_vault;
+    let token_program = &ctx.accounts.token_program;
+
+    let pool_index = settings.liquidity_pools;
 
     liquidity_pool.set_inner(LiquidityPool {
         bump: ctx.bumps.liquidity_pool,
-        index: settings.liquidity_pools,
+        index: pool_index,
         lp_token: lp_token.key(),
         cooldown_duration,
         cooldowns: 0,
         deposit_cap
     });
+
+    // Security Fix: Mint dead shares to prevent LP token inflation attack
+    // These shares are permanently locked in the dead_shares_vault (owned by liquidity_pool)
+    // This ensures the first depositor cannot manipulate the exchange rate
+    let signer_seeds = &[
+        LIQUIDITY_POOL_SEED.as_bytes(),
+        &pool_index.to_le_bytes(),
+        &[ctx.bumps.liquidity_pool]
+    ];
+
+    mint_to(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            MintTo {
+                mint: lp_token.to_account_info(),
+                to: dead_shares_vault.to_account_info(),
+                authority: liquidity_pool.to_account_info(),
+            },
+            &[signer_seeds]
+        ),
+        DEAD_SHARES
+    )?;
 
     settings.liquidity_pools += 1;
 
@@ -86,6 +112,7 @@ pub struct InitializeLiquidityPool<'info> {
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
+        mut,
         constraint = lp_token_mint.supply == 0 @ RlpError::InvalidReceiptTokenSupply,
         constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ RlpError::InvalidReceiptTokenMintAuthority,
         constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
@@ -93,6 +120,16 @@ pub struct InitializeLiquidityPool<'info> {
         constraint = lp_token_mint.decimals == 9 @ RlpError::InvalidReceiptTokenDecimals
     )]
     pub lp_token_mint: Box<Account<'info, Mint>>,
+
+    /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
+    /// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
+    #[account(
+        init,
+        payer = signer,
+        associated_token::mint = lp_token_mint,
+        associated_token::authority = liquidity_pool,
+    )]
+    pub dead_shares_vault: Account<'info, TokenAccount>,
 
     #[account()]
     pub system_program: Program<'info, System>,

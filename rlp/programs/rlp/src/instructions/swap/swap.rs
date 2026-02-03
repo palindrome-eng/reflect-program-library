@@ -1,4 +1,6 @@
-use crate::{constants::*, helpers::action_check_protocol, instructions::admin};
+use crate::constants::{
+    ASSET_SEED, LIQUIDITY_POOL_SEED, PERMISSIONS_SEED, SETTINGS_SEED
+};
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{transfer, Mint, Token, TokenAccount, Transfer}};
 use crate::errors::RlpError;
@@ -47,34 +49,21 @@ pub fn swap(
     let token_from_asset = &ctx.accounts.token_from_asset;
     let token_to_asset = &ctx.accounts.token_to_asset;
 
-    let admin = &ctx.accounts.admin;
+    let permissions = &ctx.accounts.permissions;
     let settings = &ctx.accounts.settings;
 
-    // If any of the assets are private, require admin permissions.
-    if (token_from_asset.access_level == AccessLevel::Private || token_to_asset.access_level == AccessLevel::Private) {
-        // Check if PrivateSwap is frozen
-        require!(
-            !settings.access_control.killswitch.is_frozen(&Action::PrivateSwap),
-            RlpError::Frozen
-        );
-        
-        require!(
-            admin.is_some() && admin.as_ref().unwrap().can_perform_protocol_action(Action::PrivateSwap, &settings.access_control),
-            RlpError::PermissionsTooLow
-        );
-    } else {
-        // Check if PublicSwap is frozen
-        require!(
-            !settings.access_control.killswitch.is_frozen(&Action::PublicSwap),
-            RlpError::Frozen
-        );
-        
-        action_check_protocol(
-            Action::PublicSwap,
-            admin.as_deref(),
-            &settings.access_control
-        )?;
-    }
+    // Swap is only available to whitelisted entities
+    // Check if Swap action is frozen
+    require!(
+        !settings.access_control.killswitch.is_frozen(&Action::Swap),
+        RlpError::Frozen
+    );
+    
+    // Verify caller has Swap permission
+    require!(
+        permissions.can_perform_protocol_action(Action::Swap, &settings.access_control),
+        RlpError::PermissionsTooLow
+    );
 
     let token_from_oracle = &ctx.accounts.token_from_oracle;
     let token_to_oracle = &ctx.accounts.token_to_oracle;
@@ -90,6 +79,8 @@ pub fn swap(
 
     let token_program = &ctx.accounts.token_program;
 
+    // Calculate amount out based on oracle prices (accounting for decimals)
+    // No fee - swaps at exact oracle price for whitelisted entities
     let amount_out: u64 = token_from_price
         .mul(amount_in)?
         .checked_mul(
@@ -160,7 +151,6 @@ pub fn swap(
         liquidity_pool: liquidity_pool.key(),
         amount_in,
         amount_out,
-        private: token_from_asset.access_level == AccessLevel::Private || token_to_asset.access_level == AccessLevel::Private,
     });
 
     Ok(())
@@ -174,14 +164,15 @@ pub struct Swap<'info> {
     )]
     pub signer: Signer<'info>,
 
+    /// Permissions account - required for whitelisted swap access
     #[account(
         seeds = [
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref(),
         ],
-        bump = admin.bump,
+        bump = permissions.bump,
     )]
-    pub admin: Option<Account<'info, UserPermissions>>,
+    pub permissions: Account<'info, UserPermissions>,
 
     #[account(
         seeds = [
