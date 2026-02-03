@@ -2,7 +2,7 @@ use std::io::Write;
 use strum_macros::EnumIter;
 use crate::states::*;
 use anchor_lang::prelude::{*, borsh::BorshSchema};
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 
 // Any more than 18 and it will fail spectacularly.
 pub const MAX_ACTION_MAPPINGS: usize = 18;
@@ -36,7 +36,7 @@ impl Role {
             4 => Ok(Role::CRANK),
             5 => Ok(Role::MANAGER),
             6 => Ok(Role::SUPREMO),
-            _ => Err(error!(InsuranceFundError::InvalidState)),
+            _ => Err(error!(RlpError::InvalidState)),
         }
     }
     
@@ -98,7 +98,7 @@ impl ActionMapping {
         if self.role_count as usize >= MAX_ROLES {
             msg!("Action {:?} already has maximum allowed roles ({})", self.action, MAX_ACTION_MAPPINGS);
             msg!("Cannot add role {:?} to this action", role);
-            return Err(InsuranceFundError::NoEntriesLeft.into());
+            return Err(RlpError::NoEntriesLeft.into());
         }
 
         // Check if the action is valid.
@@ -106,7 +106,7 @@ impl ActionMapping {
         for i in 0..self.role_count as usize {
             if self.allowed_roles[i] == role {
                 msg!("Role {:?} is already assigned to action {:?}", role, self.action);
-                return Err(InsuranceFundError::ActionHasAssignedRole.into());
+                return Err(RlpError::ActionHasAssignedRole.into());
             }
         }
         
@@ -114,7 +114,7 @@ impl ActionMapping {
         if self.role_count as usize >= MAX_ROLES {
             msg!("Action {:?} already has maximum allowed roles ({})", self.action, MAX_ROLES);
             msg!("Cannot add role {:?} to this action", role);
-            return Err(InsuranceFundError::NoEntriesLeft.into());
+            return Err(RlpError::NoEntriesLeft.into());
         }        
         
         self.allowed_roles[self.role_count as usize] = role;
@@ -129,7 +129,7 @@ impl ActionMapping {
         if self.role_count == 0 {
             msg!("Action {:?} has no roles assigned", self.action);
             msg!("Cannot remove role {:?} from this action", role);            
-            return Err(InsuranceFundError::NoEntriesLeft.into());
+            return Err(RlpError::NoEntriesLeft.into());
         }
 
         let mut found = false;
@@ -153,7 +153,7 @@ impl ActionMapping {
             Ok(())
         } else {
             msg!("{:?} can not be done by {:?}", self.action, role);
-            Err(InsuranceFundError::RoleNotUnderAction.into())
+            Err(RlpError::RoleNotUnderAction.into())
         }
     }    
 
@@ -246,7 +246,7 @@ impl AccessMap {
                     if self.mapping_count + 1 <= MAX_ACTION_MAPPINGS as u8{
                         self.mapping_count += 1;
                     } else{
-                        return Err(InsuranceFundError::NoEntriesLeft.into())
+                        return Err(RlpError::NoEntriesLeft.into())
                     }                 
                 }
                 
@@ -255,7 +255,7 @@ impl AccessMap {
         }       
         
         msg!("No slots available");
-        Err(InsuranceFundError::NoEntriesLeft.into())
+        Err(RlpError::NoEntriesLeft.into())
     }
     
     /** Remove a role from the permit list for a given action. */
@@ -276,7 +276,7 @@ impl AccessMap {
         
         // Action mapping not found.
         msg!("Action {:?} not found", action);
-        Err(InsuranceFundError::ActionNotFound.into())
+        Err(RlpError::ActionNotFound.into())
     }
 }
 
@@ -314,8 +314,6 @@ impl AccessControl {
     /** Initialise with default permissions. */
     pub fn new_defaults() -> Result<Self> {
         let mut access_control: AccessControl = Self::default();  
-
-        access_control.add_role_to_action(Action::PublicSwap, Role::PUBLIC)?;          
                 
         // Manager actions (everything except deploying new strategies/accounts).
         access_control.add_role_to_action(Action::UpdateDepositCap, Role::MANAGER)?;
@@ -329,10 +327,9 @@ impl AccessControl {
         access_control.add_role_to_action(Action::SuspendDeposits, Role::MANAGER)?;
         access_control.add_role_to_action(Action::UpdateAction, Role::MANAGER)?;
 
-        // Crank actions.  
+        // Crank actions (includes swap - whitelisted only).
         access_control.add_role_to_action(Action::Slash, Role::CRANK)?;
-        // access_control.add_role_to_action(Action::PublicSwap, Role::CRANK)?;
-        access_control.add_role_to_action(Action::PrivateSwap, Role::CRANK)?;
+        access_control.add_role_to_action(Action::Swap, Role::CRANK)?;
 
         // User actions - public (test for now).    
         access_control.add_role_to_action(Action::Restake, Role::TESTEE)?;
@@ -342,8 +339,7 @@ impl AccessControl {
         access_control.add_role_to_action(Action::FreezeRestake, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeWithdraw, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeSlash, Role::FREEZE)?;
-        access_control.add_role_to_action(Action::FreezePublicSwap, Role::FREEZE)?;
-        access_control.add_role_to_action(Action::FreezePrivateSwap, Role::FREEZE)?;
+        access_control.add_role_to_action(Action::FreezeSwap, Role::FREEZE)?;
         
         Ok(access_control)
     }

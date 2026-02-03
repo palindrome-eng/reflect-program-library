@@ -17,10 +17,23 @@ default = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.30.1", features = [ "init-if-needed" ] }
-anchor-spl = "0.30.1"
-pyth-solana-receiver-sdk = "1.0.0"
-switchboard-solana = "0.30.4"
-spl-math = { version = "0.2.0", features = [ "no-entrypoint" ]}
+anchor-lang = { version = "0.32.0", features = [ "init-if-needed" ] }
+anchor-spl = "0.32.0"
+pyth-solana-receiver-sdk = "1.1.0"
+spl-math = { version = "0.3.0", features = [ "no-entrypoint" ]}
 strum = "0.27"
 strum_macros = "0.27"
+num-traits = "0.2"
+# Pin to avoid edition 2024 requirement
+base64ct = "=1.7.3"
+
+[dev-dependencies]
+mollusk-svm = "0.7.0"
+solana-sdk = "3.0"
+solana-sdk-ids = "3.0"
+solana-instruction = "3.0"
+rlp-client = { path = "../../clients/rust" }
+litesvm = "0.8.2"
+litesvm-token = "0.8.0"
+spl-token = "7.0.0"
+spl-associated-token-account = "6.0.0"

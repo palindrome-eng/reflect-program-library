@@ -14,6 +14,7 @@ impl CooldownRewards {
 #[derive(InitSpace, Default)]
 #[account]
 pub struct Cooldown {
+    pub bump: u8,
     pub authority: Pubkey,
     pub liquidity_pool_id: u8,
     pub unlock_ts: u64,

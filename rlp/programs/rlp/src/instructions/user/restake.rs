@@ -12,6 +12,7 @@ pub struct RestakeArgs {
     pub liquidity_pool_index: u8,
     pub amount: u64,
     pub min_lp_tokens: u64,
+    pub asset_id: u8,
 }
 
 pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs) -> Result<()> {
@@ -97,6 +98,12 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
         token_program,
     )?;
 
+    emit!(RestakeEvent {
+        amount,
+        from: signer.key(),
+        asset: asset.key()
+    });
+
     Ok(())
 }
 
@@ -111,8 +118,8 @@ pub struct Restake<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes(),
         ],
-        bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ InsuranceFundError::Frozen,
+        bump = settings.bump,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -130,7 +137,7 @@ pub struct Restake<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &args.liquidity_pool_index.to_le_bytes()
         ],
-        bump,
+        bump = liquidity_pool.bump,
         constraint = liquidity_pool.index == args.liquidity_pool_index,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
@@ -151,9 +158,9 @@ pub struct Restake<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            &asset_mint.key().to_bytes()
+            &args.asset_id.to_le_bytes()
         ],
-        bump,
+        bump = asset.bump,
     )]
     pub asset: Account<'info, Asset>,
 

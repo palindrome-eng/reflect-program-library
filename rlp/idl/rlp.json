@@ -75,7 +75,7 @@
     {
       "name": "ORACLE_MAXIMUM_AGE",
       "type": "u64",
-      "value": "60 * 60"
+      "value": "2 * 60"
     }
   ],
   "instructions": [
@@ -103,14 +103,7 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "InitializeRlpArgs"
-          }
-        }
-      ]
+      "args": []
     },
     {
       "name": "initializeLp",
@@ -161,69 +154,6 @@
           "name": "args",
           "type": {
             "defined": "InitializeLiquidityPoolArgs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "initializeLpTokenAccount",
-      "accounts": [
-        {
-          "name": "signer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "admin",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "settings",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "liquidityPool",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "asset",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "mint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "lpMintTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "InitializeLpTokenAccountArgs"
           }
         }
       ]
@@ -392,6 +322,11 @@
         },
         {
           "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidityPool",
           "isMut": true,
           "isSigner": false
         }
@@ -858,11 +793,6 @@
           "isSigner": false
         },
         {
-          "name": "strategy",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -884,6 +814,10 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "index",
+            "type": "u8"
+          },
           {
             "name": "mint",
             "type": "publicKey"
@@ -947,6 +881,12 @@
           {
             "name": "cooldownDuration",
             "type": "u64"
+          },
+          {
+            "name": "depositCap",
+            "type": {
+              "option": "u64"
+            }
           }
         ]
       }
@@ -998,10 +938,6 @@
           {
             "name": "assets",
             "type": "u8"
-          },
-          {
-            "name": "frozen",
-            "type": "bool"
           },
           {
             "name": "accessControl",
@@ -1073,18 +1009,6 @@
       }
     },
     {
-      "name": "InitializeLpTokenAccountArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "liquidityPoolIndex",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "InitializeLiquidityPoolArgs",
       "type": {
         "kind": "struct",
@@ -1094,20 +1018,10 @@
             "type": "u64"
           },
           {
-            "name": "cooldowns",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "InitializeRlpArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "cooldownDuration",
-            "type": "u64"
+            "name": "depositCap",
+            "type": {
+              "option": "u64"
+            }
           }
         ]
       }
@@ -1162,6 +1076,10 @@
           {
             "name": "amount",
             "type": "u64"
+          },
+          {
+            "name": "assetId",
+            "type": "u8"
           }
         ]
       }
@@ -1178,6 +1096,10 @@
           {
             "name": "amount",
             "type": "u64"
+          },
+          {
+            "name": "assetId",
+            "type": "u8"
           }
         ]
       }
@@ -1196,6 +1118,14 @@
             "type": {
               "option": "u64"
             }
+          },
+          {
+            "name": "fromAssetId",
+            "type": "u8"
+          },
+          {
+            "name": "toAssetId",
+            "type": "u8"
           }
         ]
       }
@@ -1232,6 +1162,10 @@
           {
             "name": "minLpTokens",
             "type": "u64"
+          },
+          {
+            "name": "assetId",
+            "type": "u8"
           }
         ]
       }
@@ -1343,9 +1277,6 @@
         "fields": [
           {
             "name": "frozen",
-            "docs": [
-              "Bool indices:\n    - [0] - mint\n    - [1] - redeem\n    - [2] - rebalance\n    - [3] - capture (print and distribute stable)"
-            ],
             "type": "u8"
           }
         ]
@@ -1553,11 +1484,6 @@
           "name": "amount",
           "type": "u64",
           "index": false
-        },
-        {
-          "name": "lockupTs",
-          "type": "u64",
-          "index": false
         }
       ]
     },
@@ -1590,17 +1516,7 @@
           "index": false
         },
         {
-          "name": "asset",
-          "type": "publicKey",
-          "index": false
-        },
-        {
-          "name": "baseAmount",
-          "type": "u64",
-          "index": false
-        },
-        {
-          "name": "rewardAmount",
+          "name": "amount",
           "type": "u64",
           "index": false
         }
@@ -1647,7 +1563,7 @@
       ]
     },
     {
-      "name": "InitializeRlp",
+      "name": "InitializeRlpEvent",
       "fields": [
         {
           "name": "caller",
@@ -1657,32 +1573,33 @@
       ]
     },
     {
-      "name": "InitializeLockupEvent",
+      "name": "UpdateActionRoleEvent",
       "fields": [
         {
-          "name": "admin",
-          "type": "publicKey",
+          "name": "action",
+          "type": {
+            "defined": "Action"
+          },
           "index": false
         },
         {
-          "name": "lockup",
-          "type": "publicKey",
+          "name": "role",
+          "type": {
+            "defined": "Role"
+          },
           "index": false
         },
         {
-          "name": "asset",
-          "type": "publicKey",
-          "index": false
-        },
-        {
-          "name": "duration",
-          "type": "u64",
+          "name": "update",
+          "type": {
+            "defined": "Update"
+          },
           "index": false
         }
       ]
     },
     {
-      "name": "ManageFreezeEvent",
+      "name": "CreatePermissionAccountEvent",
       "fields": [
         {
           "name": "admin",
@@ -1690,7 +1607,145 @@
           "index": false
         },
         {
-          "name": "frozen",
+          "name": "newAdmin",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "FreezeProtocolActionEvent",
+      "fields": [
+        {
+          "name": "action",
+          "type": {
+            "defined": "Action"
+          },
+          "index": false
+        },
+        {
+          "name": "freeze",
+          "type": "bool",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "InitializeLiquidityPoolEvent",
+      "fields": [
+        {
+          "name": "admin",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "liquidityPool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "lpToken",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "UpdateRoleHolderEvent",
+      "fields": [
+        {
+          "name": "address",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "role",
+          "type": {
+            "defined": "Role"
+          },
+          "index": false
+        },
+        {
+          "name": "update",
+          "type": {
+            "defined": "Update"
+          },
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "UpdateDepositCapEvent",
+      "fields": [
+        {
+          "name": "admin",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "liquidityPool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "newCap",
+          "type": {
+            "option": "u64"
+          },
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "SlashEvent",
+      "fields": [
+        {
+          "name": "admin",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "liquidityPool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "mint",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "SwapEvent",
+      "fields": [
+        {
+          "name": "signer",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "liquidityPool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amountIn",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "amountOut",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "private",
           "type": "bool",
           "index": false
         }

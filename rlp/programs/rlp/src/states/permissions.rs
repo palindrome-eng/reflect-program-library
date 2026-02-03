@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::states::{Role, Action, AccessControl};
 
 /** Handles role management at any hierarchy level (protocol or strategy) with methods for:
@@ -31,7 +31,7 @@ impl LevelRoles {
 
     pub fn add_role(&mut self, role: Role) -> Result<()> {                
         if self.has_role(role) {            
-            return Err(InsuranceFundError::InvalidInput.into());
+            return Err(RlpError::InvalidInput.into());
         }
         
         self.roles.push(role);          
@@ -45,7 +45,7 @@ impl LevelRoles {
         if self.roles.len() < initial_len {
             Ok(())
         } else {
-            Err(InsuranceFundError::InvalidInput.into())
+            Err(RlpError::InvalidInput.into())
         }
     }
 
@@ -84,13 +84,11 @@ impl UserPermissions {
     pub const BUMP_SIZE: usize = 1;
     // Adjust vector size estimates based on your expected usage
     pub const PROTOCOL_ROLES_SIZE: usize = 4 + (5 * 1); // Vec length + max 5 roles
-    pub const STRATEGY_PERMISSIONS_SIZE: usize = 4 + (20 * (1 + 4 + (5 * 1))); // Vec + max 20 strategies
     
     pub const TOTAL_SIZE: usize = 
         Self::DISCRIMINATOR_SIZE +
         (Self::PUBKEY_SIZE) + // authority + user
         Self::PROTOCOL_ROLES_SIZE +
-        Self::STRATEGY_PERMISSIONS_SIZE +
         Self::BUMP_SIZE;   
     
     
@@ -116,7 +114,7 @@ impl UserPermissions {
     pub fn validate_supremo(&self) -> Result<()> {
         match self.is_super_admin() {
             true => Ok(()),
-            false => Err(InsuranceFundError::InvalidSigner.into()),
+            false => Err(RlpError::InvalidSigner.into()),
         }
     }   
     

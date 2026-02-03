@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use anchor_spl::token::{
     Mint,
     TokenAccount,
@@ -9,11 +9,13 @@ use anchor_spl::token::{
     transfer,
     Transfer
 };
+use crate::events::SlashEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SlashArgs {
     liquidity_pool_id: u8,
     amount: u64,
+    asset_id: u8,
 }
 
 pub fn slash(
@@ -22,13 +24,28 @@ pub fn slash(
 ) -> Result<()> {
     let token_program = &ctx.accounts.token_program;
     let destination = &ctx.accounts.destination;
+    let mint = &ctx.accounts.mint;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let liquidity_pool_token_account = &ctx.accounts.liquidity_pool_token_account;
 
     let SlashArgs {
         amount,
-        liquidity_pool_id
+        liquidity_pool_id,
+        asset_id: _
     } = args;
+
+    // Security Fix: Limit slash amount to prevent total fund drainage
+    // Maximum slash per transaction is MAX_SLASH_BPS of the pool's token balance
+    let max_slash_amount = liquidity_pool_token_account.amount
+        .checked_mul(MAX_SLASH_BPS)
+        .ok_or(RlpError::MathOverflow)?
+        .checked_div(BPS_DENOMINATOR)
+        .ok_or(RlpError::MathOverflow)?;
+    
+    require!(
+        amount <= max_slash_amount,
+        RlpError::SlashAmountExceedsLimit
+    );
 
     let seeds = &[
         LIQUIDITY_POOL_SEED.as_bytes(),
@@ -49,6 +66,13 @@ pub fn slash(
         amount
     )?;
 
+    emit!(SlashEvent {
+        admin: ctx.accounts.signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        amount,
+        mint: mint.key()
+    });
+
     Ok(())
 }
 
@@ -68,8 +92,8 @@ pub struct Slash<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump,
-        constraint = permissions.can_perform_protocol_action(Action::Slash, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
+        bump = permissions.bump,
+        constraint = permissions.can_perform_protocol_action(Action::Slash, &settings.access_control) @ RlpError::PermissionsTooLow,
     )]
     pub permissions: Account<'info, UserPermissions>,
 
@@ -78,8 +102,8 @@ pub struct Slash<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) @ InsuranceFundError::Frozen,
+        bump = settings.bump,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -88,7 +112,7 @@ pub struct Slash<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &args.liquidity_pool_id.to_le_bytes()
         ],
-        bump,
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
@@ -101,9 +125,10 @@ pub struct Slash<'info> {
         mut,
         seeds = [
             ASSET_SEED.as_bytes(),
-            mint.key().as_ref()
+            &args.asset_id.to_le_bytes()
         ],
-        bump
+        constraint = asset.mint == mint.key(),
+        bump = asset.bump,
     )]
     pub asset: Account<'info, Asset>,
 

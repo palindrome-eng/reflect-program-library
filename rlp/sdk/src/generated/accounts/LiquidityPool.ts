@@ -20,6 +20,7 @@ export type LiquidityPoolArgs = {
   lpToken: web3.PublicKey
   cooldowns: beet.bignum
   cooldownDuration: beet.bignum
+  depositCap: beet.COption<beet.bignum>
 }
 
 export const liquidityPoolDiscriminator = [66, 38, 17, 64, 188, 80, 68, 129]
@@ -36,7 +37,8 @@ export class LiquidityPool implements LiquidityPoolArgs {
     readonly index: number,
     readonly lpToken: web3.PublicKey,
     readonly cooldowns: beet.bignum,
-    readonly cooldownDuration: beet.bignum
+    readonly cooldownDuration: beet.bignum,
+    readonly depositCap: beet.COption<beet.bignum>
   ) {}
 
   /**
@@ -48,7 +50,8 @@ export class LiquidityPool implements LiquidityPoolArgs {
       args.index,
       args.lpToken,
       args.cooldowns,
-      args.cooldownDuration
+      args.cooldownDuration,
+      args.depositCap
     )
   }
 
@@ -119,34 +122,36 @@ export class LiquidityPool implements LiquidityPoolArgs {
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link LiquidityPool}
+   * {@link LiquidityPool} for the provided args.
+   *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    */
-  static get byteSize() {
-    return liquidityPoolBeet.byteSize
+  static byteSize(args: LiquidityPoolArgs) {
+    const instance = LiquidityPool.fromArgs(args)
+    return liquidityPoolBeet.toFixedFromValue({
+      accountDiscriminator: liquidityPoolDiscriminator,
+      ...instance,
+    }).byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
    * {@link LiquidityPool} data from rent
    *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
+    args: LiquidityPoolArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      LiquidityPool.byteSize,
+      LiquidityPool.byteSize(args),
       commitment
     )
-  }
-
-  /**
-   * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link LiquidityPool} data.
-   */
-  static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === LiquidityPool.byteSize
   }
 
   /**
@@ -180,6 +185,7 @@ export class LiquidityPool implements LiquidityPoolArgs {
         }
         return x
       })(),
+      depositCap: this.depositCap,
     }
   }
 }
@@ -188,7 +194,7 @@ export class LiquidityPool implements LiquidityPoolArgs {
  * @category Accounts
  * @category generated
  */
-export const liquidityPoolBeet = new beet.BeetStruct<
+export const liquidityPoolBeet = new beet.FixableBeetStruct<
   LiquidityPool,
   LiquidityPoolArgs & {
     accountDiscriminator: number[] /* size: 8 */
@@ -201,6 +207,7 @@ export const liquidityPoolBeet = new beet.BeetStruct<
     ['lpToken', beetSolana.publicKey],
     ['cooldowns', beet.u64],
     ['cooldownDuration', beet.u64],
+    ['depositCap', beet.coption(beet.u64)],
   ],
   LiquidityPool.fromArgs,
   'LiquidityPool'

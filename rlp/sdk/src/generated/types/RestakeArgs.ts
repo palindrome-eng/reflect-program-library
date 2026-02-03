@@ -10,6 +10,7 @@ export type RestakeArgs = {
   liquidityPoolIndex: number
   amount: beet.bignum
   minLpTokens: beet.bignum
+  assetId: number
 }
 
 /**
@@ -21,6 +22,7 @@ export const restakeArgsBeet = new beet.BeetArgsStruct<RestakeArgs>(
     ['liquidityPoolIndex', beet.u8],
     ['amount', beet.u64],
     ['minLpTokens', beet.u64],
+    ['assetId', beet.u8],
   ],
   'RestakeArgs'
 )

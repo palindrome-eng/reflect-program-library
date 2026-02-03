@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token;
+use anchor_spl::token::close_account;
+use anchor_spl::token::CloseAccount;
 use anchor_spl::token::Token;
 use spl_math::precise_number::PreciseNumber;
-use switchboard_solana::rust_decimal::prelude::ToPrimitive;
-use crate::errors::InsuranceFundError;
+use num_traits::ToPrimitive;
+use crate::errors::RlpError;
 use crate::states::*;
 use crate::constants::*;
 use anchor_spl::token::{ 
@@ -13,7 +14,14 @@ use anchor_spl::token::{
     Transfer,
     burn,
     Burn
- };
+};
+use crate::helpers::loaders::{
+    load_assets,
+    load_reserves,
+    load_oracle_prices,
+    load_user_token_accounts
+};
+use crate::events::WithdrawEvent;
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
 pub struct WithdrawArgs {
@@ -46,18 +54,18 @@ pub fn withdraw<'a>(
 
     require!(
         clock.unix_timestamp as u64 >= cooldown.unlock_ts,
-        InsuranceFundError::CooldownInForce
+        RlpError::CooldownInForce
     );
 
     require!(
         lp_token_amount > 0 && lp_token_supply > 0,
-        InsuranceFundError::InvalidInput
+        RlpError::InvalidInput
     );
 
     let remaining_accounts = &ctx.remaining_accounts;
     require!(
         remaining_accounts.len() == settings.assets as usize * 3,
-        InsuranceFundError::InvalidInput
+        RlpError::InvalidInput
     );
 
     let lp_seeds = &[
@@ -66,107 +74,50 @@ pub fn withdraw<'a>(
         &[liquidity_pool.bump]
     ];
 
-    let mut i = 0;
-    while i < remaining_accounts.len() {
-        let pool_token_account_info = &remaining_accounts[i];
-        
-        require!(
-            pool_token_account_info.owner == &anchor_spl::token::ID,
-            InsuranceFundError::InvalidInput
-        );
+    let assets: Vec<(Pubkey, Asset)> = load_assets(settings, remaining_accounts)?;
+    let asset_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
+    let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
+    let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;
 
-        let pool_token_account = TokenAccount::try_deserialize(&mut pool_token_account_info.try_borrow_mut_data()?.as_ref())
-            .map_err(|_| InsuranceFundError::InvalidInput)?;
+    for i in 0..assets.len() {
+        let (reserve_key, reserve) = &reserves[i];
+        let (user_token_account_key, _) = &user_token_accounts[i];
 
-        require!(
-            pool_token_account.owner == liquidity_pool.key(),
-            InsuranceFundError::InvalidInput
-        );
-
-        let asset_info = &remaining_accounts[i + 1];
-        
-        require!(
-            asset_info.owner == &crate::ID,
-            InsuranceFundError::InvalidInput
-        );
-        
-        let asset = Asset::try_deserialize(&mut asset_info.try_borrow_mut_data()?.as_ref())
-            .map_err(|_| InsuranceFundError::InvalidInput)?;
-
-        require!(
-            asset.mint == pool_token_account.mint,
-            InsuranceFundError::InvalidInput
-        );
-        
-        let (expected_asset_pda, _) = Pubkey::find_program_address(
-            &[
-                ASSET_SEED.as_bytes(),
-                &asset.mint.to_bytes()
-            ],
-            &crate::ID
-        );
-
-        require!(
-            asset_info.key() == expected_asset_pda,
-            InsuranceFundError::InvalidInput
-        );
-
-        let expected_pool_token_account = associated_token::get_associated_token_address(
-            &liquidity_pool.key(), 
-            &asset.mint
-        );
-
-        require!(
-            pool_token_account_info.key() == expected_pool_token_account,
-            InsuranceFundError::InvalidInput
-        );
-
-        let user_token_account_info = &remaining_accounts[i + 2];
-        
-        msg!("user_token_account owner: {}", user_token_account_info.owner);
-
-        require!(
-            user_token_account_info.owner.eq(&anchor_spl::token::ID),
-            InsuranceFundError::InvalidInput
-        );
-
-        let user_token_account = TokenAccount::try_deserialize(&mut user_token_account_info.try_borrow_mut_data()?.as_ref())
-            .map_err(|_| InsuranceFundError::InvalidInput)?;
-
-
-        require!(
-            user_token_account.owner.eq(&signer.key()),
-            InsuranceFundError::InvalidInput
-        );
-
-        require!(
-            user_token_account.mint.eq(&asset.mint),
-            InsuranceFundError::InvalidInput
-        );
-
-        let user_pool_share_amount = PreciseNumber::new(pool_token_account.amount as u128)
-            .ok_or(InsuranceFundError::MathOverflow)?
+        // Note: DEAD_SHARES are now actually minted and included in lp_token_supply
+        // so the calculation is correct without virtual additions
+        let user_pool_share_amount = PreciseNumber::new(reserve.amount as u128)
+            .ok_or(RlpError::MathOverflow)?
             .checked_mul(
                 &PreciseNumber::new(lp_token_amount as u128)
-                .ok_or(InsuranceFundError::MathOverflow)?
+                .ok_or(RlpError::MathOverflow)?
             )
-            .ok_or(InsuranceFundError::MathOverflow)?
+            .ok_or(RlpError::MathOverflow)?
             .checked_div(
                 &PreciseNumber::new(lp_token_supply as u128)
-                .ok_or(InsuranceFundError::MathOverflow)?
+                .ok_or(RlpError::MathOverflow)?
             )
-            .ok_or(InsuranceFundError::MathOverflow)?
+            .ok_or(RlpError::MathOverflow)?
             .to_imprecise()
-            .ok_or(InsuranceFundError::MathOverflow)?
+            .ok_or(RlpError::MathOverflow)?
             .to_u64()
-            .ok_or(InsuranceFundError::MathOverflow)?;
+            .ok_or(RlpError::MathOverflow)?;
 
         if user_pool_share_amount > 0 {
+            let reserve_account = remaining_accounts
+                .iter()
+                .find(|account| account.key().eq(reserve_key))
+                .ok_or(RlpError::InvalidInput)?;
+
+            let user_token_account_info = remaining_accounts
+                .iter()
+                .find(|account| account.key().eq(user_token_account_key))
+                .ok_or(RlpError::InvalidInput)?;
+
             transfer(
                 CpiContext::new_with_signer(
                     token_program.to_account_info(), 
                     Transfer {
-                        from: pool_token_account_info.to_account_info(),
+                        from: reserve_account.to_account_info(),
                         to: user_token_account_info.to_account_info(),
                         authority: liquidity_pool.to_account_info()
                     }, 
@@ -175,11 +126,13 @@ pub fn withdraw<'a>(
                 user_pool_share_amount
             )?;
         }
-
-        i += 3;
     }
 
-    msg!("burning lp tokens");
+    let cooldown_seeds = &[
+        COOLDOWN_SEED.as_bytes(),
+        &cooldown_id.to_le_bytes(),
+        &[cooldown.bump]
+    ];
 
     burn(
         CpiContext::new_with_signer(
@@ -189,14 +142,27 @@ pub fn withdraw<'a>(
                 from: cooldown_lp_token_account.to_account_info(),
                 mint: lp_token_mint.to_account_info()
             }, 
-            &[&[
-                COOLDOWN_SEED.as_bytes(),
-                &cooldown_id.to_le_bytes(),
-                &[ctx.bumps.cooldown]
-            ]]
+            &[cooldown_seeds]
         ),
         lp_token_amount
     )?;
+
+    close_account(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            CloseAccount {
+                account: cooldown_lp_token_account.to_account_info(),
+                destination: signer.to_account_info(),
+                authority: cooldown.to_account_info()
+            },
+            &[cooldown_seeds]
+        )
+    )?;
+
+    emit!(WithdrawEvent {
+        amount: lp_token_amount,
+        from: signer.key(),
+    });
 
     Ok(())
 }
@@ -214,8 +180,8 @@ pub struct Withdraw<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ InsuranceFundError::Frozen
+        bump = settings.bump,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ RlpError::Frozen
     )]
     pub settings: Account<'info, Settings>,
 
@@ -224,7 +190,7 @@ pub struct Withdraw<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump = permissions.bump
+        bump = permissions.bump,
     )]
     pub permissions: Option<Account<'info, UserPermissions>>,
 
@@ -234,7 +200,7 @@ pub struct Withdraw<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &args.liquidity_pool_id.to_le_bytes()
         ],
-        bump
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
@@ -257,7 +223,7 @@ pub struct Withdraw<'info> {
             COOLDOWN_SEED.as_bytes(),
             &args.cooldown_id.to_le_bytes(),
         ],
-        bump,
+        bump = cooldown.bump,
         close = signer,
         constraint = cooldown.liquidity_pool_id == args.liquidity_pool_id,
         constraint = cooldown.authority == signer.key()

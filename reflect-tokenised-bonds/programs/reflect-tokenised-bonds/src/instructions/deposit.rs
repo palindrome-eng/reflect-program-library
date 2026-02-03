@@ -2,13 +2,11 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount, Token};
 use crate::constants::{VAULT_SEED, VAULT_POOL_SEED};
 use crate::state::Vault;
-use crate::errors::ReflectError;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositArgs {
     pub vault_id: u64,
-    pub amount: u64,
-    pub is_rewards: bool,
+    pub amount: u64
 }
 
 pub fn deposit(
@@ -18,7 +16,6 @@ pub fn deposit(
 
     let DepositArgs {
         amount,
-        is_rewards,
         vault_id: _
     } = args;
     
@@ -33,8 +30,6 @@ pub fn deposit(
         deposit_token: _,
     } = ctx.accounts;
 
-    msg!("depositing");
-
     vault.deposit(
         amount,
         signer,
@@ -43,23 +38,19 @@ pub fn deposit(
         token_program
     )?;
 
-    msg!("deposited");
+    let receipts: u64 = vault.compute_receipt_token(
+        amount,
+        pool.amount,
+        receipt_token.supply
+    )?;
 
-    if !is_rewards {
-        let receipts: u64 = vault.compute_receipt_token(
-            amount,
-            pool.amount,
-            receipt_token.supply
-        )?;
-
-        vault.mint_receipt_tokens(
-            receipts,
-            vault,
-            signer_receipt_token_account,
-            receipt_token,
-            token_program
-        )?
-    }
+    vault.mint_receipt_tokens(
+        receipts,
+        vault,
+        signer_receipt_token_account,
+        receipt_token,
+        token_program
+    )?;
 
     Ok(())
 }

@@ -42,6 +42,7 @@ export const updateDepositCapStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_, **signer**] signer
  * @property [_writable_] admin
  * @property [_writable_] settings
+ * @property [_writable_] liquidityPool
  * @category Instructions
  * @category UpdateDepositCap
  * @category generated
@@ -50,6 +51,7 @@ export type UpdateDepositCapInstructionAccounts = {
   signer: web3.PublicKey
   admin: web3.PublicKey
   settings: web3.PublicKey
+  liquidityPool: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -89,6 +91,11 @@ export function createUpdateDepositCapInstruction(
     },
     {
       pubkey: accounts.settings,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.liquidityPool,
       isWritable: true,
       isSigner: false,
     },

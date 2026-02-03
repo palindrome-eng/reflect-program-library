@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
 use crate::states::*;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
+use crate::events::UpdateDepositCapEvent;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct UpdateDepositCapArgs {
@@ -18,8 +19,14 @@ pub fn update_deposit_cap(
         new_cap
     } = args;
 
-    // let lockup = &mut ctx.accounts.lockup;
-    // lockup.deposit_cap = new_cap;
+    let liquidity_pool = &mut ctx.accounts.liquidity_pool;
+    liquidity_pool.deposit_cap = new_cap;
+
+    emit!(UpdateDepositCapEvent {
+        admin: ctx.accounts.signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        new_cap
+    });
 
     Ok(())
 }
@@ -38,8 +45,8 @@ pub struct UpdateDepositCap<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump,
-        constraint = admin.can_perform_protocol_action(Action::UpdateDepositCap, &settings.access_control) @ InsuranceFundError::InvalidSigner,
+        bump = admin.bump,
+        constraint = admin.can_perform_protocol_action(Action::UpdateDepositCap, &settings.access_control) @ RlpError::InvalidSigner,
     )]
     pub admin: Account<'info, UserPermissions>,
 
@@ -48,8 +55,20 @@ pub struct UpdateDepositCap<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::UpdateDepositCap) @ InsuranceFundError::Frozen
+        bump = settings.bump,
+        // Security Fix: Changed from is_frozen to !is_frozen
+        // The constraint should FAIL when frozen, not when unfrozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::UpdateDepositCap) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
+
+    #[account(
+        mut,
+        seeds = [
+            LIQUIDITY_POOL_SEED.as_bytes(),
+            &liquidity_pool.index.to_le_bytes()
+        ],
+        bump = liquidity_pool.bump,
+    )]
+    pub liquidity_pool: Account<'info, LiquidityPool>,
 }

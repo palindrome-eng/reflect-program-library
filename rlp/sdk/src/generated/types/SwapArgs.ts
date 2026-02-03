@@ -9,6 +9,8 @@ import * as beet from '@metaplex-foundation/beet'
 export type SwapArgs = {
   amountIn: beet.bignum
   minOut: beet.COption<beet.bignum>
+  fromAssetId: number
+  toAssetId: number
 }
 
 /**
@@ -19,6 +21,8 @@ export const swapArgsBeet = new beet.FixableBeetArgsStruct<SwapArgs>(
   [
     ['amountIn', beet.u64],
     ['minOut', beet.coption(beet.u64)],
+    ['fromAssetId', beet.u8],
+    ['toAssetId', beet.u8],
   ],
   'SwapArgs'
 )

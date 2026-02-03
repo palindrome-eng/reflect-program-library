@@ -8,7 +8,7 @@
 import * as beet from '@metaplex-foundation/beet'
 export type InitializeLiquidityPoolArgs = {
   cooldownDuration: beet.bignum
-  cooldowns: beet.bignum
+  depositCap: beet.COption<beet.bignum>
 }
 
 /**
@@ -16,10 +16,10 @@ export type InitializeLiquidityPoolArgs = {
  * @category generated
  */
 export const initializeLiquidityPoolArgsBeet =
-  new beet.BeetArgsStruct<InitializeLiquidityPoolArgs>(
+  new beet.FixableBeetArgsStruct<InitializeLiquidityPoolArgs>(
     [
       ['cooldownDuration', beet.u64],
-      ['cooldowns', beet.u64],
+      ['depositCap', beet.coption(beet.u64)],
     ],
     'InitializeLiquidityPoolArgs'
   )

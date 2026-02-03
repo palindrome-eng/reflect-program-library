@@ -19,7 +19,6 @@ export type SettingsArgs = {
   bump: number
   liquidityPools: number
   assets: number
-  frozen: boolean
   accessControl: AccessControl
 }
 
@@ -36,7 +35,6 @@ export class Settings implements SettingsArgs {
     readonly bump: number,
     readonly liquidityPools: number,
     readonly assets: number,
-    readonly frozen: boolean,
     readonly accessControl: AccessControl
   ) {}
 
@@ -48,7 +46,6 @@ export class Settings implements SettingsArgs {
       args.bump,
       args.liquidityPools,
       args.assets,
-      args.frozen,
       args.accessControl
     )
   }
@@ -159,7 +156,6 @@ export class Settings implements SettingsArgs {
       bump: this.bump,
       liquidityPools: this.liquidityPools,
       assets: this.assets,
-      frozen: this.frozen,
       accessControl: this.accessControl,
     }
   }
@@ -180,7 +176,6 @@ export const settingsBeet = new beet.BeetStruct<
     ['bump', beet.u8],
     ['liquidityPools', beet.u8],
     ['assets', beet.u8],
-    ['frozen', beet.bool],
     ['accessControl', accessControlBeet],
   ],
   Settings.fromArgs,

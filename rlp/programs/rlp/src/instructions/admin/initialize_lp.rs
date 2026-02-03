@@ -1,14 +1,15 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token};
+use anchor_spl::token::{mint_to, Mint, MintTo, Token, TokenAccount};
 use crate::states::*;
 use crate::constants::*;
 use crate::errors::*;
+use crate::events::InitializeLiquidityPoolEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeLiquidityPoolArgs {
     pub cooldown_duration: u64,
-    pub cooldowns: u64,
+    pub deposit_cap: Option<u64>,
 }
 
 pub fn initialize_lp(
@@ -17,22 +18,55 @@ pub fn initialize_lp(
 ) -> Result<()> {
     let InitializeLiquidityPoolArgs {
         cooldown_duration,
-        cooldowns
+        deposit_cap
     } = args;
 
     let liquidity_pool = &mut ctx.accounts.liquidity_pool;
     let settings = &mut ctx.accounts.settings;
     let lp_token = &ctx.accounts.lp_token_mint;
+    let dead_shares_vault = &ctx.accounts.dead_shares_vault;
+    let token_program = &ctx.accounts.token_program;
+
+    let pool_index = settings.liquidity_pools;
 
     liquidity_pool.set_inner(LiquidityPool {
         bump: ctx.bumps.liquidity_pool,
-        index: settings.liquidity_pools,
+        index: pool_index,
         lp_token: lp_token.key(),
         cooldown_duration,
-        cooldowns,
+        cooldowns: 0,
+        deposit_cap
     });
 
+    // Security Fix: Mint dead shares to prevent LP token inflation attack
+    // These shares are permanently locked in the dead_shares_vault (owned by liquidity_pool)
+    // This ensures the first depositor cannot manipulate the exchange rate
+    let signer_seeds = &[
+        LIQUIDITY_POOL_SEED.as_bytes(),
+        &pool_index.to_le_bytes(),
+        &[ctx.bumps.liquidity_pool]
+    ];
+
+    mint_to(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            MintTo {
+                mint: lp_token.to_account_info(),
+                to: dead_shares_vault.to_account_info(),
+                authority: liquidity_pool.to_account_info(),
+            },
+            &[signer_seeds]
+        ),
+        DEAD_SHARES
+    )?;
+
     settings.liquidity_pools += 1;
+
+    emit!(InitializeLiquidityPoolEvent {
+        admin: ctx.accounts.signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        lp_token: lp_token.key(),
+    });
 
     Ok(())
 }
@@ -52,7 +86,7 @@ pub struct InitializeLiquidityPool<'info> {
         constraint = permissions.can_perform_protocol_action(
             Action::InitializeLiquidityPool, 
             &settings.access_control
-        ) @ InsuranceFundError::InvalidSigner,
+        ) @ RlpError::InvalidSigner,
     )]
     pub permissions: Account<'info, UserPermissions>,
 
@@ -78,13 +112,24 @@ pub struct InitializeLiquidityPool<'info> {
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
-        constraint = lp_token_mint.supply == 0 @ InsuranceFundError::InvalidReceiptTokenSupply,
-        constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ InsuranceFundError::InvalidReceiptTokenMintAuthority,
-        constraint = lp_token_mint.freeze_authority.is_none() @ InsuranceFundError::InvalidReceiptTokenFreezeAuthority,
-        constraint = lp_token_mint.is_initialized @ InsuranceFundError::InvalidReceiptTokenSetup,
-        constraint = lp_token_mint.decimals == 9 @ InsuranceFundError::InvalidReceiptTokenDecimals
+        mut,
+        constraint = lp_token_mint.supply == 0 @ RlpError::InvalidReceiptTokenSupply,
+        constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ RlpError::InvalidReceiptTokenMintAuthority,
+        constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
+        constraint = lp_token_mint.is_initialized @ RlpError::InvalidReceiptTokenSetup,
+        constraint = lp_token_mint.decimals == 9 @ RlpError::InvalidReceiptTokenDecimals
     )]
     pub lp_token_mint: Box<Account<'info, Mint>>,
+
+    /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
+    /// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
+    #[account(
+        init,
+        payer = signer,
+        associated_token::mint = lp_token_mint,
+        associated_token::authority = liquidity_pool,
+    )]
+    pub dead_shares_vault: Account<'info, TokenAccount>,
 
     #[account()]
     pub system_program: Program<'info, System>,

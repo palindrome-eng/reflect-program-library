@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::states::*;
 use crate::events::*;
 use anchor_spl::token::{
@@ -14,7 +14,8 @@ use anchor_spl::associated_token::AssociatedToken;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositRewardsArgs {
-    pub amount: u64
+    pub amount: u64,
+    pub asset_id: u8,
 }
 
 pub fn deposit_rewards(
@@ -23,6 +24,7 @@ pub fn deposit_rewards(
 ) -> Result<()> {
     let DepositRewardsArgs {
         amount,
+        asset_id: _
     } = args;
 
     let signer = &ctx.accounts.signer;
@@ -68,7 +70,7 @@ pub struct DepositRewards<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump
+        bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -77,8 +79,8 @@ pub struct DepositRewards<'info> {
             PERMISSIONS_SEED.as_bytes(),
             &signer.key().to_bytes()
         ],
-        bump,
-        constraint = permissions.can_perform_protocol_action(Action::DepositRewards, &settings.access_control) @ InsuranceFundError::PermissionsTooLow
+        bump = permissions.bump,
+        constraint = permissions.can_perform_protocol_action(Action::DepositRewards, &settings.access_control) @ RlpError::PermissionsTooLow
     )]
     pub permissions: Account<'info, UserPermissions>,
 
@@ -87,7 +89,7 @@ pub struct DepositRewards<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &liquidity_pool.index.to_le_bytes()
         ],
-        bump
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
@@ -106,15 +108,15 @@ pub struct DepositRewards<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            &asset_mint.key().to_bytes()
+            &args.asset_id.to_le_bytes()
         ],
-        bump
+        constraint = asset.mint == asset_mint.key(),
+        bump = asset.bump,
     )]
     pub asset: Account<'info, Asset>,
 
     #[account(
-        init_if_needed,
-        payer = signer,
+        mut,
         associated_token::mint = asset_mint,
         associated_token::authority = liquidity_pool,
     )]

@@ -15,6 +15,7 @@ pub struct LiquidityPool {
     pub lp_token: Pubkey,
     pub cooldowns: u64,
     pub cooldown_duration: u64,
+    pub deposit_cap: Option<u64>,
 }
 
 impl LiquidityPool {
@@ -45,10 +46,8 @@ impl LiquidityPool {
 
     pub fn calculate_total_pool_value(
         &self,
-        remaining_accounts: &[AccountInfo],
-        liquidity_pool: &Account<LiquidityPool>,
-        settings: &Account<Settings>,
-        clock: &Clock,
+        reserves: &Vec<&TokenAccount>,
+        oracle_prices: &Vec<OraclePrice>,
     ) -> Result<PreciseNumber> {
         let expected_len = settings.assets as usize * 4;
         let mut total_pool_value =
@@ -198,11 +197,11 @@ impl LiquidityPool {
             let lp_supply_precise = PreciseNumber::new(lp_token.supply as u128)
                 .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
 
-            let deposit_ratio = deposit_value
-                .checked_mul(&lp_supply_precise)
-                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?
-                .checked_div(&total_pool_value)
-                .ok_or(crate::errors::InsuranceFundError::MathOverflow)?;
+        let deposit_ratio = deposit_value
+            .checked_mul(&lp_supply_precise)
+            .ok_or(RlpError::MathOverflow)?
+            .checked_div(&total_pool_value)
+            .ok_or(RlpError::MathOverflow)?;
 
             deposit_ratio
                 .to_imprecise()

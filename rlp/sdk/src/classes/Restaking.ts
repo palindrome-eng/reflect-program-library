@@ -23,7 +23,6 @@ import {
     LiquidityPool,
     liquidityPoolDiscriminator,
     userPermissionsDiscriminator,
-    InitializeRlpArgs,
     createInitializeRlpInstruction,
     createInitializeLpInstruction,
     InitializeLpInstructionArgs,
@@ -55,6 +54,9 @@ type InsuranceFundAccount = Asset | UserPermissions | Cooldown | KillSwitch | Li
 
 export class Restaking {
     private connection: Connection;
+    private settings: Settings;
+    private liquidityPools: AccountWithPubkey<LiquidityPool>[];
+    private assets: AccountWithPubkey<Asset>[];
 
     constructor(
         connection: Connection,
@@ -67,6 +69,12 @@ export class Restaking {
         accountInfo: AccountInfo<Buffer>
     ): T {
         return schema.fromAccountInfo(accountInfo)[0];
+    }
+
+    async load() {
+        this.settings = await this.getSettingsData();
+        this.liquidityPools = await this.getLiquidityPools();
+        this.assets = await this.getAssets();
     }
 
     async getLiquidityPools() {
@@ -87,13 +95,22 @@ export class Restaking {
         return liquidityPool;
     }
 
-async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
+    async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
+        if (this.assets?.length > 0) {
+            return this.assets;
+        }
+
         const assets = await Asset
             .gpaBuilder()
             .addFilter("accountDiscriminator", assetDiscriminator)
             .run(this.connection);
 
-        return assets.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Asset>(Asset, account) }));
+        const result: AccountWithPubkey<Asset>[] = assets
+            .map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Asset>(Asset, account) }))
+            .sort((a: AccountWithPubkey<Asset>, b: AccountWithPubkey<Asset>) => a.account.index - b.account.index);
+
+        this.assets = result;
+        return result;
     }
 
     async getCooldowns(): Promise<AccountWithPubkey<Cooldown>[]> {
@@ -171,16 +188,13 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
         return liquidityPool;
     }
 
-    async initializeRlp(signer: PublicKey, args: InitializeRlpArgs) {
+    async initializeRlp(signer: PublicKey) {
         return createInitializeRlpInstruction(
             {
                 permissions: Restaking.deriveUserPermissions(signer),
                 settings: Restaking.deriveSettings(),
                 signer: signer,
                 systemProgram: SystemProgram.programId
-            },
-            {
-                args
             },
             PROGRAM_ID
         );
@@ -190,16 +204,26 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
         return Settings.fromAccountAddress(this.connection, Restaking.deriveSettings());
     }
 
-    static deriveAsset(mint: PublicKey) {
+    static deriveAsset(assetId: number) {
         const [asset] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("asset"),
-                mint.toBuffer()
+                new BN(assetId).toArrayLike(Buffer, "le", 1)
             ],
             PROGRAM_ID
         );
 
         return asset;
+    }
+
+    async findAssetFromMint(mint: PublicKey) {
+        const assets = await this.getAssets();
+        
+        const {
+            pubkey
+        } = assets.find(({ account }) => account.mint.equals(mint));
+
+        return pubkey;
     }
 
     async createToken(
@@ -334,7 +358,10 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
         oracle: PublicKey,
         accessLevel: AccessLevel
     ) {
-        const asset = Restaking.deriveAsset(assetMint);
+        const {
+            account: assetData,
+            pubkey: asset
+        } = this.assets.find(({ account }) => account.mint === assetMint);
         const permissions = Restaking.deriveUserPermissions(signer);
 
         return createAddAssetInstruction(
@@ -376,11 +403,18 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
             false
         );
 
+        const {
+            account: {
+                index: assetId
+            },
+            pubkey: asset
+        } = this.assets.find(({ account }) => account.mint === mint);
+
         return createDepositRewardsInstruction(
             {
                 signer,
                 settings: Restaking.deriveSettings(),
-                asset: Restaking.deriveAsset(mint),
+                asset,
                 assetMint: mint,
                 assetPool,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -392,7 +426,8 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
             },
             {
                 args: {
-                    amount
+                    amount,
+                    assetId
                 }
             },
             PROGRAM_ID
@@ -409,7 +444,13 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
         const settings = Restaking.deriveSettings();
         const permissions = Restaking.deriveUserPermissions(signer);
         const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
-        const asset = Restaking.deriveAsset(mint);
+
+        const {
+            account: {
+                index: assetId
+            },
+            pubkey: asset
+        } = this.assets.find(({ account }) => account.mint === mint);
 
         const liquidityPoolTokenAccount = getAssociatedTokenAddressSync(
             mint,
@@ -432,7 +473,8 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
             {
                 args: {
                     liquidityPoolId,
-                    amount
+                    amount,
+                    assetId
                 }
             },
             PROGRAM_ID
@@ -450,23 +492,23 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
 
     async restake(signer: PublicKey, amount: BN, mint: PublicKey, liquidityPoolId: number, minLpTokens?: BN) {
         const settings = Restaking.deriveSettings();
-        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
-        const asset = Restaking.deriveAsset(mint);
-
-        const signerAssetAta = getAssociatedTokenAddressSync(
-            mint,
-            signer
-        );
+        
+        const {
+            account: {
+                index: assetId,
+                oracle: {
+                    fields: [oracleAddress]
+                }
+            },
+            pubkey: asset
+        } = this.assets.find(({ account }) => account.mint === mint);
 
         const {
-            oracle: {
-                fields: [oracleAddress]
+            pubkey: liquidityPool,
+            account: {
+                lpToken
             }
-        } = await this.getAsset(asset);
-
-        const {
-            lpToken
-        } = await this.getLiquidityPoolData(liquidityPoolId);
+        } = this.liquidityPools.find(({ account }) => account.index === liquidityPoolId);
 
         const poolAssetAccount = getAssociatedTokenAddressSync(
             mint,
@@ -506,7 +548,8 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
                 args: {
                     amount,
                     liquidityPoolIndex: liquidityPoolId,
-                    minLpTokens: minLpTokens ?? new BN(0)
+                    minLpTokens: minLpTokens ?? null,
+                    assetId
                 }
             }
         );
@@ -529,11 +572,13 @@ async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
         liquidityPoolId: number,
         amount: BN,
     ) {
-        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
         const {
-            cooldowns,
-            lpToken
-        } = await this.getLiquidityPoolData(liquidityPoolId);
+            pubkey: liquidityPool,
+            account: {
+                lpToken,
+                cooldowns
+            }
+        } = this.liquidityPools.find(({ account }) => account.index === liquidityPoolId);
 
         const cooldown = Restaking.deriveCooldown(cooldowns);
         const cooldownLpTokenAccount = getAssociatedTokenAddressSync(

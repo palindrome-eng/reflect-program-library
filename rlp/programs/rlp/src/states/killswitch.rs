@@ -1,17 +1,11 @@
 use std::io::Write;
 use anchor_lang::prelude::{*, borsh::BorshSchema};
 use crate::states::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 
 #[repr(C)]
 #[derive(BorshSchema, AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace, Default)]
 pub struct KillSwitch {
-    /** Bool indices:
-    - [0] - mint
-    - [1] - redeem
-    - [2] - rebalance
-    - [3] - capture (print and distribute stable)
-     */
     pub frozen: u8,
 }
 
@@ -37,7 +31,7 @@ impl KillSwitch {
         if !self.is_frozen(action) { 
             return Ok(()); 
         }        
-        Err(error!(InsuranceFundError::ActionFrozen))
+        Err(error!(RlpError::ActionFrozen))
     }
 
     /** Freeze an action. */

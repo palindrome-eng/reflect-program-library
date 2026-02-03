@@ -30,52 +30,27 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     // Prevent swapping the same token
     require!(
         token_from.key() != token_to.key(),
-        InsuranceFundError::InvalidInput
+        RlpError::InvalidInput
     );
 
     let token_from_asset = &ctx.accounts.token_from_asset;
     let token_to_asset = &ctx.accounts.token_to_asset;
 
-    let admin = &ctx.accounts.admin;
+    let permissions = &ctx.accounts.permissions;
     let settings = &ctx.accounts.settings;
 
-    // If any of the assets are private, require admin permissions.
-    if token_from_asset.access_level == AccessLevel::Private
-        || token_to_asset.access_level == AccessLevel::Private
-    {
-        // Check if PrivateSwap is frozen
-        require!(
-            !settings
-                .access_control
-                .killswitch
-                .is_frozen(&Action::PrivateSwap),
-            InsuranceFundError::Frozen
-        );
-
-        require!(
-            admin.is_some()
-                && admin
-                    .as_ref()
-                    .unwrap()
-                    .can_perform_protocol_action(Action::PrivateSwap, &settings.access_control),
-            InsuranceFundError::PermissionsTooLow
-        );
-    } else {
-        // Check if PublicSwap is frozen
-        require!(
-            !settings
-                .access_control
-                .killswitch
-                .is_frozen(&Action::PublicSwap),
-            InsuranceFundError::Frozen
-        );
-
-        action_check_protocol(
-            Action::PublicSwap,
-            admin.as_deref(),
-            &settings.access_control,
-        )?;
-    }
+    // Swap is only available to whitelisted entities
+    // Check if Swap action is frozen
+    require!(
+        !settings.access_control.killswitch.is_frozen(&Action::Swap),
+        RlpError::Frozen
+    );
+    
+    // Verify caller has Swap permission
+    require!(
+        permissions.can_perform_protocol_action(Action::Swap, &settings.access_control),
+        RlpError::PermissionsTooLow
+    );
 
     let token_from_oracle = &ctx.accounts.token_from_oracle;
     let token_to_oracle = &ctx.accounts.token_to_oracle;
@@ -116,7 +91,7 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         .checked_div(token_to_price.mul(1, *token_to_decimals)?)
         .ok_or(InsuranceFundError::MathOverflow)?
         .try_into()
-        .map_err(|_| InsuranceFundError::MathOverflow)?;
+        .map_err(|_| RlpError::MathOverflow)?;
 
     msg!("[swap] oracle_amount_out {}", oracle_amount_out);
 
@@ -149,15 +124,15 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     msg!("[swap] amount_out {}", amount_out);
 
     require!(
-        token_to_pool.amount as u128 >= amount_out,
-        InsuranceFundError::NotEnoughFunds
+        token_to_pool.amount >= amount_out,
+        RlpError::NotEnoughFunds
     );
 
     // Slippage protection
     if let Some(min_amount) = min_out {
         require!(
-            amount_out as u128 >= min_amount as u128,
-            InsuranceFundError::SlippageExceeded
+            amount_out >= min_amount,
+            RlpError::SlippageExceeded
         );
     }
 
@@ -192,29 +167,37 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         amount_out as u64,
     )?;
 
+    emit!(SwapEvent {
+        signer: signer.key(),
+        liquidity_pool: liquidity_pool.key(),
+        amount_in,
+        amount_out,
+    });
+
     Ok(())
 }
 
 #[derive(Accounts)]
+#[instruction(args: SwapArgs)]
 pub struct Swap<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
+    /// Permissions account - required for whitelisted swap access
     #[account(
         seeds = [
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref(),
         ],
-        bump,
+        bump = permissions.bump,
     )]
-    pub admin: Option<Account<'info, UserPermissions>>,
+    pub permissions: Account<'info, UserPermissions>,
 
     #[account(
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump,
-        constraint = !settings.frozen @ InsuranceFundError::Frozen,
+        bump = settings.bump,
     )]
     pub settings: Box<Account<'info, Settings>>,
 
@@ -223,7 +206,7 @@ pub struct Swap<'info> {
             LIQUIDITY_POOL_SEED.as_bytes(),
             &liquidity_pool.index.to_le_bytes()
         ],
-        bump,
+        bump = liquidity_pool.bump,
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
@@ -233,9 +216,10 @@ pub struct Swap<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            token_from.key().as_ref()
+            &args.from_asset_id.to_le_bytes()
         ],
-        bump
+        constraint = token_from_asset.mint == token_from.key(),
+        bump = token_from_asset.bump,
     )]
     pub token_from_asset: Account<'info, Asset>,
 
@@ -251,9 +235,10 @@ pub struct Swap<'info> {
     #[account(
         seeds = [
             ASSET_SEED.as_bytes(),
-            token_to.key().as_ref()
+            &args.to_asset_id.to_le_bytes()
         ],
-        bump
+        constraint = token_to_asset.mint == token_to.key(),
+        bump = token_to_asset.bump,
     )]
     pub token_to_asset: Account<'info, Asset>,
 
