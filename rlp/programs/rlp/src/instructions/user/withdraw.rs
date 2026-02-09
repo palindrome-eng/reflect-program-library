@@ -3,22 +3,20 @@ use anchor_spl::token::close_account;
 use anchor_spl::token::CloseAccount;
 use anchor_spl::token::Token;
 use spl_math::precise_number::PreciseNumber;
-use num_traits::ToPrimitive;
 use crate::errors::RlpError;
 use crate::states::*;
 use crate::constants::*;
-use anchor_spl::token::{ 
-    Mint, 
-    TokenAccount, 
+use anchor_spl::token::{
+    Mint,
+    TokenAccount,
     transfer,
     Transfer,
     burn,
     Burn
 };
-use crate::helpers::loaders::{
+use crate::helpers::{
     load_assets,
     load_reserves,
-    load_oracle_prices,
     load_user_token_accounts
 };
 use crate::events::WithdrawEvent;
@@ -98,9 +96,11 @@ pub fn withdraw<'a>(
             )
             .ok_or(RlpError::MathOverflow)?
             .to_imprecise()
-            .ok_or(RlpError::MathOverflow)?
-            .to_u64()
             .ok_or(RlpError::MathOverflow)?;
+
+        let user_pool_share_amount: u64 = user_pool_share_amount
+            .try_into()
+            .map_err(|_| error!(RlpError::MathOverflow))?;
 
         if user_pool_share_amount > 0 {
             let reserve_account = remaining_accounts

@@ -1,6 +1,6 @@
 use super::OraclePrice;
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use anchor_lang::prelude::*;
 use borsh::BorshDeserialize;
 use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
@@ -12,7 +12,7 @@ pub fn get_price_from_pyth(oracle_account: &AccountInfo, clock: &Clock) -> Resul
     let mut data_slice = &oracle_account_data[8..];
     let oracle = PriceUpdateV2::deserialize(&mut data_slice).map_err(|e| {
         msg!("[pyth] deserialization error: {:?}", e);
-        InsuranceFundError::InvalidOracle
+        RlpError::InvalidOracle
     })?;
 
     let price_timestamp = oracle.price_message.publish_time;
@@ -21,7 +21,7 @@ pub fn get_price_from_pyth(oracle_account: &AccountInfo, clock: &Clock) -> Resul
 
     require!(
         age <= ORACLE_MAXIMUM_AGE as i64,
-        InsuranceFundError::PriceError
+        RlpError::PriceError
     );
 
     Ok(OraclePrice {

@@ -1,6 +1,6 @@
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
-use crate::events::InitializeRlp as InitializeRlpEvent;
+use crate::errors::RlpError;
+use crate::events::InitializeRlpEvent;
 use crate::states::*;
 use anchor_lang::prelude::*;
 
@@ -21,8 +21,8 @@ pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> R
 
     // validate swap_fee_bps
     require!(
-        0 >= swap_fee_bps && swap_fee_bps <= 10_000,
-        InsuranceFundError::InvalidInput
+        swap_fee_bps <= 10_000,
+        RlpError::InvalidInput
     );
 
     permissions.set_inner(UserPermissions {

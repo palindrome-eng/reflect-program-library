@@ -16,11 +16,10 @@ pub mod rlp {
     use super::*;
 
     pub fn initialize_rlp(
-        ctx: Context<InitializeRlp>, 
+        ctx: Context<InitializeRlp>,
+        args: InitializeRlpArgs,
     ) -> Result<()> {
-        instructions::initialize_rlp(
-            ctx
-        )
+        instructions::initialize_rlp(ctx, args)
     }
 
     pub fn initialize_lp(

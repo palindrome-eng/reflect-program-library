@@ -50,3 +50,12 @@ pub const BPS_PRECISION: u128 = 10_000;
 
 #[constant]
 pub const PRECISION: u32 = 18;
+
+#[constant]
+pub const MAX_SLASH_BPS: u64 = 1_000;
+
+#[constant]
+pub const BPS_DENOMINATOR: u64 = 10_000;
+
+#[constant]
+pub const DEAD_SHARES: u64 = 1_000_000;

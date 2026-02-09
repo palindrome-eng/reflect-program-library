@@ -1,13 +1,11 @@
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
 use crate::events::AddAssetEvent;
 use crate::helpers::get_price_from_pyth;
-use crate::helpers::get_price_from_switchboard;
 use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
-use switchboard_solana::ID as SWITCHBOARD_PROGRAM_ID;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct AddAssetArgs {
@@ -26,14 +24,13 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
     let oracle = if oracle.owner.as_ref() == PYTH_PROGRAM_ID.as_ref() {
         get_price_from_pyth(oracle, &clock)?;
         Oracle::Pyth(oracle.key())
-    } else if oracle.owner.as_ref() == SWITCHBOARD_PROGRAM_ID.as_ref() {
-        // get_price_from_switchboard(oracle, &clock)?;
-        Oracle::Switchboard(oracle.key())
     } else {
-        return Err(InsuranceFundError::InvalidOracle.into());
+        return Err(RlpError::InvalidOracle.into());
     };
 
     asset.set_inner(Asset {
+        bump: ctx.bumps.asset,
+        index: settings.assets,
         mint: asset_mint.key(),
         oracle,
         access_level: args.access_level,
@@ -42,7 +39,7 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
     settings.assets = settings
         .assets
         .checked_add(1)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+        .ok_or(RlpError::MathOverflow)?;
 
     emit!(AddAssetEvent {
         admin: signer.key(),
@@ -65,7 +62,7 @@ pub struct AddAsset<'info> {
             signer.key().as_ref()
         ],
         bump,
-        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
+        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ RlpError::PermissionsTooLow,
     )]
     pub admin: Account<'info, UserPermissions>,
 
@@ -100,4 +97,3 @@ pub struct AddAsset<'info> {
     #[account()]
     pub system_program: Program<'info, System>,
 }
-

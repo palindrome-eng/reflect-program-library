@@ -1,5 +1,6 @@
 use crate::constants::*;
-use crate::errors::InsuranceFundError;
+use crate::errors::RlpError;
+use crate::events::RestakeEvent;
 use crate::helpers::action_check_protocol;
 use crate::states::{Action, Asset, LiquidityPool, Settings, UserPermissions};
 use anchor_lang::prelude::*;
@@ -36,7 +37,7 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
     let token_program = &ctx.accounts.token_program;
     let token_decimals = &ctx.accounts.asset_mint.decimals;
 
-    require!(amount > 0, crate::errors::InsuranceFundError::InvalidInput);
+    require!(amount > 0, crate::errors::RlpError::InvalidInput);
 
     let clock = Clock::get()?;
 
@@ -67,7 +68,7 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
     msg!("[restake] deposit_asset_price: {:?}", deposit_asset_price);
 
     let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount, *token_decimals)?)
-        .ok_or(InsuranceFundError::MathOverflow)?;
+        .ok_or(RlpError::MathOverflow)?;
 
     msg!(
         "[restake] deposit_value: {:?}",
@@ -84,7 +85,7 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
 
     require!(
         min_lp_tokens <= lp_tokens_to_mint,
-        InsuranceFundError::SlippageExceeded
+        RlpError::SlippageExceeded
     );
 
     msg!("minting lp tokens");
@@ -96,6 +97,12 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
         &ctx.accounts.user_lp_account,
         token_program,
     )?;
+
+    emit!(RestakeEvent {
+        from: signer.key(),
+        asset: ctx.accounts.asset_mint.key(),
+        amount,
+    });
 
     Ok(())
 }
@@ -112,7 +119,7 @@ pub struct Restake<'info> {
             SETTINGS_SEED.as_bytes(),
         ],
         bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ InsuranceFundError::Frozen,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

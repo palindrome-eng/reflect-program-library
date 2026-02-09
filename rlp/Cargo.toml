@@ -1,13 +1,7 @@
 [workspace]
 members = [
-    "programs/*",
-    "clients/rust"
+    "programs/*"
 ]
-resolver = "2"
-
-[workspace.dependencies]
-# Pin base64ct to version that doesn't require edition 2024
-base64ct = "=1.7.3"
 
 [profile.release]
 overflow-checks = true

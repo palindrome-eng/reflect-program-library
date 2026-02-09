@@ -1,4 +1,4 @@
-use crate::errors::RlpError;
+use crate::{constants::PRECISION, errors::RlpError};
 
 #[derive(Debug)]
 pub struct OraclePrice {
@@ -7,16 +7,16 @@ pub struct OraclePrice {
 }
 
 impl OraclePrice {
-    
     #[inline(never)]
-    pub fn mul(
-        &self,
-        amount: u64
-    ) -> Result<u128, RlpError> {
-        let price: u128;
+    pub fn mul(&self, amount: u64, token_decimals: u8) -> Result<u128, RlpError> {
+        let decimal_adjustment = PRECISION.saturating_sub(token_decimals as u32);
 
-        if self.exponent >= 0 {
-            price = (amount as i128)
+        let normalized_amount = (amount as u128)
+            .checked_mul(10u128.pow(decimal_adjustment))
+            .ok_or(RlpError::MathOverflow)?;
+
+        let value = if self.exponent >= 0 {
+            (normalized_amount as i128)
                 .checked_mul(self.price.into())
                 .ok_or(RlpError::MathOverflow.into())?
                 // If exponent is positive, multiply by power of 10.
@@ -24,15 +24,15 @@ impl OraclePrice {
                     i128::try_from(
                         10_i64
                             .checked_pow(self.exponent.abs_diff(0))
-                            .ok_or(RlpError::MathOverflow.into())?
+                            .ok_or(RlpError::MathOverflow.into())?,
                     )
-                    .map_err(|_| RlpError::MathOverflow)?
+                    .map_err(|_| RlpError::MathOverflow)?,
                 )
                 .ok_or(RlpError::MathOverflow.into())?
                 .try_into()
-                .map_err(|_| RlpError::MathOverflow.into())?;
+                .map_err(|_| RlpError::MathOverflow.into())?
         } else {
-            price = (amount as i128)
+            (normalized_amount as i128)
                 .checked_mul(self.price.into())
                 .ok_or(RlpError::MathOverflow.into())?
                 // If exponent is negative, divide by power of 10.
@@ -40,15 +40,15 @@ impl OraclePrice {
                     i128::try_from(
                         10_i64
                             .checked_pow(self.exponent.abs_diff(0))
-                            .ok_or(RlpError::MathOverflow.into())?
+                            .ok_or(RlpError::MathOverflow.into())?,
                     )
-                    .map_err(|_| RlpError::MathOverflow)?
+                    .map_err(|_| RlpError::MathOverflow)?,
                 )
                 .ok_or(RlpError::MathOverflow.into())?
                 .try_into()
-                .map_err(|_| RlpError::MathOverflow.into())?;
-        }
+                .map_err(|_| RlpError::MathOverflow.into())?
+        };
 
-        Ok(price)
+        Ok(value)
     }
 }
