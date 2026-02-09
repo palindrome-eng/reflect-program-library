@@ -42,21 +42,11 @@ pub const LIQUIDITY_POOL_SEED: &str = "liquidity_pool";
 #[constant]
 pub const LIQUIDITY_POOL_LOCKUP_SEED: &str = "lp_lockup";
 
-/// Maximum oracle data age in seconds
-/// Security Fix: Reduced from 3600s to 60s to prevent stale price exploitation
 #[constant]
-pub const ORACLE_MAXIMUM_AGE: u64 = 60; // 60 seconds
+pub const ORACLE_MAXIMUM_AGE: u64 = 2 * 60; // 2 minutes, decrease for prod
 
-/// Dead shares to prevent LP token inflation attack
-/// These shares are minted on pool initialization and never redeemable
 #[constant]
-pub const DEAD_SHARES: u64 = 1_000_000_000;
+pub const BPS_PRECISION: u128 = 10_000;
 
-/// Basis points denominator
 #[constant]
-pub const BPS_DENOMINATOR: u64 = 10_000;
-
-/// Maximum slash amount per transaction (as percentage of pool in BPS)
-/// Security Fix: Limits centralization risk from broad slash permissions
-#[constant]
-pub const MAX_SLASH_BPS: u64 = 1_000; // 10% max per slash transaction
+pub const PRECISION: u32 = 18;

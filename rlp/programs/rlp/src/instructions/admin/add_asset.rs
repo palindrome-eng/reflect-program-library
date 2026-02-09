@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
-use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
-use crate::errors::RlpError;
+use crate::constants::*;
+use crate::errors::InsuranceFundError;
 use crate::events::AddAssetEvent;
 use crate::helpers::get_price_from_pyth;
+use crate::helpers::get_price_from_switchboard;
 use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
@@ -23,26 +23,26 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
 
     let clock = Clock::get()?;
 
-    // Only Pyth oracles are supported
-    let oracle = if oracle.owner.eq(&PYTH_PROGRAM_ID) {
+    let oracle = if oracle.owner.as_ref() == PYTH_PROGRAM_ID.as_ref() {
         get_price_from_pyth(oracle, &clock)?;
         Oracle::Pyth(oracle.key())
+    } else if oracle.owner.as_ref() == SWITCHBOARD_PROGRAM_ID.as_ref() {
+        // get_price_from_switchboard(oracle, &clock)?;
+        Oracle::Switchboard(oracle.key())
     } else {
-        return Err(RlpError::InvalidOracle.into());
+        return Err(InsuranceFundError::InvalidOracle.into());
     };
 
     asset.set_inner(Asset {
-        bump: ctx.bumps.asset,
-        index: settings.assets,
-        mint: asset_mint.key(), 
-        oracle, 
-        access_level: args.access_level
+        mint: asset_mint.key(),
+        oracle,
+        access_level: args.access_level,
     });
 
     settings.assets = settings
         .assets
         .checked_add(1)
-        .ok_or(RlpError::MathOverflow)?;
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
     emit!(AddAssetEvent {
         admin: signer.key(),
@@ -64,8 +64,8 @@ pub struct AddAsset<'info> {
             PERMISSIONS_SEED.as_bytes(),
             signer.key().as_ref()
         ],
-        bump = admin.bump,
-        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ RlpError::PermissionsTooLow,
+        bump,
+        constraint = admin.can_perform_protocol_action(Action::AddAsset, &settings.access_control) @ InsuranceFundError::PermissionsTooLow,
     )]
     pub admin: Account<'info, UserPermissions>,
 
@@ -74,7 +74,7 @@ pub struct AddAsset<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump = settings.bump,
+        bump
     )]
     pub settings: Account<'info, Settings>,
 
@@ -83,7 +83,7 @@ pub struct AddAsset<'info> {
         payer = signer,
         seeds = [
             ASSET_SEED.as_bytes(),
-            &settings.assets.to_le_bytes()
+            &asset_mint.key().to_bytes()
         ],
         bump,
         space = 8 + Asset::INIT_SPACE

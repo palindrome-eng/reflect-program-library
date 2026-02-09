@@ -1,9 +1,21 @@
 use crate::constants::*;
-use crate::events::InitializeRlpEvent;
+use crate::errors::InsuranceFundError;
+use crate::events::InitializeRlp as InitializeRlpEvent;
+use crate::states::*;
+use anchor_lang::prelude::*;
 
-pub fn initialize_rlp(
-    ctx: Context<InitializeRlp>
-) -> Result<()> {
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct InitializeRlpArgs {
+    pub swap_fee_bps: u16,
+    pub cooldown_duration: u64,
+}
+
+pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> Result<()> {
+    let InitializeRlpArgs {
+        swap_fee_bps,
+        cooldown_duration: _,
+    } = args;
+
     let signer = &ctx.accounts.signer;
     let permissions = &mut ctx.accounts.permissions;
 
@@ -24,7 +36,9 @@ pub fn initialize_rlp(
         bump: ctx.bumps.settings,
         assets: 0,
         access_control: AccessControl::new_defaults()?,
-        liquidity_pools: 0
+        frozen: false,
+        liquidity_pools: 0,
+        swap_fee_bps,
     });
 
     emit!(InitializeRlpEvent {
