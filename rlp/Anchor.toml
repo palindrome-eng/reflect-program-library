@@ -12,7 +12,8 @@ url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"
-wallet = "/Users/kubaplata/.config/solana/id.json"
+# wallet = "/Users/kubaplata/.config/solana/id.json"
+wallet = "~/.config/solana/arch-dp.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/rlp.ts"
@@ -20,7 +21,7 @@ test-no-slash = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/scenarios
 test-sdk = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/restaking-sdk.ts"
 
 [test.validator]
-bind_address = "0.0.0.0"
+bind_address = "127.0.0.1"
 url = "https://api.mainnet-beta.solana.com"
 ledger = ".anchor/test-ledger"
 rpc_port = 8899
