@@ -4,18 +4,17 @@ use crate::errors::RlpError;
 use crate::events::AddAssetEvent;
 use crate::helpers::get_price_from_pyth;
 use crate::states::*;
-use crate::constants::*;
+use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
+use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
+use switchboard_solana::ID as SWITCHBOARD_PROGRAM_ID;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct AddAssetArgs {
     pub access_level: AccessLevel,
 }
 
-pub fn add_asset(
-    ctx: Context<AddAsset>,
-    args: AddAssetArgs
-) -> Result<()> {
+pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
     let settings = &mut ctx.accounts.settings;
     let asset = &mut ctx.accounts.asset;
     let asset_mint = &ctx.accounts.asset_mint;
@@ -56,9 +55,7 @@ pub fn add_asset(
 
 #[derive(Accounts)]
 pub struct AddAsset<'info> {
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(
@@ -80,7 +77,7 @@ pub struct AddAsset<'info> {
         bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,
-    
+
     #[account(
         init,
         payer = signer,
@@ -93,17 +90,14 @@ pub struct AddAsset<'info> {
     )]
     pub asset: Account<'info, Asset>,
 
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub asset_mint: Account<'info, Mint>,
 
     /// CHECK: We're checking owner of this account later
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub oracle: UncheckedAccount<'info>,
 
     #[account()]
     pub system_program: Program<'info, System>,
 }
+

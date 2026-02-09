@@ -94,5 +94,4 @@ pub struct SwapEvent {
     pub liquidity_pool: Pubkey,
     pub amount_in: u64,
     pub amount_out: u64,
-    pub private: bool
 }

@@ -4,10 +4,10 @@
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
     },
     "dependencies": {
+        "@coral-xyz/anchor": "0.30.1",
         "@codama/nodes-from-anchor": "^1.3.8",
         "@codama/renderers-js": "^1.5.5",
         "@codama/renderers-rust": "^1.2.9",
-        "@coral-xyz/anchor": "0.29.0",
         "@metaplex-foundation/solita": "^0.20.1",
         "@solana/spl-token": "^0.4.8",
         "@solana/web3.js": "1.97.0",

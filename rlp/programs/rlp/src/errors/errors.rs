@@ -142,4 +142,10 @@ pub enum RlpError {
 
     #[msg("AlreadyUnfrozen")]
     AlreadyUnfrozen,
+
+    #[msg("SlashAmountExceedsLimit")]
+    SlashAmountExceedsLimit,
+
+    #[msg("OracleDataTooStale")]
+    OracleDataTooStale,
 }

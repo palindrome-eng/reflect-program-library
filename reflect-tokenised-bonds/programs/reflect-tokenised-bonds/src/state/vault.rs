@@ -1,7 +1,7 @@
 use core::{convert::Into, result::Result::Ok};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{burn, mint_to, transfer, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
-use crate::{constants::VAULT_SEED, errors::ReflectError};
+use crate::{constants::{VAULT_SEED, VIRTUAL_OFFSET}, errors::ReflectError};
 use spl_math::precise_number::PreciseNumber;
 
 #[account]
@@ -124,23 +124,31 @@ impl Vault {
         Ok(())
     }
 
+    /// Computes the amount of receipt tokens to mint for a deposit.
+    /// Uses virtual offset to prevent first depositor inflation attack.
     pub fn compute_receipt_token<'info>(
         &self,
         deposit: u64,
         deposited: u64,
         receipt_token_supply: u64,
     ) -> Result<u64> {
-        if receipt_token_supply == 0 { return Ok(deposit); };
+        // Add virtual offset to prevent inflation attack
+        let virtual_deposited = (deposited as u128)
+            .checked_add(VIRTUAL_OFFSET as u128)
+            .ok_or(ReflectError::MathOverflow)?;
+        let virtual_supply = (receipt_token_supply as u128)
+            .checked_add(VIRTUAL_OFFSET as u128)
+            .ok_or(ReflectError::MathOverflow)?;
 
         PreciseNumber::new(deposit as u128)
             .ok_or(ReflectError::MathOverflow)?
             .checked_mul(
-                &PreciseNumber::new(receipt_token_supply as u128)
+                &PreciseNumber::new(virtual_supply)
                     .ok_or(ReflectError::MathOverflow)?
             )
             .ok_or(ReflectError::MathOverflow)?
             .checked_div(
-                &PreciseNumber::new(deposited as u128)
+                &PreciseNumber::new(virtual_deposited)
                     .ok_or(ReflectError::MathOverflow)?
             )
             .ok_or(ReflectError::ZeroDivision)?
@@ -150,21 +158,31 @@ impl Vault {
             .map_err(|_| ReflectError::MathOverflow.into())
     }
 
+    /// Computes the amount of base tokens to return for burning receipt tokens.
+    /// Uses virtual offset to prevent first depositor inflation attack.
     pub fn compute_base_token(
         &self,
         receipt: u64,
         deposited: u64,
         receipt_token_supply: u64,
     ) -> Result<u64> {
+        // Add virtual offset to prevent inflation attack
+        let virtual_deposited = (deposited as u128)
+            .checked_add(VIRTUAL_OFFSET as u128)
+            .ok_or(ReflectError::MathOverflow)?;
+        let virtual_supply = (receipt_token_supply as u128)
+            .checked_add(VIRTUAL_OFFSET as u128)
+            .ok_or(ReflectError::MathOverflow)?;
+
         PreciseNumber::new(receipt as u128)
             .ok_or(ReflectError::MathOverflow)?
             .checked_mul(
-                &PreciseNumber::new(deposited as u128)
+                &PreciseNumber::new(virtual_deposited)
                     .ok_or(ReflectError::MathOverflow)?
             )
             .ok_or(ReflectError::MathOverflow)?
             .checked_div(
-                &PreciseNumber::new(receipt_token_supply as u128)
+                &PreciseNumber::new(virtual_supply)
                     .ok_or(ReflectError::MathOverflow)?
             )
             .ok_or(ReflectError::ZeroDivision)?

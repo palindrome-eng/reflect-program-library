@@ -12,6 +12,7 @@ pub fn load_assets(
     let mut assets: Vec<(Pubkey, Asset)> = Vec::with_capacity(settings.assets as usize);
 
     for asset_index in 0..settings.assets as usize {
+        // Compute expected PDA from index - this is deterministic and unique per index
         let (asset_address, _) = Pubkey::find_program_address(
             &[
                 ASSET_SEED.as_bytes(),
@@ -20,6 +21,9 @@ pub fn load_assets(
             &crate::ID
         );
 
+        // Search for the expected asset in remaining_accounts
+        // Duplicate accounts in remaining_accounts are harmless - we only load each expected asset once
+        // Missing accounts will cause this to return None and error below
         let maybe_account = remaining_accounts_iter
                 .find(|account| account.key().eq(&asset_address));
 

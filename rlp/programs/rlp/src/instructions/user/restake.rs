@@ -1,17 +1,11 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount, Token, transfer, Transfer};
-use spl_math::precise_number::PreciseNumber;
-use crate::errors::RlpError;
-use crate::states::{Asset, LiquidityPool, Settings, UserPermissions, Action};
 use crate::constants::*;
-use anchor_spl::associated_token::AssociatedToken;
+use crate::errors::InsuranceFundError;
 use crate::helpers::action_check_protocol;
-use crate::helpers::loaders::{
-    load_assets,
-    load_reserves,
-    load_oracle_prices
-};
-use crate::events::RestakeEvent;
+use crate::states::{Action, Asset, LiquidityPool, Settings, UserPermissions};
+use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
+use spl_math::precise_number::PreciseNumber;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RestakeArgs {
@@ -21,15 +15,11 @@ pub struct RestakeArgs {
     pub asset_id: u8,
 }
 
-pub fn restake<'a>(
-    ctx: Context<'_, '_, 'a, 'a, Restake<'a>>,
-    args: RestakeArgs
-) -> Result<()> {
-    let RestakeArgs { 
-        liquidity_pool_index: _, 
-        amount, 
+pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs) -> Result<()> {
+    let RestakeArgs {
+        liquidity_pool_index: _,
+        amount,
         min_lp_tokens,
-        asset_id: __
     } = args;
 
     let settings = &ctx.accounts.settings;
@@ -38,99 +28,74 @@ pub fn restake<'a>(
     action_check_protocol(
         Action::Restake,
         permissions.as_deref(),
-        &settings.access_control
+        &settings.access_control,
     )?;
 
     let signer = &ctx.accounts.signer;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let lp_token = &ctx.accounts.lp_token;
     let token_program = &ctx.accounts.token_program;
+    let token_decimals = &ctx.accounts.asset_mint.decimals;
 
-    require!(
-        amount > 0,
-        crate::errors::RlpError::InvalidInput
-    );
+    require!(amount > 0, crate::errors::InsuranceFundError::InvalidInput);
 
     let clock = Clock::get()?;
 
-    msg!("asset: {:?}", ctx.accounts.asset.key());
-
-    require!(
-        ctx.remaining_accounts.len() == (settings.assets as usize) * 3,
-        RlpError::InvalidInput
-    );
-
-    for account in ctx.remaining_accounts {
-        msg!("remaining account: {:?}", account.key());
-    }
-
-    msg!("loading accounts");
-
-    let assets = load_assets(settings, &ctx.remaining_accounts)?;
-    let assets_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
-
-    msg!("loaded assets");
-
-    let reserves = load_reserves(liquidity_pool, &assets_datas, &ctx.remaining_accounts)?;
-    let reserves_datas = reserves.iter().map(|(_, reserve)| reserve).collect::<Vec<&TokenAccount>>();
-
-    msg!("loaded reserves");
-
-    let oracle_prices = load_oracle_prices(&clock, &assets_datas, &ctx.remaining_accounts)?;
-
-    msg!("loaded oracle prices");
-
     let total_pool_value_before = liquidity_pool.calculate_total_pool_value(
-        &reserves_datas,
-        &oracle_prices
+        &ctx.remaining_accounts,
+        liquidity_pool,
+        settings,
+        &clock,
     )?;
+
+    msg!(
+        "[restake] total_pool_value_before: {:?}",
+        total_pool_value_before.to_imprecise()
+    );
 
     liquidity_pool.deposit(
         signer,
         amount,
         &ctx.accounts.user_asset_account,
         &ctx.accounts.pool_asset_account,
-        token_program
+        token_program,
     )?;
 
     let asset = &ctx.accounts.asset;
     let oracle = &ctx.accounts.oracle;
     let deposit_asset_price = asset.get_price(oracle, &clock)?;
 
-    let deposit_value = PreciseNumber::new(
-        deposit_asset_price.mul(amount)?
-    ).ok_or(RlpError::MathOverflow)?;
+    msg!("[restake] deposit_asset_price: {:?}", deposit_asset_price);
 
-    if liquidity_pool.deposit_cap.is_some() {
-        let new_pool_value = total_pool_value_before
-        .checked_add(&deposit_value)
-        .ok_or(RlpError::MathOverflow)?;
+    let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount, *token_decimals)?)
+        .ok_or(InsuranceFundError::MathOverflow)?;
 
-        require!(
-            new_pool_value
-                .less_than(&PreciseNumber::new(liquidity_pool.deposit_cap.unwrap() as u128).unwrap()),
-            RlpError::DepositCapOverflow
-        );
-    }
+    msg!(
+        "[restake] deposit_value: {:?}",
+        deposit_value.to_imprecise().unwrap()
+    );
 
-    let lp_tokens_to_mint = liquidity_pool
-        .calculate_lp_tokens_on_deposit(
-            lp_token,
-            total_pool_value_before,
-            deposit_value
-        )?;
+    let lp_tokens_to_mint = liquidity_pool.calculate_lp_tokens_on_deposit(
+        lp_token,
+        total_pool_value_before,
+        deposit_value,
+    )?;
+
+    msg!("[restake] lp_tokens_to_mint: {:?}", lp_tokens_to_mint);
 
     require!(
         min_lp_tokens <= lp_tokens_to_mint,
-        RlpError::SlippageExceeded
+        InsuranceFundError::SlippageExceeded
     );
+
+    msg!("minting lp tokens");
 
     liquidity_pool.mint_lp_token(
         lp_tokens_to_mint,
         liquidity_pool,
         lp_token,
         &ctx.accounts.user_lp_account,
-        token_program
+        token_program,
     )?;
 
     emit!(RestakeEvent {
@@ -156,7 +121,7 @@ pub struct Restake<'info> {
         bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ RlpError::Frozen,
     )]
-    pub settings: Box<Account<'info, Settings>>,
+    pub settings: Account<'info, Settings>,
 
     #[account(
         seeds = [
@@ -175,20 +140,20 @@ pub struct Restake<'info> {
         bump = liquidity_pool.bump,
         constraint = liquidity_pool.index == args.liquidity_pool_index,
     )]
-    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
+    pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account(
         mut,
         address = liquidity_pool.lp_token
     )]
-    pub lp_token: Box<Account<'info, Mint>>,
+    pub lp_token: Account<'info, Mint>,
 
     #[account(
         mut,
         associated_token::mint = lp_token,
         associated_token::authority = signer,
     )]
-    pub user_lp_account: Box<Account<'info, TokenAccount>>,
+    pub user_lp_account: Account<'info, TokenAccount>,
 
     #[account(
         seeds = [
@@ -197,27 +162,27 @@ pub struct Restake<'info> {
         ],
         bump = asset.bump,
     )]
-    pub asset: Box<Account<'info, Asset>>,
+    pub asset: Account<'info, Asset>,
 
     #[account(
         mut,
         address = asset.mint
     )]
-    pub asset_mint: Box<Account<'info, Mint>>,
+    pub asset_mint: Account<'info, Mint>,
 
     #[account(
         mut,
         token::mint = asset_mint,
         token::authority = signer,
     )]
-    pub user_asset_account: Box<Account<'info, TokenAccount>>,
+    pub user_asset_account: Account<'info, TokenAccount>,
 
     #[account(
         mut,
         associated_token::mint = asset_mint,
         associated_token::authority = liquidity_pool,
     )]
-    pub pool_asset_account: Box<Account<'info, TokenAccount>>,
+    pub pool_asset_account: Account<'info, TokenAccount>,
 
     /// CHECK: Directly checking the address
     #[account(

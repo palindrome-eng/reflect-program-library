@@ -83,6 +83,8 @@ pub fn withdraw<'a>(
         let (reserve_key, reserve) = &reserves[i];
         let (user_token_account_key, _) = &user_token_accounts[i];
 
+        // Note: DEAD_SHARES are now actually minted and included in lp_token_supply
+        // so the calculation is correct without virtual additions
         let user_pool_share_amount = PreciseNumber::new(reserve.amount as u128)
             .ok_or(RlpError::MathOverflow)?
             .checked_mul(
@@ -91,11 +93,7 @@ pub fn withdraw<'a>(
             )
             .ok_or(RlpError::MathOverflow)?
             .checked_div(
-                &PreciseNumber::new(
-                    lp_token_supply as u128
-                        // .checked_add(DEAD_SHARES)
-                        // .ok_or(RlpError::MathOverflow)? as u128
-                )
+                &PreciseNumber::new(lp_token_supply as u128)
                 .ok_or(RlpError::MathOverflow)?
             )
             .ok_or(RlpError::MathOverflow)?

@@ -56,7 +56,9 @@ pub struct UpdateDepositCap<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump = settings.bump,
-        constraint = settings.access_control.killswitch.is_frozen(&Action::UpdateDepositCap) @ RlpError::Frozen,
+        // Security Fix: Changed from is_frozen to !is_frozen
+        // The constraint should FAIL when frozen, not when unfrozen
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::UpdateDepositCap) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

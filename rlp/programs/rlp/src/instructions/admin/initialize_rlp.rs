@@ -1,5 +1,3 @@
-use anchor_lang::prelude::*;
-use crate::states::*;
 use crate::constants::*;
 use crate::events::InitializeRlpEvent;
 
@@ -8,11 +6,17 @@ pub fn initialize_rlp(
 ) -> Result<()> {
     let signer = &ctx.accounts.signer;
     let permissions = &mut ctx.accounts.permissions;
-    
+
+    // validate swap_fee_bps
+    require!(
+        0 >= swap_fee_bps && swap_fee_bps <= 10_000,
+        InsuranceFundError::InvalidInput
+    );
+
     permissions.set_inner(UserPermissions {
         authority: signer.key(),
         bump: ctx.bumps.permissions,
-        protocol_roles: LevelRoles::new(Role::SUPREMO)
+        protocol_roles: LevelRoles::new(Role::SUPREMO),
     });
 
     let settings = &mut ctx.accounts.settings;
@@ -32,9 +36,7 @@ pub fn initialize_rlp(
 
 #[derive(Accounts)]
 pub struct InitializeRlp<'info> {
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(
@@ -61,5 +63,6 @@ pub struct InitializeRlp<'info> {
     pub settings: Account<'info, Settings>,
 
     #[account()]
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
+

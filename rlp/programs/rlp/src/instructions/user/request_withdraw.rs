@@ -42,7 +42,7 @@ pub fn request_withdrawal(
     msg!("this works 2");
 
     let signer = &ctx.accounts.signer;
-    let liquidity_pool = &ctx.accounts.liquidity_pool;
+    let liquidity_pool = &mut ctx.accounts.liquidity_pool;
     let cooldown = &mut ctx.accounts.cooldown;
     let token_program = &ctx.accounts.token_program;
 
@@ -74,7 +74,9 @@ pub fn request_withdrawal(
         amount
     )?;
 
-    liquidity_pool
+    // Increment the cooldowns counter for next withdrawal request
+    // Security Fix: Actually store the incremented value
+    liquidity_pool.cooldowns = liquidity_pool
         .cooldowns
         .checked_add(1)
         .ok_or(RlpError::MathOverflow)?;
