@@ -495,7 +495,7 @@ describe("reflect-tokenised-bonds", () => {
             .methods
             .deposit({
                 amount: new BN(amount),
-                isRewards: false,
+
                 vaultId: new BN(0)
             })
             .accounts({
@@ -549,7 +549,7 @@ describe("reflect-tokenised-bonds", () => {
         ).eq(amount);
     });
 
-    it("Deposits 500,000 reward token into the reward pool.", async () => {
+    it("Deposits reward tokens and burns receipt tokens to distribute rewards.", async () => {
         const [vault] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("vault"),
@@ -598,11 +598,11 @@ describe("reflect-tokenised-bonds", () => {
             provider.publicKey
         );
 
+        // Step 1: Deposit normally (mints receipt tokens)
         await program
             .methods
             .deposit({
                 amount: new BN(50 * LAMPORTS_PER_SOL),
-                isRewards: true,
                 vaultId: new BN(0)
             })
             .accounts({
@@ -617,6 +617,23 @@ describe("reflect-tokenised-bonds", () => {
             })
             .preInstructions([ataIx])
             .rpc();
+
+        // Step 2: Burn the receipt tokens to distribute rewards to remaining holders
+        const receiptTokenAccountData = await getAccount(
+            provider.connection,
+            signerReceiptTokenAccount
+        );
+
+        const { createBurnInstruction } = await import("@solana/spl-token");
+        const burnIx = createBurnInstruction(
+            signerReceiptTokenAccount,
+            receiptTokenMint,
+            provider.publicKey,
+            receiptTokenAccountData.amount
+        );
+
+        const tx = new Transaction().add(burnIx);
+        await provider.sendAndConfirm(tx);
     });
 
     
@@ -694,7 +711,7 @@ describe("reflect-tokenised-bonds", () => {
             .methods
             .deposit({
                 amount: new BN(amount),
-                isRewards: false,
+
                 vaultId: new BN(0)
             })
             .accounts({

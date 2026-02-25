@@ -71,7 +71,8 @@ pub struct AddAsset<'info> {
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
-        bump
+        bump,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::AddAsset) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

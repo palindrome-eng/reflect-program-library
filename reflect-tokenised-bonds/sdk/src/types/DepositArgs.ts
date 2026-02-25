@@ -9,7 +9,6 @@ import * as beet from '@metaplex-foundation/beet'
 export type DepositArgs = {
   vaultId: beet.bignum
   amount: beet.bignum
-  isRewards: boolean
 }
 
 /**
@@ -20,7 +19,6 @@ export const depositArgsBeet = new beet.BeetArgsStruct<DepositArgs>(
   [
     ['vaultId', beet.u64],
     ['amount', beet.u64],
-    ['isRewards', beet.bool],
   ],
   'DepositArgs'
 )

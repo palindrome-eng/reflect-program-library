@@ -213,7 +213,6 @@ pub struct Swap<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump,
-        constraint = !settings.frozen @ RlpError::Frozen,
     )]
     pub settings: Box<Account<'info, Settings>>,
 

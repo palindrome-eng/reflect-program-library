@@ -116,7 +116,7 @@
         },
         {
           "name": "pool",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -131,15 +131,13 @@
         },
         {
           "name": "receiptToken",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "signerReceiptTokenAccount",
           "isMut": true,
-          "isSigner": false,
-          "isOptional": true
+          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -293,10 +291,6 @@
           {
             "name": "amount",
             "type": "u64"
-          },
-          {
-            "name": "isRewards",
-            "type": "bool"
           }
         ]
       }

@@ -71,6 +71,7 @@ pub struct DepositRewards<'info> {
             SETTINGS_SEED.as_bytes()
         ],
         bump = settings.bump,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::DepositRewards) @ RlpError::Frozen,
     )]
     pub settings: Account<'info, Settings>,
 

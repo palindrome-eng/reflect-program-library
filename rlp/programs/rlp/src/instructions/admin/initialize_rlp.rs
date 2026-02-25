@@ -7,13 +7,11 @@ use anchor_lang::prelude::*;
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeRlpArgs {
     pub swap_fee_bps: u16,
-    pub cooldown_duration: u64,
 }
 
 pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> Result<()> {
     let InitializeRlpArgs {
         swap_fee_bps,
-        cooldown_duration: _,
     } = args;
 
     let signer = &ctx.accounts.signer;
@@ -36,7 +34,6 @@ pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> R
         bump: ctx.bumps.settings,
         assets: 0,
         access_control: AccessControl::new_defaults()?,
-        frozen: false,
         liquidity_pools: 0,
         swap_fee_bps,
     });
