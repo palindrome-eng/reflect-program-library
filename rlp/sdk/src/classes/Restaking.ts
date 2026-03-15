@@ -1,5 +1,6 @@
 import { findAssociatedTokenPda, TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
 import {
+  AccountRole,
   Rpc,
   SolanaRpcApi,
   Address,
@@ -279,6 +280,103 @@ export class Restaking {
     });
   }
 
+  /**
+   * Inject pre-fetched state (useful for testing without an RPC connection).
+   */
+  loadFromCache(
+    settings: Settings,
+    liquidityPools: AccountWithAddress<LiquidityPool>[],
+    assets: AccountWithAddress<Asset>[],
+  ): void {
+    this.settings = settings;
+    this.liquidityPools = liquidityPools;
+    this.assets = assets;
+  }
+
+  /**
+   * Build the remaining accounts needed by calculate_total_pool_value().
+   * Per asset (sorted by index): [pool_ata, asset_pda, oracle, mint]
+   */
+  private async buildPoolValueRemainingAccounts(
+    liquidityPoolAddress: Address,
+  ) {
+    const assets = await this.getAssets();
+    const remaining: { address: Address; role: AccountRole }[] = [];
+
+    for (const asset of assets) {
+      const [poolAta] = await findAssociatedTokenPda({
+        mint: asset.data.mint,
+        owner: liquidityPoolAddress,
+        tokenProgram: TOKEN_PROGRAM_ADDRESS,
+      });
+      const oracleAddress = (asset.data.oracle as any).fields[0] as Address;
+
+      remaining.push(
+        { address: poolAta, role: AccountRole.READONLY },
+        { address: asset.address, role: AccountRole.READONLY },
+        { address: oracleAddress, role: AccountRole.READONLY },
+        { address: asset.data.mint, role: AccountRole.READONLY },
+      );
+    }
+
+    return remaining;
+  }
+
+  /**
+   * Build the remaining accounts needed by withdraw's load_assets,
+   * load_reserves, and load_user_token_accounts.
+   *
+   * Layout:
+   *   - First N: user token ATAs (one per asset in index order)
+   *   - Then per asset: asset_pda, pool_reserve_ata
+   */
+  private async buildWithdrawRemainingAccounts(
+    signer: TransactionSigner,
+    liquidityPoolAddress: Address,
+  ) {
+    const assets = await this.getAssets();
+    const userAtas: { address: Address; role: AccountRole }[] = [];
+    const assetAndReserves: { address: Address; role: AccountRole }[] = [];
+
+    for (const asset of assets) {
+      const [userAta] = await findAssociatedTokenPda({
+        mint: asset.data.mint,
+        owner: signer.address,
+        tokenProgram: TOKEN_PROGRAM_ADDRESS,
+      });
+      userAtas.push({ address: userAta, role: AccountRole.WRITABLE });
+
+      const [poolReserve] = await findAssociatedTokenPda({
+        mint: asset.data.mint,
+        owner: liquidityPoolAddress,
+        tokenProgram: TOKEN_PROGRAM_ADDRESS,
+      });
+      assetAndReserves.push(
+        { address: asset.address, role: AccountRole.READONLY },
+        { address: poolReserve, role: AccountRole.WRITABLE },
+      );
+    }
+
+    return [...userAtas, ...assetAndReserves];
+  }
+
+  /**
+   * Append remaining account metas to a frozen instruction object,
+   * returning a new instruction with the extra accounts.
+   */
+  private appendRemainingAccounts<T extends { accounts: readonly any[]; data: any; programAddress: any }>(
+    ix: T,
+    remaining: { address: Address; role: AccountRole }[],
+  ): T {
+    const extraMetas = remaining.map((r) =>
+      Object.freeze({ address: r.address, role: r.role }),
+    );
+    return Object.freeze({
+      ...ix,
+      accounts: [...ix.accounts, ...extraMetas],
+    }) as T;
+  }
+
   async restake(
     signer: TransactionSigner,
     amount: number | bigint,
@@ -304,7 +402,7 @@ export class Restaking {
       tokenProgram: TOKEN_PROGRAM_ADDRESS,
     });
 
-    return getRestakeInstructionAsync({
+    const ix = await getRestakeInstructionAsync({
       signer,
       liquidityPool: lpEntry.address,
       lpToken: lpEntry.data.lpToken,
@@ -315,6 +413,12 @@ export class Restaking {
       amount,
       minLpTokens: (minLpTokens ?? null) as any,
     });
+
+    const remaining = await this.buildPoolValueRemainingAccounts(
+      lpEntry.address,
+    );
+
+    return this.appendRemainingAccounts(ix, remaining);
   }
 
   async requestWithdrawal(
@@ -355,22 +459,32 @@ export class Restaking {
     liquidityPoolId: number,
     cooldownId: number | bigint,
   ) {
-    const [liquidityPoolAddress] =
-      await PdaClient.deriveLiquidityPool(liquidityPoolId);
-    const lpData = await this.getLiquidityPoolData(liquidityPoolId);
+    const lpEntry = this.liquidityPools.find(
+      (lp) => lp.data.index === liquidityPoolId,
+    );
+    if (!lpEntry)
+      throw new Error(`Liquidity pool ${liquidityPoolId} not found`);
+
     const [cooldownAddress] = await PdaClient.deriveCooldown(
       liquidityPoolId,
       cooldownId,
     );
 
-    return getWithdrawInstructionAsync({
+    const ix = await getWithdrawInstructionAsync({
       signer,
-      liquidityPool: liquidityPoolAddress,
-      lpTokenMint: lpData.lpToken,
+      liquidityPool: lpEntry.address,
+      lpTokenMint: lpEntry.data.lpToken,
       cooldown: cooldownAddress,
       liquidityPoolId,
       cooldownId,
     });
+
+    const remaining = await this.buildWithdrawRemainingAccounts(
+      signer,
+      lpEntry.address,
+    );
+
+    return this.appendRemainingAccounts(ix, remaining);
   }
 
   async findAssetFromMint(mint: Address): Promise<Address> {

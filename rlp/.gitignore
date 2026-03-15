@@ -11,3 +11,4 @@ sdk/node_modules
 .env
 .idea
 .crates
+.claude

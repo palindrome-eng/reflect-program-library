@@ -54,6 +54,8 @@ import {
   Update,
 } from "../src/generated";
 import { PdaClient } from "../src/classes/PdaClient";
+import { Restaking, type AccountWithAddress } from "../src/classes/Restaking";
+import type { LiquidityPool, Asset, Settings } from "../src/generated";
 
 const RLP_SO_PATH = path.join(__dirname, "../../target/deploy/rlp.so");
 const PYTH_PROGRAM_ID = "rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ";
@@ -110,23 +112,6 @@ function convertToLegacyInstruction(ix: Instruction): TransactionInstruction {
   });
 }
 
-/**
- * Append remaining account metas to a legacy instruction.
- * Each entry: { address, isSigner, isWritable }
- */
-function appendRemainingAccounts(
-  ix: TransactionInstruction,
-  accounts: { address: Address; isSigner: boolean; isWritable: boolean }[],
-): TransactionInstruction {
-  for (const acc of accounts) {
-    ix.keys.push({
-      pubkey: toPublicKey(acc.address),
-      isSigner: acc.isSigner,
-      isWritable: acc.isWritable,
-    });
-  }
-  return ix;
-}
 
 function createMockPythPriceData(
   price: bigint,
@@ -213,6 +198,9 @@ describe("RLP SDK Full Flow Test", function () {
   let programLoaded = false;
   let createdCooldownPda: Address;
 
+  // SDK class instance (used for restake/withdraw which need remaining accounts)
+  let restaking: Restaking;
+
   // ========================================================================
   // Transaction helpers
   // ========================================================================
@@ -281,21 +269,6 @@ describe("RLP SDK Full Flow Test", function () {
     );
   }
 
-  /** Send a legacy instruction with remaining accounts appended */
-  function sendLegacyWithRemaining(
-    ix: Instruction,
-    remainingAccounts: {
-      address: Address;
-      isSigner: boolean;
-      isWritable: boolean;
-    }[],
-    signers: Keypair[] = [],
-    payer: Keypair = admin.keypair,
-  ): TransactionResult {
-    const legacyIx = convertToLegacyInstruction(ix);
-    appendRemainingAccounts(legacyIx, remainingAccounts);
-    return sendTransaction([legacyIx], signers, payer);
-  }
 
   function assertSuccess(result: TransactionResult, desc: string): void {
     if (!result.success) {
@@ -450,36 +423,6 @@ describe("RLP SDK Full Flow Test", function () {
     return toAddress(kp.publicKey);
   }
 
-  /**
-   * Build remaining accounts for restake's calculate_total_pool_value:
-   * For each asset: [pool_token_account, asset_pda, oracle, mint] (all readonly)
-   */
-  function buildPoolValueRemainingAccounts(): {
-    address: Address;
-    isSigner: boolean;
-    isWritable: boolean;
-  }[] {
-    return [
-      // Asset 1
-      {
-        address: poolAsset1Ata,
-        isSigner: false,
-        isWritable: false,
-      },
-      { address: asset1Pda, isSigner: false, isWritable: false },
-      { address: oracle1Address, isSigner: false, isWritable: false },
-      { address: assetMint1.address, isSigner: false, isWritable: false },
-      // Asset 2
-      {
-        address: poolAsset2Ata,
-        isSigner: false,
-        isWritable: false,
-      },
-      { address: asset2Pda, isSigner: false, isWritable: false },
-      { address: oracle2Address, isSigner: false, isWritable: false },
-      { address: assetMint2.address, isSigner: false, isWritable: false },
-    ];
-  }
 
   // ========================================================================
   // Setup
@@ -705,6 +648,22 @@ describe("RLP SDK Full Flow Test", function () {
     });
     assertSuccess(sendSdkInstruction(ix), "initializeLp");
     expect(accountExists(liquidityPoolPda)).to.be.true;
+
+    // Initialize Restaking SDK instance with cached state from LiteSVM
+    restaking = new Restaking(null as any); // no RPC needed — we inject cached data
+    restaking.loadFromCache(
+      { liquidityPools: 1, assets: 2 } as Settings,
+      [
+        {
+          address: liquidityPoolPda,
+          data: { bump: 0, index: 0, lpToken: lpTokenMint.address, cooldowns: 0n, cooldownDuration: 0n, depositCap: null } as any,
+        },
+      ],
+      [
+        { address: asset1Pda, data: { bump: 0, index: 0, mint: assetMint1.address, oracle: { __kind: "Pyth" as const, fields: [oracle1Address] }, accessLevel: AccessLevel.Public } as any },
+        { address: asset2Pda, data: { bump: 0, index: 1, mint: assetMint2.address, oracle: { __kind: "Pyth" as const, fields: [oracle2Address] }, accessLevel: AccessLevel.Public } as any },
+      ],
+    );
   });
 
   // ========================================================================
@@ -730,7 +689,7 @@ describe("RLP SDK Full Flow Test", function () {
   });
 
   // ========================================================================
-  // 9. restake (with remaining accounts)
+  // 9. restake
   // ========================================================================
   it("should restake tokens into the liquidity pool", async function () {
     if (!programLoaded) return this.skip();
@@ -738,37 +697,20 @@ describe("RLP SDK Full Flow Test", function () {
     const amount = 1_000_000_000n; // 1 token
 
     // Mint asset tokens to user
-    const { ata: userAssetAta } = await createAtaAndMint(
+    await createAtaAndMint(
       assetMint1.address, user.address, admin.keypair, amount * 10n,
     );
 
-    // Create pool ATAs for BOTH assets (required by remaining accounts)
+    // Create pool ATAs for BOTH assets
     await createAta(assetMint1.address, liquidityPoolPda);
     await createAta(assetMint2.address, liquidityPoolPda);
 
     // Create user LP ATA
     await createAta(lpTokenMint.address, user.address, user.keypair);
 
-    // Build restake instruction
-    const ix = await getRestakeInstructionAsync({
-      signer: user.signer,
-      liquidityPool: liquidityPoolPda,
-      lpToken: lpTokenMint.address,
-      assetMint: assetMint1.address,
-      userAssetAccount: userAssetAta,
-      oracle: oracle1Address,
-      liquidityPoolIndex: 0,
-      amount,
-      minLpTokens: 0n,
-    });
-
-    // Send with remaining accounts: [pool_ata, asset_pda, oracle, mint] × each asset
-    const result = sendLegacyWithRemaining(
-      ix,
-      buildPoolValueRemainingAccounts(),
-      [user.keypair],
-      user.keypair,
-    );
+    // Restaking.restake() returns instruction with remaining accounts included
+    const ix = await restaking.restake(user.signer, amount, assetMint1.address, 0, 0n);
+    const result = sendSdkInstruction(ix, [user.keypair], user.keypair);
     assertSuccess(result, "restake");
 
     // Verify LP tokens were minted
@@ -823,60 +765,22 @@ describe("RLP SDK Full Flow Test", function () {
   });
 
   // ========================================================================
-  // 11. withdraw (with remaining accounts)
+  // 11. withdraw
   // ========================================================================
   it("should withdraw after cooldown", async function () {
     if (!programLoaded) return this.skip();
 
     const [cooldownPda] = await PdaClient.deriveCooldown(0, 0);
-
-    // Verify cooldown exists (created by requestWithdrawal)
     expect(accountExists(cooldownPda), "cooldown account should exist").to.be
       .true;
 
-    // Get cooldown LP token ATA
-    const [cooldownLpAta] = await findAssociatedTokenPda({
-      mint: lpTokenMint.address,
-      owner: cooldownPda,
-      tokenProgram: TOKEN_PROGRAM_ADDRESS,
-    });
+    // Create user ATAs for all assets (withdraw transfers assets back to user)
+    await createAta(assetMint1.address, user.address, user.keypair);
+    await createAta(assetMint2.address, user.address, user.keypair);
 
-    // Create user ATAs for all assets (needed as remaining accounts)
-    const userAsset1Ata = await createAta(assetMint1.address, user.address, user.keypair);
-    const userAsset2Ata = await createAta(assetMint2.address, user.address, user.keypair);
-
-    const ix = await getWithdrawInstructionAsync({
-      signer: user.signer,
-      liquidityPool: liquidityPoolPda,
-      lpTokenMint: lpTokenMint.address,
-      cooldownLpTokenAccount: cooldownLpAta,
-      cooldown: cooldownPda,
-      liquidityPoolId: 0,
-      cooldownId: 0n,
-    });
-
-
-    // Withdraw remaining accounts layout:
-    // - First N accounts: user token ATAs (one per asset, in asset index order)
-    //   → these are consumed by load_user_token_accounts via split_at()
-    // - Remaining accounts: asset PDAs + pool reserves (found via find())
-    const withdrawRemaining = [
-      // User ATAs first (asset index order)
-      { address: userAsset1Ata, isSigner: false, isWritable: true },
-      { address: userAsset2Ata, isSigner: false, isWritable: true },
-      // Then asset PDAs and pool reserves (order doesn't matter, found via find())
-      { address: asset1Pda, isSigner: false, isWritable: false },
-      { address: poolAsset1Ata, isSigner: false, isWritable: true },
-      { address: asset2Pda, isSigner: false, isWritable: false },
-      { address: poolAsset2Ata, isSigner: false, isWritable: true },
-    ];
-
-    const result = sendLegacyWithRemaining(
-      ix,
-      withdrawRemaining,
-      [user.keypair],
-      user.keypair,
-    );
+    // Restaking.withdraw() returns instruction with remaining accounts included
+    const ix = await restaking.withdraw(user.signer, 0, 0n);
+    const result = sendSdkInstruction(ix, [user.keypair], user.keypair);
 
     assertSuccess(result, "withdraw");
     expect(accountExists(cooldownPda)).to.be.false;
@@ -890,35 +794,13 @@ describe("RLP SDK Full Flow Test", function () {
 
     // First restake more so there's tokens in the pool to slash
     const amount = 2_000_000_000n;
-    const [userAssetAta] = await findAssociatedTokenPda({
-      mint: assetMint1.address,
-      owner: user.address,
-      tokenProgram: TOKEN_PROGRAM_ADDRESS,
-    });
-
-    // Mint more tokens to user
     await createAtaAndMint(
       assetMint1.address, user.address, admin.keypair, amount,
     );
 
-    const restakeIx = await getRestakeInstructionAsync({
-      signer: user.signer,
-      liquidityPool: liquidityPoolPda,
-      lpToken: lpTokenMint.address,
-      assetMint: assetMint1.address,
-      userAssetAccount: userAssetAta,
-      oracle: oracle1Address,
-      liquidityPoolIndex: 0,
-      amount,
-      minLpTokens: 0n,
-    });
+    const restakeIx = await restaking.restake(user.signer, amount, assetMint1.address, 0, 0n);
     assertSuccess(
-      sendLegacyWithRemaining(
-        restakeIx,
-        buildPoolValueRemainingAccounts(),
-        [user.keypair],
-        user.keypair,
-      ),
+      sendSdkInstruction(restakeIx, [user.keypair], user.keypair),
       "restake for slash test",
     );
 
