@@ -74,7 +74,7 @@ pub struct AddAsset<'info> {
         bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::AddAsset) @ RlpError::Frozen,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         init,

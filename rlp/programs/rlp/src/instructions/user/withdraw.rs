@@ -130,6 +130,7 @@ pub fn withdraw<'a>(
 
     let cooldown_seeds = &[
         COOLDOWN_SEED.as_bytes(),
+        &liquidity_pool.index.to_le_bytes(),
         &cooldown_id.to_le_bytes(),
         &[cooldown.bump]
     ];
@@ -183,7 +184,7 @@ pub struct Withdraw<'info> {
         bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ RlpError::Frozen
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         seeds = [
@@ -221,7 +222,8 @@ pub struct Withdraw<'info> {
         mut,
         seeds = [
             COOLDOWN_SEED.as_bytes(),
-            &args.cooldown_id.to_le_bytes(),
+            &liquidity_pool.index.to_le_bytes(),
+            &args.cooldown_id.to_le_bytes()
         ],
         bump = cooldown.bump,
         close = signer,

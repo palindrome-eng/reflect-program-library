@@ -57,7 +57,7 @@ pub struct UpdateDepositCap<'info> {
         bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::UpdateDepositCap) @ RlpError::Frozen,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         mut,

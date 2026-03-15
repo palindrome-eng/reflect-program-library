@@ -105,7 +105,7 @@ pub struct Slash<'info> {
         bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Slash) @ RlpError::Frozen,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         seeds = [
@@ -119,13 +119,13 @@ pub struct Slash<'info> {
     #[account(
         mut
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         seeds = [
             ASSET_SEED.as_bytes(),
-            &args.asset_id.to_le_bytes()
+            &asset.mint.to_bytes()
         ],
         constraint = asset.mint == mint.key(),
         bump = asset.bump,
@@ -137,12 +137,12 @@ pub struct Slash<'info> {
         token::mint = mint,
         token::authority = liquidity_pool,
     )]
-    pub liquidity_pool_token_account: Account<'info, TokenAccount>,
+    pub liquidity_pool_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         token::mint = mint,
     )]
-    pub destination: Account<'info, TokenAccount>,
+    pub destination: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub token_program: Program<'info, Token>,

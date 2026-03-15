@@ -2,12 +2,7 @@ use anchor_lang::prelude::*;
 use crate::errors::RlpError;
 use crate::states::{Role, Action, AccessControl};
 
-/** Handles role management at any hierarchy level (protocol or strategy) with methods for:
-- Checking if a specific role exists
-- Adding and removing roles
-- Checking if the SUPREMO role exists
-- Validating if roles can perform specific actions
-*/
+/// Handles role management at any hierarchy level (protocol or strategy).
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default, InitSpace)]
 pub struct LevelRoles {
     #[max_len(10)]

@@ -46,8 +46,7 @@ pub fn request_withdrawal(
     let cooldown = &mut ctx.accounts.cooldown;
     let token_program = &ctx.accounts.token_program;
 
-    msg!("this works 2.5");
-
+    cooldown.bump = ctx.bumps.cooldown;
     cooldown.liquidity_pool_id = liquidity_pool_id;
     cooldown.authority = signer.key();
 
@@ -108,7 +107,7 @@ pub struct RequestWithdrawal<'info> {
         bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Withdraw) @ RlpError::Frozen
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         seeds = [
@@ -146,7 +145,8 @@ pub struct RequestWithdrawal<'info> {
         init,
         seeds = [
             COOLDOWN_SEED.as_bytes(),
-            &liquidity_pool.cooldowns.to_le_bytes(),
+            &liquidity_pool.index.to_le_bytes(),
+            &liquidity_pool.cooldowns.to_le_bytes()
         ],
         bump,
         payer = signer,
@@ -160,7 +160,7 @@ pub struct RequestWithdrawal<'info> {
         associated_token::mint = lp_token_mint,
         associated_token::authority = cooldown,
     )]
-    pub cooldown_lp_token_account: Account<'info, TokenAccount>,
+    pub cooldown_lp_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub token_program: Program<'info, Token>,

@@ -181,7 +181,12 @@ impl LiquidityPool {
         total_pool_value: PreciseNumber,
         deposit_value: PreciseNumber,
     ) -> Result<u64> {
-        let lp_tokens_to_mint = if lp_token.supply == 0 {
+        let pool_value_is_zero = total_pool_value
+            .to_imprecise()
+            .map_or(true, |v| v == 0);
+
+        let lp_tokens_to_mint = if lp_token.supply == 0 || pool_value_is_zero {
+            // Use initial deposit formula when pool is empty or has only dead shares
             let lp_decimals = lp_token.decimals as u32;
             let scale_down_precise = PreciseNumber::new(10u128.pow(PRECISION - lp_decimals))
                 .ok_or(crate::errors::RlpError::MathOverflow)?;

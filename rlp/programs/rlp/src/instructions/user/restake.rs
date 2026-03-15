@@ -121,7 +121,7 @@ pub struct Restake<'info> {
         bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ RlpError::Frozen,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         seeds = [
@@ -146,14 +146,14 @@ pub struct Restake<'info> {
         mut,
         address = liquidity_pool.lp_token
     )]
-    pub lp_token: Account<'info, Mint>,
+    pub lp_token: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::mint = lp_token,
         associated_token::authority = signer,
     )]
-    pub user_lp_account: Account<'info, TokenAccount>,
+    pub user_lp_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         seeds = [
@@ -168,21 +168,21 @@ pub struct Restake<'info> {
         mut,
         address = asset.mint
     )]
-    pub asset_mint: Account<'info, Mint>,
+    pub asset_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         token::mint = asset_mint,
         token::authority = signer,
     )]
-    pub user_asset_account: Account<'info, TokenAccount>,
+    pub user_asset_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         associated_token::mint = asset_mint,
         associated_token::authority = liquidity_pool,
     )]
-    pub pool_asset_account: Account<'info, TokenAccount>,
+    pub pool_asset_account: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: Directly checking the address
     #[account(

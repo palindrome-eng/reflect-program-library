@@ -26,7 +26,7 @@ pub fn create_permission_account(
 #[instruction(new_admin: Pubkey)]
 pub struct RlpUserPermissionsInit<'info> {
     #[account(seeds = [SETTINGS_SEED.as_bytes()], bump = settings.bump)]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         init,

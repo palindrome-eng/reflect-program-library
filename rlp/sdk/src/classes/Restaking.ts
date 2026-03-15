@@ -1,651 +1,394 @@
+import { findAssociatedTokenPda, TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
 import {
-    AccountInfo, ComputeBudgetInstruction, ComputeBudgetProgram,
-    Connection,
-    Keypair,
-    PublicKey,
-    SystemProgram,
-    SYSVAR_CLOCK_PUBKEY,
-    TransactionInstruction
-} from "@solana/web3.js";
+  Rpc,
+  SolanaRpcApi,
+  Address,
+  TransactionSigner,
+} from "@solana/kit";
 import {
-    Asset,
-    assetDiscriminator,
-    Cooldown,
-    cooldownDiscriminator,
-    createAddAssetInstruction,
-    createRequestWithdrawalInstruction,
-    createSlashInstruction,
-    createWithdrawInstruction,
-    PROGRAM_ID,
-    Settings,
-    UserPermissions,
-    KillSwitch,
-    LiquidityPool,
-    liquidityPoolDiscriminator,
-    userPermissionsDiscriminator,
-    createInitializeRlpInstruction,
-    createInitializeLpInstruction,
-    InitializeLpInstructionArgs,
-    InitializeLiquidityPoolArgs,
-    createDepositRewardsInstruction,
-    createRestakeInstruction,
-    AccessLevel
+  type Settings,
+  type LiquidityPool,
+  type Asset,
+  type Cooldown,
+  type UserPermissions,
+  type AccessLevel,
+  RLP_PROGRAM_ADDRESS,
+  LIQUIDITY_POOL_DISCRIMINATOR,
+  USER_PERMISSIONS_DISCRIMINATOR,
+  fetchSettings,
+  fetchLiquidityPool,
+  getLiquidityPoolDecoder,
+  getAssetEncoder,
+  getAssetDecoder,
+  getCooldownEncoder,
+  getCooldownDecoder,
+  getUserPermissionsDecoder,
+  getInitializeRlpInstructionAsync,
+  getInitializeLpInstructionAsync,
+  getAddAssetInstructionAsync,
+  getSlashInstructionAsync,
+  getRestakeInstructionAsync,
+  getRequestWithdrawalInstructionAsync,
+  getWithdrawInstructionAsync,
 } from "../generated";
-import BN from "bn.js";
-import {
-    Account,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-    AuthorityType,
-    createInitializeMint2Instruction,
-    createSetAuthorityInstruction,
-    getAccount,
-    getAssociatedTokenAddressSync,
-    getMint,
-    MINT_SIZE,
-    TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
-import {
-    createCreateMetadataAccountV3Instruction,
-    PROGRAM_ID as METAPLEX_PROGRAM_ID
-} from "@metaplex-foundation/mpl-token-metadata";
-import { AccountWithPubkey } from "../types";
+import { PdaClient } from "./PdaClient";
 
-type InsuranceFundAccount = Asset | UserPermissions | Cooldown | KillSwitch | LiquidityPool | Settings;
+export type AccountWithAddress<T> = {
+  data: T;
+  address: Address;
+};
 
 export class Restaking {
-    private connection: Connection;
-    private settings: Settings;
-    private liquidityPools: AccountWithPubkey<LiquidityPool>[];
-    private assets: AccountWithPubkey<Asset>[];
+  private connection: Rpc<SolanaRpcApi>;
+  private settings!: Settings;
+  private liquidityPools!: AccountWithAddress<LiquidityPool>[];
+  private assets!: AccountWithAddress<Asset>[];
 
-    constructor(
-        connection: Connection,
-    ) {
-        this.connection = connection;
-    }
+  constructor(connection: Rpc<SolanaRpcApi>) {
+    this.connection = connection;
+  }
 
-    accountFromBuffer<T extends InsuranceFundAccount>(
-        schema: { fromAccountInfo: (accountInfo: AccountInfo<Buffer>) => [T, number] },
-        accountInfo: AccountInfo<Buffer>
-    ): T {
-        return schema.fromAccountInfo(accountInfo)[0];
-    }
+  async load(): Promise<void> {
+    this.settings = await this.getSettingsData();
+    this.liquidityPools = await this.getLiquidityPools();
+    this.assets = await this.getAssets();
+  }
 
-    async load() {
-        this.settings = await this.getSettingsData();
-        this.liquidityPools = await this.getLiquidityPools();
-        this.assets = await this.getAssets();
-    }
+  async getSettingsData(): Promise<Settings> {
+    const [settingsAddress] = await PdaClient.deriveSettings();
+    const account = await fetchSettings(this.connection, settingsAddress);
+    return account.data;
+  }
 
-    async getLiquidityPools() {
-        const lps = await LiquidityPool
-            .gpaBuilder()
-            .addFilter("accountDiscriminator", liquidityPoolDiscriminator)
-            .run(this.connection);
+  async getLiquidityPools(): Promise<AccountWithAddress<LiquidityPool>[]> {
+    const decoder = getLiquidityPoolDecoder();
 
-        return lps.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<LiquidityPool>(LiquidityPool, account) }));
-    }
-
-    async getLiquidityPoolData(liquidityPoolId: number) {
-        const liquidityPool = await LiquidityPool.fromAccountAddress(
-            this.connection, 
-            Restaking.deriveLiquidityPool(liquidityPoolId)
-        );
-
-        return liquidityPool;
-    }
-
-    async getAssets(): Promise<AccountWithPubkey<Asset>[]> {
-        if (this.assets?.length > 0) {
-            return this.assets;
-        }
-
-        const assets = await Asset
-            .gpaBuilder()
-            .addFilter("accountDiscriminator", assetDiscriminator)
-            .run(this.connection);
-
-        const result: AccountWithPubkey<Asset>[] = assets
-            .map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Asset>(Asset, account) }))
-            .sort((a: AccountWithPubkey<Asset>, b: AccountWithPubkey<Asset>) => a.account.index - b.account.index);
-
-        this.assets = result;
-        return result;
-    }
-
-    async getCooldowns(): Promise<AccountWithPubkey<Cooldown>[]> {
-        const cooldowns = await Cooldown
-            .gpaBuilder()
-            .addFilter("accountDiscriminator", cooldownDiscriminator)
-            .run(this.connection);
-
-        return cooldowns.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Cooldown>(Cooldown, account) }));
-    }
-
-    async getCooldownsByUser(user: PublicKey): Promise<AccountWithPubkey<Cooldown>[]> {
-        const cooldowns = await Cooldown
-            .gpaBuilder()
-            .addFilter("accountDiscriminator", cooldownDiscriminator)
-            .addFilter("authority", user)
-            .run(this.connection);
-
-        return cooldowns.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<Cooldown>(Cooldown, account) }));
-    }
-
-    async getUserPermissions(): Promise<AccountWithPubkey<UserPermissions>[]> {
-        const permissions = await UserPermissions
-            .gpaBuilder()
-            .addFilter("accountDiscriminator", userPermissionsDiscriminator)
-            .run(this.connection);
-
-        return permissions.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<UserPermissions>(UserPermissions, account) }));
-    }
-
-    async getUserPermissionsFromPublicKey(address: PublicKey): Promise<AccountWithPubkey<UserPermissions>[]> {
-        const permissions = await UserPermissions
-            .gpaBuilder()
-            .addFilter("accountDiscriminator", userPermissionsDiscriminator)
-            .addFilter("authority", address)
-            .run(this.connection);
-
-        return permissions.map(({ account, pubkey }) => ({ pubkey, account: this.accountFromBuffer<UserPermissions>(UserPermissions, account) }));
-    }
-
-    static deriveUserPermissions(
-        address: PublicKey
-    ) {
-        const [permissions] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("permissions"),
-                address.toBuffer()
-            ],
-            PROGRAM_ID
-        );
-
-        return permissions;
-    }
-
-    static deriveSettings() {
-        const [settings] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("settings"),
-            ],
-            PROGRAM_ID
-        );
-
-        return settings;
-    }
-
-    static deriveLiquidityPool(liquidityPoolId: number) {
-        const [liquidityPool] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("liquidity_pool"),
-                new BN(liquidityPoolId).toArrayLike(Buffer, "le", 1)
-            ],
-            PROGRAM_ID
-        );
-
-        return liquidityPool;
-    }
-
-    async initializeRlp(signer: PublicKey) {
-        return createInitializeRlpInstruction(
-            {
-                permissions: Restaking.deriveUserPermissions(signer),
-                settings: Restaking.deriveSettings(),
-                signer: signer,
-                systemProgram: SystemProgram.programId
+    const programAccounts = await (this.connection as any)
+      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+        encoding: "base64",
+        withContext: false,
+        filters: [
+          {
+            memcmp: {
+              encoding: "base64",
+              offset: BigInt(0),
+              bytes: Buffer.from(LIQUIDITY_POOL_DISCRIMINATOR).toString(
+                "base64",
+              ),
             },
-            PROGRAM_ID
-        );
+          },
+        ],
+      })
+      .send();
+
+    return programAccounts.map((account: any) => {
+      const [b64] = account.account.data;
+      const bytes = new Uint8Array(Buffer.from(b64, "base64"));
+      return {
+        address: account.pubkey,
+        data: decoder.decode(bytes),
+      };
+    });
+  }
+
+  async getLiquidityPoolData(liquidityPoolId: number): Promise<LiquidityPool> {
+    const [liquidityPoolAddress] =
+      await PdaClient.deriveLiquidityPool(liquidityPoolId);
+    const account = await fetchLiquidityPool(
+      this.connection,
+      liquidityPoolAddress,
+    );
+    return account.data;
+  }
+
+  async getAssets(): Promise<AccountWithAddress<Asset>[]> {
+    if (this.assets?.length > 0) {
+      return this.assets;
     }
 
-    async getSettingsData() {
-        return Settings.fromAccountAddress(this.connection, Restaking.deriveSettings());
-    }
+    const encoder = getAssetEncoder();
+    const decoder = getAssetDecoder();
 
-    static deriveAsset(assetId: number) {
-        const [asset] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("asset"),
-                new BN(assetId).toArrayLike(Buffer, "le", 1)
-            ],
-            PROGRAM_ID
-        );
+    const programAccounts = await (this.connection as any)
+      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+        encoding: "base64",
+        withContext: false,
+        filters: [
+          { dataSize: BigInt((encoder as any).fixedSize) },
+        ],
+      })
+      .send();
 
-        return asset;
-    }
-
-    async findAssetFromMint(mint: PublicKey) {
-        const assets = await this.getAssets();
-        
-        const {
-            pubkey
-        } = assets.find(({ account }) => account.mint.equals(mint));
-
-        return pubkey;
-    }
-
-    async createToken(
-        signer: PublicKey,
-        liquidityPool: PublicKey,
-        withMetadata?: boolean
-    ) {
-        const decimals = 9;
-
-        const tokenKeypair = Keypair.generate();
-        const instructions: TransactionInstruction[] = [];
-
-        const createAccountIx = SystemProgram.createAccount({
-            lamports: await this.connection.getMinimumBalanceForRentExemption(MINT_SIZE),
-            space: MINT_SIZE,
-            fromPubkey: signer,
-            newAccountPubkey: tokenKeypair.publicKey,
-            programId: TOKEN_PROGRAM_ID
-        });
-
-        instructions.push(createAccountIx);
-
-        const createMintIx = createInitializeMint2Instruction(
-            tokenKeypair.publicKey,
-            decimals,
-            signer,
-            null
-        );
-
-        instructions.push(createMintIx);
-
-        if (withMetadata) {
-            const metadataData = {
-                name: "Reflect Liquidity Pool",
-                symbol: "RLP",
-                uri: "",
-                sellerFeeBasisPoints: 0,
-                creators: null,
-                collection: null,
-                uses: null,
-            };
-
-            const [metadata] = PublicKey.findProgramAddressSync(
-                [
-                    Buffer.from("metadata"),
-                    METAPLEX_PROGRAM_ID.toBuffer(),
-                    tokenKeypair.publicKey.toBuffer(),
-                ],
-                METAPLEX_PROGRAM_ID
-            );
-
-            const createMetadataIx = createCreateMetadataAccountV3Instruction(
-                {
-                    metadata,
-                    mint: tokenKeypair.publicKey,
-                    mintAuthority: signer,
-                    payer: signer,
-                    updateAuthority: signer,
-                },
-                {
-                    createMetadataAccountArgsV3: {
-                        data: metadataData,
-                        isMutable: true,
-                        collectionDetails: null
-                    }
-                }
-            );
-
-            instructions.push(createMetadataIx);
-        }
-
-        const setAuthorityIx = createSetAuthorityInstruction(
-            tokenKeypair.publicKey,
-            signer,
-            AuthorityType.MintTokens,
-            liquidityPool
-        );
-
-        instructions.push(setAuthorityIx);
-
+    const result = programAccounts
+      .map((account: any) => {
+        const [b64] = account.account.data;
+        const bytes = new Uint8Array(Buffer.from(b64, "base64"));
         return {
-            instructions,
-            mint: tokenKeypair
-        }
-    }
+          address: account.pubkey,
+          data: decoder.decode(bytes),
+        };
+      })
+      .sort((a: any, b: any) => a.data.index - b.data.index);
 
-    async initializeLiquidityPool(
-        signer: PublicKey,
-        args: InitializeLiquidityPoolArgs
-    ) {
-        
-        const {
-            liquidityPools
-        } = await this.getSettingsData();
+    this.assets = result;
+    return result;
+  }
 
-        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPools);
+  async getCooldowns(): Promise<AccountWithAddress<Cooldown>[]> {
+    const encoder = getCooldownEncoder();
+    const decoder = getCooldownDecoder();
 
-        const {
-            instructions,
-            mint
-        } = await this.createToken(signer, liquidityPool, false);
+    const programAccounts = await (this.connection as any)
+      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+        encoding: "base64",
+        withContext: false,
+        filters: [
+          { dataSize: BigInt((encoder as any).fixedSize) },
+        ],
+      })
+      .send();
 
-        const ix = createInitializeLpInstruction(
-            {
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                liquidityPool,
-                lpTokenMint: mint.publicKey,
-                permissions: Restaking.deriveUserPermissions(signer),
-                settings: Restaking.deriveSettings(),
-                signer,
-                systemProgram: SystemProgram.programId,
-                tokenProgram: TOKEN_PROGRAM_ID,
+    return programAccounts.map((account: any) => {
+      const [b64] = account.account.data;
+      const bytes = new Uint8Array(Buffer.from(b64, "base64"));
+      return {
+        address: account.pubkey,
+        data: decoder.decode(bytes),
+      };
+    });
+  }
+
+  async getCooldownsByUser(
+    user: Address,
+  ): Promise<AccountWithAddress<Cooldown>[]> {
+    const allCooldowns = await this.getCooldowns();
+    return allCooldowns.filter((c) => c.data.authority === user);
+  }
+
+  async getUserPermissions(): Promise<AccountWithAddress<UserPermissions>[]> {
+    const decoder = getUserPermissionsDecoder();
+
+    const programAccounts = await (this.connection as any)
+      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+        encoding: "base64",
+        withContext: false,
+        filters: [
+          {
+            memcmp: {
+              encoding: "base64",
+              offset: BigInt(0),
+              bytes: Buffer.from(USER_PERMISSIONS_DISCRIMINATOR).toString(
+                "base64",
+              ),
             },
-            {
-                args
-            },
-            PROGRAM_ID
-        );
+          },
+        ],
+      })
+      .send();
 
-        return {
-            instructions: [
-                ...instructions,
-                ix,
-            ],
-            signer: mint
-        }
-    }
+    return programAccounts.map((account: any) => {
+      const [b64] = account.account.data;
+      const bytes = new Uint8Array(Buffer.from(b64, "base64"));
+      return {
+        address: account.pubkey,
+        data: decoder.decode(bytes),
+      };
+    });
+  }
 
-    async addAsset(
-        signer: PublicKey,
-        assetMint: PublicKey,
-        oracle: PublicKey,
-        accessLevel: AccessLevel
-    ) {
-        const {
-            account: assetData,
-            pubkey: asset
-        } = this.assets.find(({ account }) => account.mint === assetMint);
-        const permissions = Restaking.deriveUserPermissions(signer);
+  async getUserPermissionsFromAddress(
+    address: Address,
+  ): Promise<AccountWithAddress<UserPermissions>[]> {
+    const allPermissions = await this.getUserPermissions();
+    return allPermissions.filter((p) => p.data.authority === address);
+  }
 
-        return createAddAssetInstruction(
-            {
-                assetMint,
-                asset,
-                oracle,
-                signer,
-                settings: Restaking.deriveSettings(),
-                admin: permissions,
-            },
-            {
-                args: {
-                    accessLevel
-                }
-            },
-            PROGRAM_ID
-        );
-    }
+  async initializeRlp(signer: TransactionSigner, swapFeeBps: number) {
+    return getInitializeRlpInstructionAsync({
+      signer,
+      swapFeeBps,
+    });
+  }
 
-    async depositRewards(
-        liquidityPoolId: number,
-        amount: BN,
-        mint: PublicKey,
-        signer: PublicKey
-    ) {
-        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
-        const permissions = Restaking.deriveUserPermissions(signer);
+  async initializeLiquidityPool(
+    signer: TransactionSigner,
+    args: {
+      lpTokenMint: Address;
+      cooldownDuration: number | bigint;
+      depositCap: number | bigint | null;
+    },
+  ) {
+    const settings = await this.getSettingsData();
+    const [liquidityPoolAddress] = await PdaClient.deriveLiquidityPool(
+      settings.liquidityPools,
+    );
 
-        const signerAssetTokenAccount = getAssociatedTokenAddressSync(
-            mint,
-            signer,
-            false
-        );
+    return getInitializeLpInstructionAsync({
+      signer,
+      liquidityPool: liquidityPoolAddress,
+      lpTokenMint: args.lpTokenMint,
+      cooldownDuration: args.cooldownDuration,
+      depositCap: args.depositCap,
+    });
+  }
 
-        const assetPool = getAssociatedTokenAddressSync(
-            mint,
-            liquidityPool,
-            false
-        );
+  async addAsset(
+    signer: TransactionSigner,
+    assetMint: Address,
+    oracle: Address,
+    accessLevel: AccessLevel,
+  ) {
+    return getAddAssetInstructionAsync({
+      signer,
+      assetMint,
+      oracle,
+      accessLevel,
+    });
+  }
 
-        const {
-            account: {
-                index: assetId
-            },
-            pubkey: asset
-        } = this.assets.find(({ account }) => account.mint === mint);
+  async slash(
+    mint: Address,
+    amount: number | bigint,
+    signer: TransactionSigner,
+    liquidityPoolId: number,
+    destination: Address,
+  ) {
+    const [liquidityPoolAddress] =
+      await PdaClient.deriveLiquidityPool(liquidityPoolId);
 
-        return createDepositRewardsInstruction(
-            {
-                signer,
-                settings: Restaking.deriveSettings(),
-                asset,
-                assetMint: mint,
-                assetPool,
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                liquidityPool,
-                permissions,
-                signerAssetTokenAccount,
-                systemProgram: SystemProgram.programId,
-                tokenProgram: TOKEN_PROGRAM_ID
-            },
-            {
-                args: {
-                    amount,
-                    assetId
-                }
-            },
-            PROGRAM_ID
-        );
-    }
+    const assets = await this.getAssets();
+    const assetEntry = assets.find((a) => a.data.mint === mint);
+    if (!assetEntry) throw new Error(`Asset not found for mint ${mint}`);
 
-    async slash(
-        mint: PublicKey,
-        amount: BN,
-        signer: PublicKey,
-        liquidityPoolId: number,
-        destination: PublicKey,
-    ) {
-        const settings = Restaking.deriveSettings();
-        const permissions = Restaking.deriveUserPermissions(signer);
-        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
+    const [liquidityPoolTokenAccount] = await findAssociatedTokenPda({
+      mint,
+      owner: liquidityPoolAddress,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
 
-        const {
-            account: {
-                index: assetId
-            },
-            pubkey: asset
-        } = this.assets.find(({ account }) => account.mint === mint);
+    return getSlashInstructionAsync({
+      signer,
+      liquidityPool: liquidityPoolAddress,
+      mint,
+      asset: assetEntry.address,
+      liquidityPoolTokenAccount,
+      destination,
+      liquidityPoolId,
+      amount,
+      assetId: assetEntry.data.index,
+    });
+  }
 
-        const liquidityPoolTokenAccount = getAssociatedTokenAddressSync(
-            mint,
-            liquidityPool,
-            false
-        );
+  async restake(
+    signer: TransactionSigner,
+    amount: number | bigint,
+    mint: Address,
+    liquidityPoolId: number,
+    minLpTokens?: number | bigint | null,
+  ) {
+    const assets = await this.getAssets();
+    const assetEntry = assets.find((a) => a.data.mint === mint);
+    if (!assetEntry) throw new Error(`Asset not found for mint ${mint}`);
 
-        const ix = createSlashInstruction(
-            {
-                signer,
-                settings,
-                destination,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                permissions,
-                asset,
-                liquidityPool,
-                liquidityPoolTokenAccount,
-                mint
-            },
-            {
-                args: {
-                    liquidityPoolId,
-                    amount,
-                    assetId
-                }
-            },
-            PROGRAM_ID
-        );
+    const oracleAddress = (assetEntry.data.oracle as any).fields[0];
 
-        return ix;
-    }
+    const lpEntry = this.liquidityPools.find(
+      (lp) => lp.data.index === liquidityPoolId,
+    );
+    if (!lpEntry)
+      throw new Error(`Liquidity pool ${liquidityPoolId} not found`);
 
-    async getAsset(asset: PublicKey) {
-        return Asset.fromAccountAddress(
-            this.connection,
-            asset
-        );
-    }
+    const [userAssetAccount] = await findAssociatedTokenPda({
+      mint,
+      owner: signer.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
 
-    async restake(signer: PublicKey, amount: BN, mint: PublicKey, liquidityPoolId: number, minLpTokens?: BN) {
-        const settings = Restaking.deriveSettings();
-        
-        const {
-            account: {
-                index: assetId,
-                oracle: {
-                    fields: [oracleAddress]
-                }
-            },
-            pubkey: asset
-        } = this.assets.find(({ account }) => account.mint === mint);
+    return getRestakeInstructionAsync({
+      signer,
+      liquidityPool: lpEntry.address,
+      lpToken: lpEntry.data.lpToken,
+      assetMint: mint,
+      userAssetAccount,
+      oracle: oracleAddress,
+      liquidityPoolIndex: liquidityPoolId,
+      amount,
+      minLpTokens: (minLpTokens ?? null) as any,
+    });
+  }
 
-        const {
-            pubkey: liquidityPool,
-            account: {
-                lpToken
-            }
-        } = this.liquidityPools.find(({ account }) => account.index === liquidityPoolId);
+  async requestWithdrawal(
+    signer: TransactionSigner,
+    liquidityPoolId: number,
+    amount: number | bigint,
+  ) {
+    const lpEntry = this.liquidityPools.find(
+      (lp) => lp.data.index === liquidityPoolId,
+    );
+    if (!lpEntry)
+      throw new Error(`Liquidity pool ${liquidityPoolId} not found`);
 
-        const poolAssetAccount = getAssociatedTokenAddressSync(
-            mint,
-            liquidityPool,
-            true
-        );
+    const [cooldownAddress] = await PdaClient.deriveCooldown(
+      liquidityPoolId,
+      lpEntry.data.cooldowns,
+    );
 
-        const userAssetAccount = getAssociatedTokenAddressSync(
-            mint,
-            signer,
-            true
-        );
+    const [signerLpTokenAccount] = await findAssociatedTokenPda({
+      mint: lpEntry.data.lpToken,
+      owner: signer.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
 
-        const userLpAccount = getAssociatedTokenAddressSync(
-            lpToken,
-            signer,
-            true
-        );
+    return getRequestWithdrawalInstructionAsync({
+      signer,
+      liquidityPool: lpEntry.address,
+      lpTokenMint: lpEntry.data.lpToken,
+      signerLpTokenAccount,
+      cooldown: cooldownAddress,
+      liquidityPoolId,
+      amount,
+    });
+  }
 
-        return createRestakeInstruction(
-            {
-                liquidityPool,
-                asset,
-                assetMint: mint,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: SystemProgram.programId,
-                settings,
-                oracle: oracleAddress,
-                lpToken,
-                poolAssetAccount,
-                signer,
-                userAssetAccount,
-                userLpAccount,
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
-            },
-            {
-                args: {
-                    amount,
-                    liquidityPoolIndex: liquidityPoolId,
-                    minLpTokens: minLpTokens ?? null,
-                    assetId
-                }
-            }
-        );
-    }
+  async withdraw(
+    signer: TransactionSigner,
+    liquidityPoolId: number,
+    cooldownId: number | bigint,
+  ) {
+    const [liquidityPoolAddress] =
+      await PdaClient.deriveLiquidityPool(liquidityPoolId);
+    const lpData = await this.getLiquidityPoolData(liquidityPoolId);
+    const [cooldownAddress] = await PdaClient.deriveCooldown(
+      liquidityPoolId,
+      cooldownId,
+    );
 
-    static deriveCooldown(deposit: number | BN) {
-        const [cooldown] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("cooldown"),
-                new BN(deposit).toArrayLike(Buffer, "le", 8)
-            ],
-            PROGRAM_ID
-        );
+    return getWithdrawInstructionAsync({
+      signer,
+      liquidityPool: liquidityPoolAddress,
+      lpTokenMint: lpData.lpToken,
+      cooldown: cooldownAddress,
+      liquidityPoolId,
+      cooldownId,
+    });
+  }
 
-        return cooldown;
-    }
+  async findAssetFromMint(mint: Address): Promise<Address> {
+    const assets = await this.getAssets();
+    const entry = assets.find((a) => a.data.mint === mint);
+    if (!entry) throw new Error(`Asset not found for mint ${mint}`);
+    return entry.address;
+  }
 
-    async requestWithdrawal(
-        signer: PublicKey,
-        liquidityPoolId: number,
-        amount: BN,
-    ) {
-        const {
-            pubkey: liquidityPool,
-            account: {
-                lpToken,
-                cooldowns
-            }
-        } = this.liquidityPools.find(({ account }) => account.index === liquidityPoolId);
+  getSettings(): Settings {
+    return this.settings;
+  }
 
-        const cooldown = Restaking.deriveCooldown(cooldowns);
-        const cooldownLpTokenAccount = getAssociatedTokenAddressSync(
-            lpToken,
-            cooldown,
-            true
-        );
+  getCachedLiquidityPools(): AccountWithAddress<LiquidityPool>[] {
+    return this.liquidityPools;
+  }
 
-        const signerLpTokenAccount = getAssociatedTokenAddressSync(
-            lpToken,
-            signer,
-            true
-        );
-
-        return createRequestWithdrawalInstruction(
-            {
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                cooldown,
-                cooldownLpTokenAccount,
-                liquidityPool,
-                lpTokenMint: lpToken,
-                settings: Restaking.deriveSettings(),
-                signer,
-                signerLpTokenAccount,
-                systemProgram: SystemProgram.programId,
-                tokenProgram: TOKEN_PROGRAM_ID
-            },
-            {
-                args: {
-                    amount,
-                    liquidityPoolId
-                }
-            }
-        );
-    }
-
-    async withdraw(signer: PublicKey, liquidityPoolId: number, cooldownId: number | BN) {
-
-        const liquidityPool = Restaking.deriveLiquidityPool(liquidityPoolId);
-        const cooldown = Restaking.deriveCooldown(cooldownId);
-        const {
-            lpToken
-        } = await this.getLiquidityPoolData(liquidityPoolId);
-        
-        const cooldownLpTokenAccount = getAssociatedTokenAddressSync(
-            lpToken,
-            cooldown,
-            true
-        );
-
-        return createWithdrawInstruction(
-            {
-                cooldown,
-                cooldownLpTokenAccount,
-                liquidityPool,
-                lpTokenMint: lpToken,
-                settings: Restaking.deriveSettings(),
-                signer: signer,
-                systemProgram: SystemProgram.programId,
-                tokenProgram: TOKEN_PROGRAM_ID
-            },
-            {
-                args: {
-                    cooldownId,
-                    liquidityPoolId
-                }
-            }
-        );
-    }
+  getCachedAssets(): AccountWithAddress<Asset>[] {
+    return this.assets;
+  }
 }

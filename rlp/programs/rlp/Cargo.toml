@@ -3,6 +3,8 @@ name = "rlp"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
+autobenches = false
+autotests = false
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -14,13 +16,13 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.30.1", features = [ "init-if-needed" ] }
-anchor-spl = "0.30.1"
+anchor-lang = { version = "0.31.1", features = [ "init-if-needed" ] }
+anchor-spl = "0.31.1"
 pyth-solana-receiver-sdk = "1.0.0"
-switchboard-solana = "0.30.4"
-spl-math = { version = "0.2.0", features = [ "no-entrypoint" ]}
+spl-math = { version = "0.3.0", features = [ "no-entrypoint" ]}
 strum = "0.27"
 strum_macros = "0.27"
+

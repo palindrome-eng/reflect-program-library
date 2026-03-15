@@ -6,7 +6,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
-use solana_sdk_ids::system_program;
+use solana_sdk::system_program;
 use rlp_client::{
     // Instructions
     InitializeRlpBuilder,
@@ -119,7 +119,7 @@ impl TestContext {
     fn new() -> Self {
         let mut svm = LiteSVM::new();
         let program_bytes = include_bytes!("../../../target/deploy/rlp.so");
-        svm.add_program(RLP_ID, program_bytes).unwrap();
+        svm.add_program(RLP_ID, program_bytes);
 
         let admin = Keypair::new();
         svm.airdrop(&admin.pubkey(), 100_000_000_000).unwrap();

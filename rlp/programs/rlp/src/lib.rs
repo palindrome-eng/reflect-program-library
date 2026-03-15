@@ -36,13 +36,6 @@ pub mod rlp {
         instructions::add_asset(ctx, args)
     }
 
-    pub fn deposit_rewards(
-        ctx: Context<DepositRewards>,
-        args: DepositRewardsArgs
-    ) -> Result<()> {
-        instructions::deposit_rewards(ctx, args)
-    }
-
     pub fn freeze_functionality(
         ctx: Context<RlpAdminMain>,
         args: FreezeProtocolActionArgs

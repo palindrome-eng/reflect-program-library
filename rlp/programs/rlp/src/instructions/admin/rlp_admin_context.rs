@@ -14,7 +14,7 @@ pub struct RlpAdminMain<'info> {
         ],
         bump = settings.bump
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     pub system_program: Program<'info, System>,
 

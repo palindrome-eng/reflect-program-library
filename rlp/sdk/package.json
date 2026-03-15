@@ -1,32 +1,40 @@
 {
   "name": "@reflectcx/restaking",
-  "version": "2.0.2",
+  "version": "3.0.0",
+  "type": "commonjs",
   "author": "zkchakra @ Palindrome Engineering",
   "repository": {
     "type": "git",
     "url": "https://github.com/palindrome-eng/reflect-program-library.git"
   },
-  "dependencies": {
-    "@metaplex-foundation/beet": "0.7.2",
-    "@metaplex-foundation/beet-solana": "^0.4.1",
-    "@metaplex-foundation/mpl-token-metadata": "2",
-    "@solana/spl-token": "^0.4.8",
-    "@solana/web3.js": "1.68.0",
-    "bn.js": "5.2.1"
+  "scripts": {
+    "build": "npx tsc --build",
+    "test": "mocha --require tsx --timeout 120000 tests/**/*.test.ts"
   },
-  "devDependencies": {
-    "@types/bn.js": "5.1.6",
-    "@types/chai": "^5.0.1",
-    "@types/mocha": "^10.0.10",
-    "bs58": "^6.0.0",
-    "chai": "^5.1.2",
-    "mocha": "^11.0.1"
+  "dependencies": {
+    "@solana-program/system": "^0.12.0",
+    "@solana-program/token": "^0.10.0",
+    "@solana/kit": "^6.1.0",
+    "@solana/program-client-core": "^6.1.0",
+    "@solana/web3.js": "^1.98.4",
+    "bn.js": "^5.2.2"
   },
   "license": "MIT",
-  "main": "./src/index.js",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "/dist"
-  ]
+  ],
+  "yalcSig": "727b494d980f37ab0f6bb0dda8b1894f",
+  "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "chai": "^6.2.2",
+    "litesvm": "^0.6.0",
+    "mocha": "^11.7.5",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.0"
+  }
 }

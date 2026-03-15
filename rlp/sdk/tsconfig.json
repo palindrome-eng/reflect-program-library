@@ -1,17 +1,16 @@
 {
   "compilerOptions": {
-    "outDir": "./dist",
-    "forceConsistentCasingInFileNames": true,
-    "strict": false,
-    "skipLibCheck": true,
-    "declaration": true,
-    "typeRoots": ["./node_modules/@types"],
-    "lib": ["es2015"],
+    "target": "ES2022",
     "module": "commonjs",
-    "target": "es2016",
-    "esModuleInterop": true
+    "lib": ["ES2022"],
+    "declaration": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true
   },
-  "include": [
-    "./src/**/*"
-  ]
+  "include": ["src/**/*.ts"]
 }

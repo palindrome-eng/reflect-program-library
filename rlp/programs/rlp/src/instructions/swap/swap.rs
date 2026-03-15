@@ -226,7 +226,7 @@ pub struct Swap<'info> {
     pub liquidity_pool: Account<'info, LiquidityPool>,
 
     #[account()]
-    pub token_from: Account<'info, Mint>,
+    pub token_from: Box<Account<'info, Mint>>,
 
     #[account(
         seeds = [
@@ -244,7 +244,7 @@ pub struct Swap<'info> {
     pub token_from_oracle: AccountInfo<'info>,
 
     #[account()]
-    pub token_to: Account<'info, Mint>,
+    pub token_to: Box<Account<'info, Mint>>,
 
     #[account(
         seeds = [
@@ -266,28 +266,28 @@ pub struct Swap<'info> {
         associated_token::authority = liquidity_pool,
         associated_token::mint = token_from
     )]
-    pub token_from_pool: Account<'info, TokenAccount>,
+    pub token_from_pool: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         associated_token::authority = liquidity_pool,
         associated_token::mint = token_to
     )]
-    pub token_to_pool: Account<'info, TokenAccount>,
+    pub token_to_pool: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         token::mint = token_from,
         token::authority = signer,
     )]
-    pub token_from_signer_account: Account<'info, TokenAccount>,
+    pub token_from_signer_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         token::mint = token_to,
         token::authority = signer,
     )]
-    pub token_to_signer_account: Account<'info, TokenAccount>,
+    pub token_to_signer_account: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub token_program: Program<'info, Token>,

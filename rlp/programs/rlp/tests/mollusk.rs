@@ -29,7 +29,7 @@ use solana_sdk::{
     native_loader,
     pubkey::Pubkey,
 };
-use solana_sdk_ids::system_program;
+use solana_sdk::system_program;
 
 // SPL Token program ID
 const SPL_TOKEN_ID: Pubkey = solana_sdk::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");

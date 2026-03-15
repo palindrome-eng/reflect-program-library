@@ -59,7 +59,7 @@ pub struct RlpAdminRoleUpdate<'info> {
     pub admin: Signer<'info>,
 
     #[account(mut, seeds = [SETTINGS_SEED.as_bytes()], bump = settings.bump)]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(mut, seeds = [PERMISSIONS_SEED.as_bytes(), admin.key().as_ref()], bump = admin_permissions.bump)]
     pub admin_permissions: Account<'info, UserPermissions>,

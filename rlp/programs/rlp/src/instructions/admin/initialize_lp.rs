@@ -98,7 +98,7 @@ pub struct InitializeLiquidityPool<'info> {
         bump = settings.bump,
         constraint = !settings.access_control.killswitch.is_frozen(&Action::InitializeLiquidityPool) @ RlpError::Frozen,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     #[account(
         init,
@@ -130,7 +130,7 @@ pub struct InitializeLiquidityPool<'info> {
         associated_token::mint = lp_token_mint,
         associated_token::authority = liquidity_pool,
     )]
-    pub dead_shares_vault: Account<'info, TokenAccount>,
+    pub dead_shares_vault: Box<Account<'info, TokenAccount>>,
 
     #[account()]
     pub system_program: Program<'info, System>,

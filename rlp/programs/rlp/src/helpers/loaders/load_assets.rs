@@ -12,37 +12,41 @@ pub fn load_assets(
     let mut assets: Vec<(Pubkey, Asset)> = Vec::with_capacity(settings.assets as usize);
 
     for asset_index in 0..settings.assets as usize {
-        // Compute expected PDA from index - this is deterministic and unique per index
-        let (asset_address, _) = Pubkey::find_program_address(
-            &[
-                ASSET_SEED.as_bytes(),
-                &(asset_index as u8).to_le_bytes(),
-            ], 
-            &crate::ID
-        );
-
-        // Search for the expected asset in remaining_accounts
-        // Duplicate accounts in remaining_accounts are harmless - we only load each expected asset once
-        // Missing accounts will cause this to return None and error below
+        // Find the next account owned by the RLP program that deserializes as an Asset
         let maybe_account = remaining_accounts_iter
-                .find(|account| account.key().eq(&asset_address));
+                .find(|account| account.owner == &crate::ID);
 
-        let result = match maybe_account {
+        let (asset_address, asset) = match maybe_account {
             Some(account_info) => {
                 let account_mut_data = account_info.try_borrow_mut_data()?;
-                let asset = Asset::try_deserialize(&mut account_mut_data.as_ref())?;
+                let asset = Asset::try_deserialize(&mut account_mut_data.as_ref())
+                    .map_err(|_| error!(RlpError::InvalidInput))?;
 
                 require!(
                     asset.index as usize == asset_index,
                     RlpError::InvalidInput
                 );
 
-                Ok(asset)
+                // Verify the account is the correct PDA derived from the asset's mint
+                let (expected_address, _) = Pubkey::find_program_address(
+                    &[
+                        ASSET_SEED.as_bytes(),
+                        &asset.mint.to_bytes(),
+                    ],
+                    &crate::ID
+                );
+
+                require!(
+                    account_info.key() == expected_address,
+                    RlpError::InvalidInput
+                );
+
+                Ok((account_info.key(), asset))
             },
-            None => Err(RlpError::InvalidInput)
+            None => Err(error!(RlpError::InvalidInput))
         }?;
 
-        assets.push((asset_address, result));
+        assets.push((asset_address, asset));
     }
 
     Ok(assets)
