@@ -9,5 +9,5 @@ use solana_pubkey::{pubkey, Pubkey};
 
 
   /// `rlp` program ID.
-  pub const RLP_ID: Pubkey = pubkey!("rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D");
+  pub const RLP_ID: Pubkey = pubkey!("moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM");
 

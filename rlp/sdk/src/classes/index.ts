@@ -1,2 +1,2 @@
-export * from "./Restaking";
+export * from "./Insurance";
 export * from "./PdaClient";

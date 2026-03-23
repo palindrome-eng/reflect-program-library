@@ -5,13 +5,16 @@ use crate::errors::RlpError;
 
 #[inline(never)]
 pub fn load_assets(
-    settings: &Account<Settings>,
+    liquidity_pool: &Account<LiquidityPool>,
     remaining_accounts: &[AccountInfo],
 ) -> Result<Vec<(Pubkey, Asset)>> {
     let remaining_accounts_iter = &mut remaining_accounts.iter();
-    let mut assets: Vec<(Pubkey, Asset)> = Vec::with_capacity(settings.assets as usize);
+    let asset_count = liquidity_pool.asset_count as usize;
+    let mut assets: Vec<(Pubkey, Asset)> = Vec::with_capacity(asset_count);
 
-    for asset_index in 0..settings.assets as usize {
+    for i in 0..asset_count {
+        let asset_index = liquidity_pool.assets[i];
+
         // Find the next account owned by the RLP program that deserializes as an Asset
         let maybe_account = remaining_accounts_iter
                 .find(|account| account.owner == &crate::ID);
@@ -23,7 +26,7 @@ pub fn load_assets(
                     .map_err(|_| error!(RlpError::InvalidInput))?;
 
                 require!(
-                    asset.index as usize == asset_index,
+                    asset.index == asset_index,
                     RlpError::InvalidInput
                 );
 

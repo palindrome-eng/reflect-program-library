@@ -39,7 +39,7 @@ export type AccountWithAddress<T> = {
   address: Address;
 };
 
-export class Restaking {
+export class Insurance {
   private connection: Rpc<SolanaRpcApi>;
   private settings!: Settings;
   private liquidityPools!: AccountWithAddress<LiquidityPool>[];
@@ -217,6 +217,7 @@ export class Restaking {
       lpTokenMint: Address;
       cooldownDuration: number | bigint;
       depositCap: number | bigint | null;
+      assets: number[];
     },
   ) {
     const settings = await this.getSettingsData();
@@ -230,6 +231,7 @@ export class Restaking {
       lpTokenMint: args.lpTokenMint,
       cooldownDuration: args.cooldownDuration,
       depositCap: args.depositCap,
+      assets: new Uint8Array(args.assets),
     });
   }
 

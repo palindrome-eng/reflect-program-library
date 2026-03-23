@@ -54,7 +54,7 @@ import {
   Update,
 } from "../src/generated";
 import { PdaClient } from "../src/classes/PdaClient";
-import { Restaking, type AccountWithAddress } from "../src/classes/Restaking";
+import { Insurance, type AccountWithAddress } from "../src/classes/Insurance";
 import type { LiquidityPool, Asset, Settings } from "../src/generated";
 
 const RLP_SO_PATH = path.join(__dirname, "../../target/deploy/rlp.so");
@@ -199,7 +199,7 @@ describe("RLP SDK Full Flow Test", function () {
   let createdCooldownPda: Address;
 
   // SDK class instance (used for restake/withdraw which need remaining accounts)
-  let restaking: Restaking;
+  let restaking: Insurance;
 
   // ========================================================================
   // Transaction helpers
@@ -649,8 +649,8 @@ describe("RLP SDK Full Flow Test", function () {
     assertSuccess(sendSdkInstruction(ix), "initializeLp");
     expect(accountExists(liquidityPoolPda)).to.be.true;
 
-    // Initialize Restaking SDK instance with cached state from LiteSVM
-    restaking = new Restaking(null as any); // no RPC needed — we inject cached data
+    // Initialize Insurance SDK instance with cached state from LiteSVM
+    restaking = new Insurance(null as any); // no RPC needed — we inject cached data
     restaking.loadFromCache(
       { liquidityPools: 1, assets: 2 } as Settings,
       [
@@ -708,7 +708,7 @@ describe("RLP SDK Full Flow Test", function () {
     // Create user LP ATA
     await createAta(lpTokenMint.address, user.address, user.keypair);
 
-    // Restaking.restake() returns instruction with remaining accounts included
+    // Insurance.restake() returns instruction with remaining accounts included
     const ix = await restaking.restake(user.signer, amount, assetMint1.address, 0, 0n);
     const result = sendSdkInstruction(ix, [user.keypair], user.keypair);
     assertSuccess(result, "restake");
@@ -778,7 +778,7 @@ describe("RLP SDK Full Flow Test", function () {
     await createAta(assetMint1.address, user.address, user.keypair);
     await createAta(assetMint2.address, user.address, user.keypair);
 
-    // Restaking.withdraw() returns instruction with remaining accounts included
+    // Insurance.withdraw() returns instruction with remaining accounts included
     const ix = await restaking.withdraw(user.signer, 0, 0n);
     const result = sendSdkInstruction(ix, [user.keypair], user.keypair);
 

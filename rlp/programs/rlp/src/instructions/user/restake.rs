@@ -39,6 +39,12 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
 
     require!(amount > 0, crate::errors::RlpError::InvalidInput);
 
+    let asset = &ctx.accounts.asset;
+    require!(
+        liquidity_pool.has_asset(asset.index),
+        RlpError::AssetNotWhitelisted
+    );
+
     let clock = Clock::get()?;
 
     let total_pool_value_before = liquidity_pool.calculate_total_pool_value(

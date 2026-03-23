@@ -9,7 +9,7 @@ pub mod helpers;
 
 use crate::instructions::*;
 
-declare_id!("rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D");
+declare_id!("moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM");
 
 #[program]
 pub mod rlp {

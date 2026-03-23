@@ -34,6 +34,12 @@ pub fn slash(
         asset_id: _
     } = args;
 
+    let asset = &ctx.accounts.asset;
+    require!(
+        liquidity_pool.has_asset(asset.index),
+        RlpError::AssetNotWhitelisted
+    );
+
     // Security Fix: Limit slash amount to prevent total fund drainage
     // Maximum slash per transaction is MAX_SLASH_BPS of the pool's token balance
     let max_slash_amount = liquidity_pool_token_account.amount

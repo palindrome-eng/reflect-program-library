@@ -21,6 +21,8 @@ pub lp_token: Pubkey,
 pub cooldowns: u64,
 pub cooldown_duration: u64,
 pub deposit_cap: Option<u64>,
+pub asset_count: u8,
+pub assets: [u8; 4],
 }
 
 

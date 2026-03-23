@@ -62,7 +62,7 @@ pub fn withdraw<'a>(
 
     let remaining_accounts = &ctx.remaining_accounts;
     require!(
-        remaining_accounts.len() == settings.assets as usize * 3,
+        remaining_accounts.len() == liquidity_pool.asset_count as usize * 3,
         RlpError::InvalidInput
     );
 
@@ -72,7 +72,7 @@ pub fn withdraw<'a>(
         &[liquidity_pool.bump]
     ];
 
-    let assets: Vec<(Pubkey, Asset)> = load_assets(settings, remaining_accounts)?;
+    let assets: Vec<(Pubkey, Asset)> = load_assets(liquidity_pool, remaining_accounts)?;
     let asset_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
     let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
     let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;

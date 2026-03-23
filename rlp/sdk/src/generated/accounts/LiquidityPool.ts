@@ -61,6 +61,8 @@ export type LiquidityPool = {
   cooldowns: bigint;
   cooldownDuration: bigint;
   depositCap: Option<bigint>;
+  assetCount: number;
+  assets: ReadonlyUint8Array;
 };
 
 export type LiquidityPoolArgs = {
@@ -70,6 +72,8 @@ export type LiquidityPoolArgs = {
   cooldowns: number | bigint;
   cooldownDuration: number | bigint;
   depositCap: OptionOrNullable<number | bigint>;
+  assetCount: number;
+  assets: ReadonlyUint8Array;
 };
 
 /** Gets the encoder for {@link LiquidityPoolArgs} account data. */
@@ -83,6 +87,8 @@ export function getLiquidityPoolEncoder(): Encoder<LiquidityPoolArgs> {
       ["cooldowns", getU64Encoder()],
       ["cooldownDuration", getU64Encoder()],
       ["depositCap", getOptionEncoder(getU64Encoder())],
+      ["assetCount", getU8Encoder()],
+      ["assets", fixEncoderSize(getBytesEncoder(), 4)],
     ]),
     (value) => ({ ...value, discriminator: LIQUIDITY_POOL_DISCRIMINATOR }),
   );
@@ -98,6 +104,8 @@ export function getLiquidityPoolDecoder(): Decoder<LiquidityPool> {
     ["cooldowns", getU64Decoder()],
     ["cooldownDuration", getU64Decoder()],
     ["depositCap", getOptionDecoder(getU64Decoder())],
+    ["assetCount", getU8Decoder()],
+    ["assets", fixDecoderSize(getBytesDecoder(), 4)],
   ]);
 }
 

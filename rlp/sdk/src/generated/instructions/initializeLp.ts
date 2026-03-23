@@ -7,6 +7,8 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
@@ -18,6 +20,8 @@ import {
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU32Decoder,
+  getU32Encoder,
   getU64Decoder,
   getU64Encoder,
   transformEncoder,
@@ -110,11 +114,13 @@ export type InitializeLpInstructionData = {
   discriminator: ReadonlyUint8Array;
   cooldownDuration: bigint;
   depositCap: Option<bigint>;
+  assets: ReadonlyUint8Array;
 };
 
 export type InitializeLpInstructionDataArgs = {
   cooldownDuration: number | bigint;
   depositCap: OptionOrNullable<number | bigint>;
+  assets: ReadonlyUint8Array;
 };
 
 export function getInitializeLpInstructionDataEncoder(): Encoder<InitializeLpInstructionDataArgs> {
@@ -123,6 +129,7 @@ export function getInitializeLpInstructionDataEncoder(): Encoder<InitializeLpIns
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["cooldownDuration", getU64Encoder()],
       ["depositCap", getOptionEncoder(getU64Encoder())],
+      ["assets", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({ ...value, discriminator: INITIALIZE_LP_DISCRIMINATOR }),
   );
@@ -133,6 +140,7 @@ export function getInitializeLpInstructionDataDecoder(): Decoder<InitializeLpIns
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["cooldownDuration", getU64Decoder()],
     ["depositCap", getOptionDecoder(getU64Decoder())],
+    ["assets", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
 
@@ -172,6 +180,7 @@ export type InitializeLpAsyncInput<
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   cooldownDuration: InitializeLpInstructionDataArgs["cooldownDuration"];
   depositCap: InitializeLpInstructionDataArgs["depositCap"];
+  assets: InitializeLpInstructionDataArgs["assets"];
 };
 
 export async function getInitializeLpInstructionAsync<
@@ -349,6 +358,7 @@ export type InitializeLpInput<
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   cooldownDuration: InitializeLpInstructionDataArgs["cooldownDuration"];
   depositCap: InitializeLpInstructionDataArgs["depositCap"];
+  assets: InitializeLpInstructionDataArgs["assets"];
 };
 
 export function getInitializeLpInstruction<

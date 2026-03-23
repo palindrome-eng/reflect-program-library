@@ -106,13 +106,13 @@ impl InitializeLp {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
  pub struct InitializeLpInstructionData {
             discriminator: [u8; 8],
-                  }
+                        }
 
 impl InitializeLpInstructionData {
   pub fn new() -> Self {
     Self {
                         discriminator: [110, 252, 116, 251, 81, 191, 57, 96],
-                                              }
+                                                            }
   }
 
     pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
@@ -131,6 +131,7 @@ impl Default for InitializeLpInstructionData {
  pub struct InitializeLpInstructionArgs {
                   pub cooldown_duration: u64,
                 pub deposit_cap: Option<u64>,
+                pub assets: Vec<u8>,
       }
 
 impl InitializeLpInstructionArgs {
@@ -166,6 +167,7 @@ pub struct InitializeLpBuilder {
                 associated_token_program: Option<solana_pubkey::Pubkey>,
                         cooldown_duration: Option<u64>,
                 deposit_cap: Option<u64>,
+                assets: Option<Vec<u8>>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
@@ -234,6 +236,11 @@ impl InitializeLpBuilder {
         self.deposit_cap = Some(deposit_cap);
         self
       }
+                #[inline(always)]
+      pub fn assets(&mut self, assets: Vec<u8>) -> &mut Self {
+        self.assets = Some(assets);
+        self
+      }
         /// Add an additional account to the instruction.
   #[inline(always)]
   pub fn add_remaining_account(&mut self, account: solana_instruction::AccountMeta) -> &mut Self {
@@ -262,6 +269,7 @@ impl InitializeLpBuilder {
           let args = InitializeLpInstructionArgs {
                                                               cooldown_duration: self.cooldown_duration.clone().expect("cooldown_duration is not set"),
                                                                   deposit_cap: self.deposit_cap.clone(),
+                                                                  assets: self.assets.clone().expect("assets is not set"),
                                     };
     
     accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
@@ -487,6 +495,7 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
               associated_token_program: None,
                                             cooldown_duration: None,
                                 deposit_cap: None,
+                                assets: None,
                     __remaining_accounts: Vec::new(),
     });
     Self { instruction }
@@ -549,6 +558,11 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
         self.instruction.deposit_cap = Some(deposit_cap);
         self
       }
+                #[inline(always)]
+      pub fn assets(&mut self, assets: Vec<u8>) -> &mut Self {
+        self.instruction.assets = Some(assets);
+        self
+      }
         /// Add an additional account to the instruction.
   #[inline(always)]
   pub fn add_remaining_account(&mut self, account: &'b solana_account_info::AccountInfo<'a>, is_writable: bool, is_signer: bool) -> &mut Self {
@@ -574,6 +588,7 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
           let args = InitializeLpInstructionArgs {
                                                               cooldown_duration: self.instruction.cooldown_duration.clone().expect("cooldown_duration is not set"),
                                                                   deposit_cap: self.instruction.deposit_cap.clone(),
+                                                                  assets: self.instruction.assets.clone().expect("assets is not set"),
                                     };
         let instruction = InitializeLpCpi {
         __program: self.instruction.__program,
@@ -615,6 +630,7 @@ struct InitializeLpCpiBuilderInstruction<'a, 'b> {
                 associated_token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         cooldown_duration: Option<u64>,
                 deposit_cap: Option<u64>,
+                assets: Option<Vec<u8>>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
   __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

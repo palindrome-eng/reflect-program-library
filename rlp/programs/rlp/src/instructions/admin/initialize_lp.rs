@@ -10,6 +10,7 @@ use crate::events::InitializeLiquidityPoolEvent;
 pub struct InitializeLiquidityPoolArgs {
     pub cooldown_duration: u64,
     pub deposit_cap: Option<u64>,
+    pub assets: Vec<u8>,
 }
 
 pub fn initialize_lp(
@@ -18,7 +19,8 @@ pub fn initialize_lp(
 ) -> Result<()> {
     let InitializeLiquidityPoolArgs {
         cooldown_duration,
-        deposit_cap
+        deposit_cap,
+        assets,
     } = args;
 
     let liquidity_pool = &mut ctx.accounts.liquidity_pool;
@@ -26,6 +28,27 @@ pub fn initialize_lp(
     let lp_token = &ctx.accounts.lp_token_mint;
     let dead_shares_vault = &ctx.accounts.dead_shares_vault;
     let token_program = &ctx.accounts.token_program;
+
+    // Validate asset list
+    require!(
+        assets.len() >= 1 && assets.len() <= MAX_POOL_ASSETS,
+        RlpError::InvalidInput
+    );
+
+    for (i, &asset_index) in assets.iter().enumerate() {
+        require!(
+            asset_index < settings.assets,
+            RlpError::AssetNotWhitelisted
+        );
+        for j in 0..i {
+            require!(assets[j] != asset_index, RlpError::InvalidInput);
+        }
+    }
+
+    let mut asset_array = [u8::MAX; MAX_POOL_ASSETS];
+    for (i, &asset_index) in assets.iter().enumerate() {
+        asset_array[i] = asset_index;
+    }
 
     let pool_index = settings.liquidity_pools;
 
@@ -35,7 +58,9 @@ pub fn initialize_lp(
         lp_token: lp_token.key(),
         cooldown_duration,
         cooldowns: 0,
-        deposit_cap
+        deposit_cap,
+        asset_count: assets.len() as u8,
+        assets: asset_array,
     });
 
     // Security Fix: Mint dead shares to prevent LP token inflation attack

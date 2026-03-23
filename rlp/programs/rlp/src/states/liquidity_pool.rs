@@ -5,6 +5,8 @@ use anchor_spl::associated_token::get_associated_token_address;
 use anchor_spl::token::{mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer};
 use spl_math::precise_number::PreciseNumber;
 
+pub const MAX_POOL_ASSETS: usize = 4;
+
 #[derive(InitSpace)]
 #[account]
 pub struct LiquidityPool {
@@ -14,9 +16,15 @@ pub struct LiquidityPool {
     pub cooldowns: u64,
     pub cooldown_duration: u64,
     pub deposit_cap: Option<u64>,
+    pub asset_count: u8,
+    pub assets: [u8; MAX_POOL_ASSETS],
 }
 
 impl LiquidityPool {
+    pub fn has_asset(&self, asset_index: u8) -> bool {
+        self.assets[..self.asset_count as usize].contains(&asset_index)
+    }
+
     pub fn deposit<'info>(
         &self,
         signer: &Signer<'info>,
@@ -49,7 +57,7 @@ impl LiquidityPool {
         settings: &Account<Settings>,
         clock: &Clock,
     ) -> Result<PreciseNumber> {
-        let expected_len = settings.assets as usize * 4;
+        let expected_len = self.asset_count as usize * 4;
         let mut total_pool_value =
             PreciseNumber::new(0).ok_or(crate::errors::RlpError::MathOverflow)?;
 
@@ -58,7 +66,7 @@ impl LiquidityPool {
             crate::errors::RlpError::InvalidInput
         );
 
-        let mut visited_mints: Vec<Pubkey> = Vec::with_capacity(settings.assets as usize);
+        let mut visited_mints: Vec<Pubkey> = Vec::with_capacity(self.asset_count as usize);
 
         let mut i = 0;
         while i < remaining_accounts.len() {
@@ -93,6 +101,11 @@ impl LiquidityPool {
 
             let asset = Asset::try_deserialize(&mut asset_info.try_borrow_mut_data()?.as_ref())
                 .map_err(|_| crate::errors::RlpError::InvalidInput)?;
+
+            require!(
+                self.has_asset(asset.index),
+                crate::errors::RlpError::AssetNotWhitelisted
+            );
 
             let asset_mint = asset.mint;
 

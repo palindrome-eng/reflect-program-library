@@ -37,6 +37,16 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let token_from_asset = &ctx.accounts.token_from_asset;
     let token_to_asset = &ctx.accounts.token_to_asset;
 
+    // Validate both assets are whitelisted for this pool
+    require!(
+        liquidity_pool.has_asset(token_from_asset.index),
+        RlpError::AssetNotWhitelisted
+    );
+    require!(
+        liquidity_pool.has_asset(token_to_asset.index),
+        RlpError::AssetNotWhitelisted
+    );
+
     let admin = &ctx.accounts.admin;
     let settings = &ctx.accounts.settings;
 
