@@ -34,7 +34,7 @@ import {
 
 // SDK imports
 import {
-  RLP_PROGRAM_ADDRESS,
+  RLP_PROGRAM_ADDRESS as PROGRAM_ID,
   getInitializeRlpInstructionAsync,
   getAddAssetInstructionAsync,
   getInitializeLpInstructionAsync,
@@ -445,7 +445,7 @@ describe("RLP SDK Full Flow Test", function () {
     svm.airdrop(toPublicKey(user.address), BigInt(100 * LAMPORTS_PER_SOL));
 
     try {
-      svm.addProgramFromFile(toPublicKey(RLP_PROGRAM_ADDRESS), RLP_SO_PATH);
+      svm.addProgramFromFile(toPublicKey(PROGRAM_ID), RLP_SO_PATH);
       programLoaded = true;
       console.log("  ✓ RLP program loaded");
     } catch (e) {
@@ -502,7 +502,7 @@ describe("RLP SDK Full Flow Test", function () {
     const result = sendSdkInstruction(ix);
     assertSuccess(result, "initializeRlp");
     expect(accountExists(settingsPda)).to.be.true;
-    expect(getAccountOwner(settingsPda)).to.equal(RLP_PROGRAM_ADDRESS);
+    expect(getAccountOwner(settingsPda)).to.equal(PROGRAM_ID);
   });
 
   // ========================================================================
@@ -645,6 +645,7 @@ describe("RLP SDK Full Flow Test", function () {
       lpTokenMint: lpTokenMint.address,
       cooldownDuration: 0n, // 0 for instant withdrawals in test
       depositCap: null,
+      assets: new Uint8Array([0, 1]), // asset indices to include in the pool
     });
     assertSuccess(sendSdkInstruction(ix), "initializeLp");
     expect(accountExists(liquidityPoolPda)).to.be.true;
@@ -898,5 +899,144 @@ describe("RLP SDK Full Flow Test", function () {
     const asset2BalAfter = getTokenBalance(userAsset2Ata);
     expect(asset2BalAfter).to.be.greaterThan(asset2BalBefore);
     console.log(`    Swapped ${swapAmount} asset1 -> ${asset2BalAfter - asset2BalBefore} asset2`);
+  });
+
+  // ========================================================================
+  // 14. deserializePythPrice
+  // ========================================================================
+  it("should deserialize Pyth oracle price from raw account data", function () {
+    // Build mock oracle data with known values
+    const knownPrice = 12345_00000000n; // $12345 with 8 decimals
+    const knownExponent = -8;
+    const knownPublishTime = BigInt(Math.floor(Date.now() / 1000));
+    const rawData = createMockPythPriceData(knownPrice, knownExponent, knownPublishTime);
+
+    const parsed = Insurance.deserializePythPrice(rawData);
+
+    expect(parsed.price).to.equal(knownPrice);
+    expect(parsed.exponent).to.equal(knownExponent);
+    expect(parsed.publishTime).to.equal(knownPublishTime);
+    console.log(`    Parsed: price=${parsed.price}, exp=${parsed.exponent}, ts=${parsed.publishTime}`);
+  });
+
+  // ========================================================================
+  // 15. simulateDepositMath
+  // ========================================================================
+  it("should simulate deposit math matching on-chain restake", async function () {
+    if (!programLoaded) return this.skip();
+
+    // Use the actual pool state to simulate a deposit, then execute it
+    // and compare the simulation result with the actual LP tokens minted.
+    const depositAmount = 500_000_000n; // 0.5 token
+
+    // Mint tokens for the deposit
+    await createAtaAndMint(
+      assetMint1.address, user.address, admin.keypair, depositAmount,
+    );
+
+    // Read current pool state
+    const [userLpAta] = await findAssociatedTokenPda({
+      mint: lpTokenMint.address,
+      owner: user.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+    const lpBalBefore = getTokenBalance(userLpAta);
+
+    // Read current LP supply from mint account
+    const lpMintAcct = svm.getAccount(toPublicKey(lpTokenMint.address))!;
+    const lpSupply = new DataView(
+      lpMintAcct.data.buffer,
+      lpMintAcct.data.byteOffset,
+    ).getBigUint64(36, true); // supply at offset 36 in Mint layout
+
+    // Read pool reserve balances
+    const pool1Bal = getTokenBalance(poolAsset1Ata);
+    const pool2Bal = getTokenBalance(poolAsset2Ata);
+
+    // Simulate
+    const simulated = Insurance.simulateDepositMath({
+      depositAmount,
+      depositAssetPrice: { price: 100_00000000n, exponent: -8 },
+      depositAssetDecimals: 9,
+      poolReserves: [
+        { balance: pool1Bal, price: 100_00000000n, exponent: -8, decimals: 9 },
+        { balance: pool2Bal, price: 50_00000000n, exponent: -8, decimals: 9 },
+      ],
+      lpTokenSupply: lpSupply,
+      lpTokenDecimals: 9,
+    });
+
+    console.log(`    Simulated LP tokens: ${simulated}`);
+
+    // Execute the actual restake
+    const ix = await restaking.restake(
+      user.signer, depositAmount, assetMint1.address, 0, 0n,
+    );
+    assertSuccess(
+      sendSdkInstruction(ix, [user.keypair], user.keypair),
+      "restake for simulation comparison",
+    );
+
+    const lpBalAfter = getTokenBalance(userLpAta);
+    const actualMinted = lpBalAfter - lpBalBefore;
+    console.log(`    Actual LP tokens:    ${actualMinted}`);
+
+    // They should match exactly (same math, same rounding)
+    expect(simulated).to.equal(actualMinted);
+  });
+
+  // ========================================================================
+  // 15. simulateWithdrawMath
+  // ========================================================================
+  it("should simulate withdraw math matching on-chain proportions", async function () {
+    if (!programLoaded) return this.skip();
+
+    // Read current state
+    const [userLpAta] = await findAssociatedTokenPda({
+      mint: lpTokenMint.address,
+      owner: user.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+    const userLpBal = getTokenBalance(userLpAta);
+    expect(userLpBal).to.be.greaterThan(0n);
+
+    const lpMintAcct = svm.getAccount(toPublicKey(lpTokenMint.address))!;
+    const lpSupply = new DataView(
+      lpMintAcct.data.buffer,
+      lpMintAcct.data.byteOffset,
+    ).getBigUint64(36, true);
+
+    const pool1Bal = getTokenBalance(poolAsset1Ata);
+    const pool2Bal = getTokenBalance(poolAsset2Ata);
+
+    const redeemAmount = userLpBal / 4n;
+
+    const simulated = Insurance.simulateWithdrawMath({
+      lpTokenAmount: redeemAmount,
+      lpTokenSupply: lpSupply,
+      reserves: [
+        { mint: assetMint1.address, balance: pool1Bal },
+        { mint: assetMint2.address, balance: pool2Bal },
+      ],
+    });
+
+    console.log(`    Simulated withdraw for ${redeemAmount} LP tokens:`);
+    for (const s of simulated) {
+      console.log(`      ${s.mint}: ${s.amount}`);
+    }
+
+    // Verify proportionality: share ≈ redeemAmount / lpSupply * reserve
+    for (const s of simulated) {
+      const reserve =
+        s.mint === assetMint1.address ? pool1Bal : pool2Bal;
+      // Expected = reserve * redeemAmount / lpSupply (integer div)
+      // Allow ±1 for rounding
+      const expectedApprox = (reserve * redeemAmount) / lpSupply;
+      const diff =
+        s.amount > expectedApprox
+          ? s.amount - expectedApprox
+          : expectedApprox - s.amount;
+      expect(diff).to.be.lessThanOrEqual(1n);
+    }
   });
 });

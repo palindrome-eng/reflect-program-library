@@ -5,6 +5,7 @@ import {
   SolanaRpcApi,
   Address,
   TransactionSigner,
+  fetchEncodedAccount,
 } from "@solana/kit";
 import {
   type Settings,
@@ -506,5 +507,221 @@ export class Insurance {
 
   getCachedAssets(): AccountWithAddress<Asset>[] {
     return this.assets;
+  }
+
+  // ========================================================================
+  // Oracle
+  // ========================================================================
+
+  /**
+   * Fetch and deserialize the Pyth PriceUpdateV2 oracle account for a given
+   * asset, returning `{ price, exponent }` ready to pass into
+   * `simulateDepositMath`.
+   *
+   * @param mint  The asset mint whose oracle to read, OR a direct oracle
+   *              address.  When a mint is provided the oracle address is
+   *              looked up from the cached asset list.
+   */
+  async fetchOraclePrice(
+    mintOrOracle: Address,
+  ): Promise<{ price: bigint; exponent: number; publishTime: bigint }> {
+    // Resolve oracle address — try cached assets first, fall back to treating
+    // the input as a direct oracle address.
+    let oracleAddress: Address = mintOrOracle;
+    const assets = await this.getAssets();
+    const assetEntry = assets.find((a) => a.data.mint === mintOrOracle);
+    if (assetEntry) {
+      oracleAddress = (assetEntry.data.oracle as any).fields[0] as Address;
+    }
+
+    const account = await fetchEncodedAccount(this.connection, oracleAddress);
+    if (!account.exists) {
+      throw new Error(`Oracle account not found: ${oracleAddress}`);
+    }
+
+    return Insurance.deserializePythPrice(new Uint8Array(account.data));
+  }
+
+  /**
+   * Deserialize a raw Pyth PriceUpdateV2 account buffer into price fields.
+   *
+   * Borsh layout (after 8-byte Anchor discriminator):
+   *   write_authority: Pubkey (32)
+   *   verification_level: Full=[1] (1 byte) | Partial=[0,u8] (2 bytes)
+   *   price_message {
+   *     feed_id: [u8;32], price: i64, conf: u64, exponent: i32,
+   *     publish_time: i64, ...
+   *   }
+   */
+  static deserializePythPrice(
+    data: Uint8Array,
+  ): { price: bigint; exponent: number; publishTime: bigint } {
+    const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+    // Skip 8-byte discriminator + 32-byte write_authority = offset 40
+    const verificationVariant = data[40];
+    // Full = 1 byte, Partial = 2 bytes (variant + num_signatures)
+    const verificationSize = verificationVariant === 0 ? 2 : 1;
+
+    const pmOffset = 40 + verificationSize; // start of price_message
+    // feed_id: 32 bytes, then price(i64), conf(u64), exponent(i32), publish_time(i64)
+    const priceOffset = pmOffset + 32;
+    const exponentOffset = priceOffset + 8 + 8; // after price + conf
+    const publishTimeOffset = exponentOffset + 4;
+
+    return {
+      price: dv.getBigInt64(priceOffset, true),
+      exponent: dv.getInt32(exponentOffset, true),
+      publishTime: dv.getBigInt64(publishTimeOffset, true),
+    };
+  }
+
+  // ========================================================================
+  // Simulation math
+  // ========================================================================
+
+  /**
+   * Simulate deposit (restake) math off-chain.
+   *
+   * Mirrors the on-chain logic in:
+   *   - `OraclePrice::mul`          (oracle_price.rs)
+   *   - `LiquidityPool::calculate_total_pool_value`
+   *   - `LiquidityPool::calculate_lp_tokens_on_deposit`
+   *
+   * @param depositAmount   Raw token amount to deposit (base units).
+   * @param depositAssetPrice  Oracle price of the deposit asset (`{ price, exponent }`).
+   * @param depositAssetDecimals  Decimals of the deposit token mint.
+   * @param poolReserves    Array of { balance, price, exponent, decimals } for every
+   *                        asset currently in the pool (BEFORE the deposit).
+   * @param lpTokenSupply   Current total supply of the LP token (includes dead shares).
+   * @param lpTokenDecimals Decimals of the LP token mint (typically 9).
+   * @returns               The number of LP tokens the depositor would receive (bigint).
+   */
+  static simulateDepositMath(params: {
+    depositAmount: bigint;
+    depositAssetPrice: { price: bigint; exponent: number };
+    depositAssetDecimals: number;
+    poolReserves: {
+      balance: bigint;
+      price: bigint;
+      exponent: number;
+      decimals: number;
+    }[];
+    lpTokenSupply: bigint;
+    lpTokenDecimals: number;
+  }): bigint {
+    const {
+      depositAmount,
+      depositAssetPrice,
+      depositAssetDecimals,
+      poolReserves,
+      lpTokenSupply,
+      lpTokenDecimals,
+    } = params;
+
+    // --- PreciseNumber constants (mirrors spl-math) ---
+    const ONE = 1_000_000_000_000n; // 10^12
+    const HALF = ONE / 2n;
+    const PRECISION = 18;
+
+    // PreciseNumber::new(x) → x * ONE
+    const pNew = (x: bigint) => x * ONE;
+    // PreciseNumber::to_imprecise(v) → (v + HALF) / ONE
+    const pToU64 = (v: bigint) => (v + HALF) / ONE;
+    // PreciseNumber::checked_mul(a, b) → (a * b + HALF) / ONE
+    const pMul = (a: bigint, b: bigint) => (a * b + HALF) / ONE;
+    // PreciseNumber::checked_div(a, b) → (a * ONE + HALF) / b
+    const pDiv = (a: bigint, b: bigint) => (a * ONE + HALF) / b;
+    // PreciseNumber::checked_add(a, b) → a + b
+    const pAdd = (a: bigint, b: bigint) => a + b;
+
+    // --- OraclePrice::mul(amount, token_decimals) ---
+    const oracleMul = (
+      price: bigint,
+      exponent: number,
+      amount: bigint,
+      tokenDecimals: number,
+    ): bigint => {
+      const decimalAdj = PRECISION - tokenDecimals;
+      const normalizedAmount = amount * 10n ** BigInt(decimalAdj);
+      if (exponent >= 0) {
+        return normalizedAmount * price * 10n ** BigInt(exponent);
+      } else {
+        return (normalizedAmount * price) / 10n ** BigInt(-exponent);
+      }
+    };
+
+    // --- calculate_total_pool_value ---
+    let totalPoolValue = pNew(0n); // precise
+    for (const r of poolReserves) {
+      if (r.balance > 0n) {
+        const rawValue = oracleMul(r.price, r.exponent, r.balance, r.decimals);
+        totalPoolValue = pAdd(totalPoolValue, pNew(rawValue));
+      }
+    }
+
+    // --- deposit_value ---
+    const rawDepositValue = oracleMul(
+      depositAssetPrice.price,
+      depositAssetPrice.exponent,
+      depositAmount,
+      depositAssetDecimals,
+    );
+    const depositValue = pNew(rawDepositValue); // precise
+
+    // --- calculate_lp_tokens_on_deposit ---
+    const poolValueImprecise = pToU64(totalPoolValue);
+    if (lpTokenSupply === 0n || poolValueImprecise === 0n) {
+      // Initial deposit formula: deposit_value / 10^(PRECISION - lp_decimals)
+      const scaleDown = pNew(10n ** BigInt(PRECISION - lpTokenDecimals));
+      return BigInt(pToU64(pDiv(depositValue, scaleDown)));
+    } else {
+      // Proportional: deposit_value * lp_supply / total_pool_value
+      const lpSupplyPrecise = pNew(lpTokenSupply);
+      const ratio = pDiv(pMul(depositValue, lpSupplyPrecise), totalPoolValue);
+      return BigInt(pToU64(ratio));
+    }
+  }
+
+  /**
+   * Simulate withdrawal math off-chain.
+   *
+   * Mirrors the on-chain logic in `withdraw()` which computes:
+   *   `user_share_per_asset = reserve_amount * lp_token_amount / lp_token_supply`
+   *
+   * Uses PreciseNumber arithmetic to match on-chain rounding.
+   *
+   * @param lpTokenAmount   Amount of LP tokens the user is redeeming.
+   * @param lpTokenSupply   Current total supply of the LP token.
+   * @param reserves        Array of { mint, balance } for each pool asset.
+   * @returns               Array of { mint, amount } the user would receive per asset.
+   */
+  static simulateWithdrawMath(params: {
+    lpTokenAmount: bigint;
+    lpTokenSupply: bigint;
+    reserves: { mint: Address; balance: bigint }[];
+  }): { mint: Address; amount: bigint }[] {
+    const { lpTokenAmount, lpTokenSupply, reserves } = params;
+
+    const ONE = 1_000_000_000_000n;
+    const HALF = ONE / 2n;
+
+    const pNew = (x: bigint) => x * ONE;
+    const pToU64 = (v: bigint) => (v + HALF) / ONE;
+    const pMul = (a: bigint, b: bigint) => (a * b + HALF) / ONE;
+    const pDiv = (a: bigint, b: bigint) => (a * ONE + HALF) / b;
+
+    return reserves.map((r) => {
+      // PreciseNumber(reserve) * PreciseNumber(lp_amount) / PreciseNumber(lp_supply)
+      const reservePrecise = pNew(r.balance);
+      const amountPrecise = pNew(lpTokenAmount);
+      const supplyPrecise = pNew(lpTokenSupply);
+
+      const share = pDiv(pMul(reservePrecise, amountPrecise), supplyPrecise);
+      return {
+        mint: r.mint,
+        amount: BigInt(pToU64(share)),
+      };
+    });
   }
 }
