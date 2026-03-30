@@ -81,7 +81,9 @@ pub fn initialize_lp(
         DEAD_SHARES
     )?;
 
-    settings.liquidity_pools += 1;
+    settings.liquidity_pools = settings.liquidity_pools
+        .checked_add(1)
+        .ok_or(RlpError::MathOverflow)?;
 
     emit!(InitializeLiquidityPoolEvent {
         admin: ctx.accounts.signer.key(),

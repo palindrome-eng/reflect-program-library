@@ -1,0 +1,21 @@
+{
+  "name": "@reflectmoney/insurance-cli",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "cli": "tsx index.ts"
+  },
+  "dependencies": {
+    "@solana-program/system": "^0.12.0",
+    "@solana-program/token": "^0.12.0",
+    "@solana/kit": "^6.1.0",
+    "@solana/program-client-core": "^6.5.0",
+    "@solana/web3.js": "^1.98.4",
+    "bn.js": "^5.2.3",
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.0"
+  }
+}

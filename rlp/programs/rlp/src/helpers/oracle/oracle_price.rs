@@ -9,6 +9,10 @@ pub struct OraclePrice {
 impl OraclePrice {
     #[inline(never)]
     pub fn mul(&self, amount: u64, token_decimals: u8) -> Result<u128, RlpError> {
+        if self.price <= 0 {
+            return Err(RlpError::PriceError);
+        }
+
         let decimal_adjustment = PRECISION.saturating_sub(token_decimals as u32);
 
         let normalized_amount = (amount as u128)

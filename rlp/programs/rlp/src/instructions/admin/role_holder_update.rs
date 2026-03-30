@@ -26,7 +26,12 @@ pub fn update_role_holder_protocol(
         update
     } = args;
 
-    let creds: &mut Account<UserPermissions> = &mut accounts.admin_permissions;          
+    require!(
+        update_admin_permissions.authority == address,
+        RlpError::InvalidInput
+    );
+
+    let creds: &mut Account<UserPermissions> = &mut accounts.admin_permissions;
     action_check_protocol(Action::UpdateRole, Some(&creds), &settings.access_control)?;
 
     if role == Role::SUPREMO {
@@ -62,7 +67,12 @@ pub struct RlpAdminRoleUpdate<'info> {
     #[account(mut, seeds = [PERMISSIONS_SEED.as_bytes(), admin.key().as_ref()], bump = admin_permissions.bump)]
     pub admin_permissions: Account<'info, UserPermissions>,
 
-    #[account(mut, constraint = update_admin_permissions.key() != admin_permissions.key() @ RlpError::SameAdmin)]
+    #[account(
+        mut,
+        constraint = update_admin_permissions.key() != admin_permissions.key() @ RlpError::SameAdmin,
+        seeds = [PERMISSIONS_SEED.as_bytes(), update_admin_permissions.authority.as_ref()],
+        bump = update_admin_permissions.bump,
+    )]
     pub update_admin_permissions: Account<'info, UserPermissions>,
     
     pub system_program: Program<'info, System>,

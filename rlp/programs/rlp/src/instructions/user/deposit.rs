@@ -115,7 +115,6 @@ pub struct Deposit<'info> {
     pub signer: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [
             SETTINGS_SEED.as_bytes(),
         ],

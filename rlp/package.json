@@ -1,5 +1,6 @@
 {
     "scripts": {
+        "cli": "bun ./cli/index.ts",
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
         "deploy:mock:mainnet": "dotenv -e .env -- sh -c 'anchor deploy --program-name rlp --provider.cluster $MAINNET_CLUSTER_URL --program-keypair $MOCK_PROGRAM_KEYPAIR_LOCATION --provider.wallet $DEPLOYER_KEYPAIR_LOCATION'",

@@ -32,6 +32,15 @@ import {
   getRestakeInstructionAsync,
   getRequestWithdrawalInstructionAsync,
   getWithdrawInstructionAsync,
+  getSwapInstructionAsync,
+  getCreatePermissionAccountInstructionAsync,
+  getUpdateRoleHolderInstructionAsync,
+  getUpdateActionRoleInstructionAsync,
+  getUpdateDepositCapInstructionAsync,
+  getFreezeFunctionalityInstructionAsync,
+  type Action,
+  type Role,
+  type Update,
 } from "../generated";
 import { PdaClient } from "./PdaClient";
 
@@ -407,6 +416,7 @@ export class Insurance {
 
     const ix = await getRestakeInstructionAsync({
       signer,
+      permissions: RLP_PROGRAM_ADDRESS,
       liquidityPool: lpEntry.address,
       lpToken: lpEntry.data.lpToken,
       assetMint: mint,
@@ -448,6 +458,7 @@ export class Insurance {
 
     return getRequestWithdrawalInstructionAsync({
       signer,
+      permissions: RLP_PROGRAM_ADDRESS,
       liquidityPool: lpEntry.address,
       lpTokenMint: lpEntry.data.lpToken,
       signerLpTokenAccount,
@@ -475,6 +486,7 @@ export class Insurance {
 
     const ix = await getWithdrawInstructionAsync({
       signer,
+      permissions: RLP_PROGRAM_ADDRESS,
       liquidityPool: lpEntry.address,
       lpTokenMint: lpEntry.data.lpToken,
       cooldown: cooldownAddress,
@@ -488,6 +500,148 @@ export class Insurance {
     );
 
     return this.appendRemainingAccounts(ix, remaining);
+  }
+
+  async swap(
+    signer: TransactionSigner,
+    liquidityPoolId: number,
+    tokenFromMint: Address,
+    tokenToMint: Address,
+    amountIn: number | bigint,
+    minOut?: number | bigint | null,
+  ) {
+    const assets = await this.getAssets();
+
+    const tokenFromEntry = assets.find((a) => a.data.mint === tokenFromMint);
+    if (!tokenFromEntry)
+      throw new Error(`Asset not found for mint ${tokenFromMint}`);
+
+    const tokenToEntry = assets.find((a) => a.data.mint === tokenToMint);
+    if (!tokenToEntry)
+      throw new Error(`Asset not found for mint ${tokenToMint}`);
+
+    const tokenFromOracle = (tokenFromEntry.data.oracle as any)
+      .fields[0] as Address;
+    const tokenToOracle = (tokenToEntry.data.oracle as any)
+      .fields[0] as Address;
+
+    const lpEntry = this.liquidityPools.find(
+      (lp) => lp.data.index === liquidityPoolId,
+    );
+    if (!lpEntry)
+      throw new Error(`Liquidity pool ${liquidityPoolId} not found`);
+
+    const [tokenFromPool] = await findAssociatedTokenPda({
+      mint: tokenFromMint,
+      owner: lpEntry.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+
+    const [tokenToPool] = await findAssociatedTokenPda({
+      mint: tokenToMint,
+      owner: lpEntry.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+
+    const [tokenFromSignerAccount] = await findAssociatedTokenPda({
+      mint: tokenFromMint,
+      owner: signer.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+
+    const [tokenToSignerAccount] = await findAssociatedTokenPda({
+      mint: tokenToMint,
+      owner: signer.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+
+    return getSwapInstructionAsync({
+      signer,
+      liquidityPool: lpEntry.address,
+      tokenFrom: tokenFromMint,
+      tokenFromOracle,
+      tokenTo: tokenToMint,
+      tokenToOracle,
+      tokenFromPool,
+      tokenToPool,
+      tokenFromSignerAccount,
+      tokenToSignerAccount,
+      amountIn,
+      minOut: (minOut ?? null) as any,
+    });
+  }
+
+  async createPermissionAccount(
+    caller: TransactionSigner,
+    newAdmin: Address,
+  ) {
+    return getCreatePermissionAccountInstructionAsync({
+      caller,
+      newAdmin,
+    });
+  }
+
+  async updateRoleHolder(
+    admin: TransactionSigner,
+    targetAddress: Address,
+    role: Role,
+    update: Update,
+  ) {
+    const [updateAdminPermissions] =
+      await PdaClient.deriveUserPermissions(targetAddress);
+
+    return getUpdateRoleHolderInstructionAsync({
+      admin,
+      updateAdminPermissions,
+      address: targetAddress,
+      role,
+      update,
+    });
+  }
+
+  async updateActionRole(
+    admin: TransactionSigner,
+    action: Action,
+    role: Role,
+    update: Update,
+  ) {
+    return getUpdateActionRoleInstructionAsync({
+      admin,
+      action,
+      role,
+      update,
+    });
+  }
+
+  async updateDepositCap(
+    signer: TransactionSigner,
+    liquidityPoolId: number,
+    newCap: number | bigint | null,
+  ) {
+    const lpEntry = this.liquidityPools.find(
+      (lp) => lp.data.index === liquidityPoolId,
+    );
+    if (!lpEntry)
+      throw new Error(`Liquidity pool ${liquidityPoolId} not found`);
+
+    return getUpdateDepositCapInstructionAsync({
+      signer,
+      liquidityPool: lpEntry.address,
+      lockupId: liquidityPoolId,
+      newCap: newCap as any,
+    });
+  }
+
+  async freezeFunctionality(
+    admin: TransactionSigner,
+    action: Action,
+    freeze: boolean,
+  ) {
+    return getFreezeFunctionalityInstructionAsync({
+      admin,
+      action,
+      freeze,
+    });
   }
 
   async findAssetFromMint(mint: Address): Promise<Address> {

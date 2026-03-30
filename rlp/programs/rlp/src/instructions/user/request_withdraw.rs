@@ -88,7 +88,6 @@ pub struct RequestWithdrawal<'info> {
     pub signer: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [
             SETTINGS_SEED.as_bytes()
         ],
@@ -143,7 +142,7 @@ pub struct RequestWithdrawal<'info> {
     pub cooldown: Box<Account<'info, Cooldown>>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = signer,
         associated_token::mint = lp_token_mint,
         associated_token::authority = cooldown,

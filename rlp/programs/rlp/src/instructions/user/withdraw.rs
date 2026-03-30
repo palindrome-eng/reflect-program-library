@@ -4,6 +4,7 @@ use anchor_spl::token::CloseAccount;
 use anchor_spl::token::Token;
 use spl_math::precise_number::PreciseNumber;
 use crate::errors::RlpError;
+use crate::helpers::action_check_protocol;
 use crate::states::*;
 use crate::constants::*;
 use anchor_spl::token::{
@@ -38,6 +39,14 @@ pub fn withdraw<'a>(
     } = args;
 
     let settings = &ctx.accounts.settings;
+    let permissions = &ctx.accounts.permissions;
+
+    action_check_protocol(
+        Action::Withdraw,
+        permissions.as_deref(),
+        &settings.access_control,
+    )?;
+
     let cooldown = &ctx.accounts.cooldown;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
