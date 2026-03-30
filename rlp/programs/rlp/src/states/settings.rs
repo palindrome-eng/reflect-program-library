@@ -8,6 +8,6 @@ pub struct Settings {
     pub liquidity_pools: u8,
     pub assets: u8,
     pub access_control: AccessControl,
-    pub swap_fee_bps: u16, // 30 bps = 0.3%
+    pub swap_fee_bps: u16,
 }
 

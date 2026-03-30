@@ -26,11 +26,9 @@ pub fn update_role_holder_protocol(
         update
     } = args;
 
-    // Verify caller's credentials.
     let creds: &mut Account<UserPermissions> = &mut accounts.admin_permissions;          
     action_check_protocol(Action::UpdateRole, Some(&creds), &settings.access_control)?;
 
-    // If role being assigned is supremo, the caller must be a protocol supremo.
     if role == Role::SUPREMO {
         creds.validate_supremo()?;
     }

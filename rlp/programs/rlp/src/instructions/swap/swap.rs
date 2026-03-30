@@ -17,7 +17,6 @@ pub struct SwapArgs {
 pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let SwapArgs { min_out, amount_in } = args;
 
-    // Input validation
     require!(amount_in > 0, RlpError::InvalidInput);
 
     let clock = &Clock::get()?;
@@ -28,7 +27,6 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let token_from = &ctx.accounts.token_from;
     let token_to = &ctx.accounts.token_to;
 
-    // Prevent swapping the same token
     require!(
         token_from.key() != token_to.key(),
         RlpError::InvalidInput
@@ -37,7 +35,6 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let token_from_asset = &ctx.accounts.token_from_asset;
     let token_to_asset = &ctx.accounts.token_to_asset;
 
-    // Validate both assets are whitelisted for this pool
     require!(
         liquidity_pool.has_asset(token_from_asset.index),
         RlpError::AssetNotWhitelisted
@@ -50,7 +47,6 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let admin = &ctx.accounts.admin;
     let settings = &ctx.accounts.settings;
 
-    // Check if Swap is frozen
     require!(
         !settings
             .access_control
@@ -59,7 +55,6 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         RlpError::Frozen
     );
 
-    // If any of the assets are private, require admin permissions.
     if token_from_asset.access_level == AccessLevel::Private
         || token_to_asset.access_level == AccessLevel::Private
     {
@@ -97,22 +92,8 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let token_program = &ctx.accounts.token_program;
 
     let fee = &ctx.accounts.settings.swap_fee_bps;
-    let reserve_from_amount = token_from_pool.amount;
+    let reserve_to_amount = token_to_pool.amount;
 
-    msg!("[swap] fee {}", fee);
-
-    // impact_factor = x / x + a;
-    let impact_factor = (amount_in as u128)
-        .checked_mul(BPS_PRECISION)
-        .ok_or(RlpError::MathOverflow)?
-        .checked_div(
-            (reserve_from_amount as u128)
-                .checked_add(amount_in as u128)
-                .ok_or(RlpError::MathOverflow)?,
-        )
-        .ok_or(RlpError::MathOverflow)?;
-
-    // calculate oracle based amount out (oracle_amount_out = amount_in * y / x)
     let oracle_amount_out: u64 = token_from_price
         .mul(amount_in, *token_from_decimals)?
         .checked_div(token_to_price.mul(1, *token_to_decimals)?)
@@ -120,9 +101,16 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         .try_into()
         .map_err(|_| RlpError::MathOverflow)?;
 
-    msg!("[swap] oracle_amount_out {}", oracle_amount_out);
+    let impact_factor = (oracle_amount_out as u128)
+        .checked_mul(BPS_PRECISION)
+        .ok_or(RlpError::MathOverflow)?
+        .checked_div(
+            (reserve_to_amount as u128)
+                .checked_add(oracle_amount_out as u128)
+                .ok_or(RlpError::MathOverflow)?,
+        )
+        .ok_or(RlpError::MathOverflow)?;
 
-    // calculate amount after impact: oracle_amount_out * (1 - impact_factor)
     let impact_complement = BPS_PRECISION
         .checked_sub(impact_factor)
         .ok_or(RlpError::MathOverflow)?;
@@ -132,15 +120,9 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         .checked_div(BPS_PRECISION)
         .ok_or(RlpError::MathOverflow)?;
 
-    msg!("[swap] amount_after_impact {}", amount_after_impact);
-
-    // apply fee
-    // amount_out = amount_after_impact * (1 - fee)
     let fee_complement = BPS_PRECISION
         .checked_sub(*fee as u128)
         .ok_or(RlpError::MathOverflow)?;
-
-    msg!("[swap] fee_complement {}", fee_complement);
 
     let amount_out = amount_after_impact
         .checked_mul(fee_complement)
@@ -148,14 +130,11 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         .checked_div(BPS_PRECISION)
         .ok_or(RlpError::MathOverflow)?;
 
-    msg!("[swap] amount_out {}", amount_out);
-
     require!(
         token_to_pool.amount as u128 >= amount_out,
         RlpError::NotEnoughFunds
     );
 
-    // Slippage protection
     if let Some(min_amount) = min_out {
         require!(
             amount_out as u128 >= min_amount as u128,

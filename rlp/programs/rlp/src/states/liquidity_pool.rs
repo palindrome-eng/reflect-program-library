@@ -75,7 +75,6 @@ impl LiquidityPool {
             let oracle_info = &remaining_accounts[i + 2];
             let mint_info = &remaining_accounts[i + 3];
 
-            // Validate token account
             require!(
                 token_account_info.owner == &anchor_spl::token::ID,
                 crate::errors::RlpError::InvalidInput
@@ -91,9 +90,6 @@ impl LiquidityPool {
                 crate::errors::RlpError::InvalidInput
             );
 
-            // let asset_info = &remaining_accounts[i + 1];
-
-            // Validate asset info
             require!(
                 asset_info.owner == &crate::ID,
                 crate::errors::RlpError::InvalidInput
@@ -109,7 +105,6 @@ impl LiquidityPool {
 
             let asset_mint = asset.mint;
 
-            // Validate asset mint has not already been visited
             require!(
                 !visited_mints.contains(&asset_mint),
                 crate::errors::RlpError::InvalidInput
@@ -130,13 +125,11 @@ impl LiquidityPool {
                 &crate::ID,
             );
 
-            // Verify this is the correct PDA for asset
             require!(
                 asset_info.key() == expected_asset_pda,
                 crate::errors::RlpError::InvalidInput
             );
 
-            // Verify this is the correct associated token account for the liquidity pool and asset
             let expected_pool_token_account =
                 get_associated_token_address(&liquidity_pool.key(), &asset.mint);
 
@@ -145,7 +138,6 @@ impl LiquidityPool {
                 crate::errors::RlpError::InvalidInput
             );
 
-            // Verify oracle key matches assets'
             require!(
                 oracle_info.key() == *asset.oracle.key(),
                 crate::errors::RlpError::InvalidInput
@@ -155,13 +147,11 @@ impl LiquidityPool {
                 .get_price(oracle_info, clock)
                 .map_err(|_| crate::errors::RlpError::InvalidInput)?;
 
-            // Verify token mint owner
             require!(
                 mint_info.owner == &anchor_spl::token::ID,
                 crate::errors::RlpError::InvalidInput
             );
 
-            // Verify token mint address matches assets'
             require!(
                 mint_info.key() == asset.mint,
                 crate::errors::RlpError::InvalidInput
@@ -199,7 +189,6 @@ impl LiquidityPool {
             .map_or(true, |v| v == 0);
 
         let lp_tokens_to_mint = if lp_token.supply == 0 || pool_value_is_zero {
-            // Use initial deposit formula when pool is empty or has only dead shares
             let lp_decimals = lp_token.decimals as u32;
             let scale_down_precise = PreciseNumber::new(10u128.pow(PRECISION - lp_decimals))
                 .ok_or(crate::errors::RlpError::MathOverflow)?;

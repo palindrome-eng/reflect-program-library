@@ -29,7 +29,6 @@ pub fn initialize_lp(
     let dead_shares_vault = &ctx.accounts.dead_shares_vault;
     let token_program = &ctx.accounts.token_program;
 
-    // Validate asset list
     require!(
         assets.len() >= 1 && assets.len() <= MAX_POOL_ASSETS,
         RlpError::InvalidInput
@@ -63,9 +62,6 @@ pub fn initialize_lp(
         assets: asset_array,
     });
 
-    // Security Fix: Mint dead shares to prevent LP token inflation attack
-    // These shares are permanently locked in the dead_shares_vault (owned by liquidity_pool)
-    // This ensures the first depositor cannot manipulate the exchange rate
     let signer_seeds = &[
         LIQUIDITY_POOL_SEED.as_bytes(),
         &pool_index.to_le_bytes(),
@@ -147,8 +143,6 @@ pub struct InitializeLiquidityPool<'info> {
     )]
     pub lp_token_mint: Box<Account<'info, Mint>>,
 
-    /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-    /// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
     #[account(
         init,
         payer = signer,

@@ -1,5 +1,5 @@
 {
-  "address": "moCKamhCr1Ya8n98udkXScBEiQouyfCuNEUFqELZmxA",
+  "address": "moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM",
   "metadata": {
     "name": "rlp",
     "version": "0.1.0",
@@ -3061,6 +3061,10 @@
             "type": {
               "option": "u64"
             }
+          },
+          {
+            "name": "assets",
+            "type": "bytes"
           }
         ]
       }
@@ -3174,6 +3178,19 @@
             "name": "deposit_cap",
             "type": {
               "option": "u64"
+            }
+          },
+          {
+            "name": "asset_count",
+            "type": "u8"
+          },
+          {
+            "name": "assets",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
             }
           }
         ]

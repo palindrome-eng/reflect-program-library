@@ -1,5 +1,5 @@
-pub mod restake;
-pub use restake::*;
+pub mod deposit;
+pub use deposit::*;
 
 pub mod request_withdraw;
 pub use request_withdraw::*;

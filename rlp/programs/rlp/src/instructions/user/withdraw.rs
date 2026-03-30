@@ -81,8 +81,6 @@ pub fn withdraw<'a>(
         let (reserve_key, reserve) = &reserves[i];
         let (user_token_account_key, _) = &user_token_accounts[i];
 
-        // Note: DEAD_SHARES are now actually minted and included in lp_token_supply
-        // so the calculation is correct without virtual additions
         let user_pool_share_amount = PreciseNumber::new(reserve.amount as u128)
             .ok_or(RlpError::MathOverflow)?
             .checked_mul(
@@ -115,14 +113,14 @@ pub fn withdraw<'a>(
 
             transfer(
                 CpiContext::new_with_signer(
-                    token_program.to_account_info(), 
+                    token_program.to_account_info(),
                     Transfer {
                         from: reserve_account.to_account_info(),
                         to: user_token_account_info.to_account_info(),
                         authority: liquidity_pool.to_account_info()
-                    }, 
+                    },
                     &[lp_seeds]
-                ), 
+                ),
                 user_pool_share_amount
             )?;
         }
@@ -137,12 +135,12 @@ pub fn withdraw<'a>(
 
     burn(
         CpiContext::new_with_signer(
-            token_program.to_account_info(), 
+            token_program.to_account_info(),
             Burn {
                 authority: cooldown.to_account_info(),
                 from: cooldown_lp_token_account.to_account_info(),
                 mint: lp_token_mint.to_account_info()
-            }, 
+            },
             &[cooldown_seeds]
         ),
         lp_token_amount

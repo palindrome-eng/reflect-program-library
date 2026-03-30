@@ -58,10 +58,10 @@ pub mod rlp {
     }
 
     pub fn restake<'a>(
-        ctx: Context<'_, '_, 'a, 'a, Restake<'a>>,
-        args: RestakeArgs
+        ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>,
+        args: DepositArgs
     ) -> Result<()> {
-        instructions::restake(ctx, args)
+        instructions::deposit(ctx, args)
     }
 
     pub fn request_withdrawal(

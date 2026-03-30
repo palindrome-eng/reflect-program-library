@@ -11,7 +11,6 @@ pub fn load_user_token_accounts(
 ) -> Result<Vec<(Pubkey, TokenAccount)>> {
     let mut user_token_accounts: Vec<(Pubkey, TokenAccount)> = Vec::with_capacity(assets.len() as usize);
 
-    // Must be the first `assets.len()` accounts in the remaining accounts
     let (
         user_token_account_infos, 
         remaining

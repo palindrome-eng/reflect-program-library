@@ -198,7 +198,7 @@ describe("RLP SDK Full Flow Test", function () {
   let programLoaded = false;
   let createdCooldownPda: Address;
 
-  // SDK class instance (used for restake/withdraw which need remaining accounts)
+  // SDK class instance (used for deposit/withdraw which need remaining accounts)
   let restaking: Insurance;
 
   // ========================================================================
@@ -690,9 +690,9 @@ describe("RLP SDK Full Flow Test", function () {
   });
 
   // ========================================================================
-  // 9. restake
+  // 9. deposit
   // ========================================================================
-  it("should restake tokens into the liquidity pool", async function () {
+  it("should deposit tokens into the liquidity pool", async function () {
     if (!programLoaded) return this.skip();
 
     const amount = 1_000_000_000n; // 1 token
@@ -709,10 +709,10 @@ describe("RLP SDK Full Flow Test", function () {
     // Create user LP ATA
     await createAta(lpTokenMint.address, user.address, user.keypair);
 
-    // Insurance.restake() returns instruction with remaining accounts included
-    const ix = await restaking.restake(user.signer, amount, assetMint1.address, 0, 0n);
+    // Insurance.deposit() returns instruction with remaining accounts included
+    const ix = await restaking.deposit(user.signer, amount, assetMint1.address, 0, 0n);
     const result = sendSdkInstruction(ix, [user.keypair], user.keypair);
-    assertSuccess(result, "restake");
+    assertSuccess(result, "deposit");
 
     // Verify LP tokens were minted
     const [userLpAta] = await findAssociatedTokenPda({
@@ -793,16 +793,16 @@ describe("RLP SDK Full Flow Test", function () {
   it("should slash tokens from the liquidity pool", async function () {
     if (!programLoaded) return this.skip();
 
-    // First restake more so there's tokens in the pool to slash
+    // First deposit more so there's tokens in the pool to slash
     const amount = 2_000_000_000n;
     await createAtaAndMint(
       assetMint1.address, user.address, admin.keypair, amount,
     );
 
-    const restakeIx = await restaking.restake(user.signer, amount, assetMint1.address, 0, 0n);
+    const depositIx = await restaking.deposit(user.signer, amount, assetMint1.address, 0, 0n);
     assertSuccess(
-      sendSdkInstruction(restakeIx, [user.keypair], user.keypair),
-      "restake for slash test",
+      sendSdkInstruction(depositIx, [user.keypair], user.keypair),
+      "deposit for slash test",
     );
 
     const poolBalanceBefore = getTokenBalance(poolAsset1Ata);
@@ -922,7 +922,7 @@ describe("RLP SDK Full Flow Test", function () {
   // ========================================================================
   // 15. simulateDepositMath
   // ========================================================================
-  it("should simulate deposit math matching on-chain restake", async function () {
+  it("should simulate deposit math matching on-chain deposit", async function () {
     if (!programLoaded) return this.skip();
 
     // Use the actual pool state to simulate a deposit, then execute it
@@ -968,13 +968,13 @@ describe("RLP SDK Full Flow Test", function () {
 
     console.log(`    Simulated LP tokens: ${simulated}`);
 
-    // Execute the actual restake
-    const ix = await restaking.restake(
+    // Execute the actual deposit
+    const ix = await restaking.deposit(
       user.signer, depositAmount, assetMint1.address, 0, 0n,
     );
     assertSuccess(
       sendSdkInstruction(ix, [user.keypair], user.keypair),
-      "restake for simulation comparison",
+      "deposit for simulation comparison",
     );
 
     const lpBalAfter = getTokenBalance(userLpAta);

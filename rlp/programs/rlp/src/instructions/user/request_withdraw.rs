@@ -28,8 +28,6 @@ pub fn request_withdrawal(
         amount
     } = args;
 
-    msg!("this works");
-
     let settings = &ctx.accounts.settings;
     let permissions = &ctx.accounts.permissions;
 
@@ -38,8 +36,6 @@ pub fn request_withdrawal(
         permissions.as_deref(),
         &settings.access_control
     )?;
-
-    msg!("this works 2");
 
     let signer = &ctx.accounts.signer;
     let liquidity_pool = &mut ctx.accounts.liquidity_pool;
@@ -50,20 +46,14 @@ pub fn request_withdrawal(
     cooldown.liquidity_pool_id = liquidity_pool_id;
     cooldown.authority = signer.key();
 
-    msg!("this works 2.6");
-
     cooldown.lock(liquidity_pool.cooldown_duration)?;
-
-    msg!("this works 2.7");
 
     let signer_lp_token_account = &ctx.accounts.signer_lp_token_account;
     let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
 
-    msg!("this works 3");
-
     transfer(
         CpiContext::new(
-            token_program.to_account_info(), 
+            token_program.to_account_info(),
             Transfer {
                 from: signer_lp_token_account.to_account_info(),
                 to: cooldown_lp_token_account.to_account_info(),
@@ -73,8 +63,6 @@ pub fn request_withdrawal(
         amount
     )?;
 
-    // Increment the cooldowns counter for next withdrawal request
-    // Security Fix: Actually store the incremented value
     liquidity_pool.cooldowns = liquidity_pool
         .cooldowns
         .checked_add(1)

@@ -31,7 +31,6 @@ pub fn update_action_role_protocol(
         &settings.access_control
     )?;
   
-    msg!("[PROTOCOL] Caller: {:?} wants to set {:?}  for {:?}", accounts.admin.key(), role, action);
 
     match update {
         Update::Add => {    

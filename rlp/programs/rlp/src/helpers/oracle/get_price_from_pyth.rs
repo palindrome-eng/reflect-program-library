@@ -10,8 +10,7 @@ pub fn get_price_from_pyth(oracle_account: &AccountInfo, clock: &Clock) -> Resul
     let oracle_account_data = oracle_account.try_borrow_data()?;
 
     let mut data_slice = &oracle_account_data[8..];
-    let oracle = PriceUpdateV2::deserialize(&mut data_slice).map_err(|e| {
-        msg!("[pyth] deserialization error: {:?}", e);
+    let oracle = PriceUpdateV2::deserialize(&mut data_slice).map_err(|_| {
         RlpError::InvalidOracle
     })?;
 

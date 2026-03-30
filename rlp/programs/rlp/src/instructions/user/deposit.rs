@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::errors::RlpError;
-use crate::events::RestakeEvent;
+use crate::events::DepositEvent;
 use crate::helpers::action_check_protocol;
 use crate::states::{Action, Asset, LiquidityPool, Settings, UserPermissions};
 use anchor_lang::prelude::*;
@@ -9,14 +9,14 @@ use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 use spl_math::precise_number::PreciseNumber;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct RestakeArgs {
+pub struct DepositArgs {
     pub liquidity_pool_index: u8,
     pub amount: u64,
     pub min_lp_tokens: u64,
 }
 
-pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs) -> Result<()> {
-    let RestakeArgs {
+pub fn deposit<'a>(ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>, args: DepositArgs) -> Result<()> {
+    let DepositArgs {
         liquidity_pool_index: _,
         amount,
         min_lp_tokens,
@@ -54,11 +54,6 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
         &clock,
     )?;
 
-    msg!(
-        "[restake] total_pool_value_before: {:?}",
-        total_pool_value_before.to_imprecise()
-    );
-
     liquidity_pool.deposit(
         signer,
         amount,
@@ -71,15 +66,8 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
     let oracle = &ctx.accounts.oracle;
     let deposit_asset_price = asset.get_price(oracle, &clock)?;
 
-    msg!("[restake] deposit_asset_price: {:?}", deposit_asset_price);
-
     let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount, *token_decimals)?)
         .ok_or(RlpError::MathOverflow)?;
-
-    msg!(
-        "[restake] deposit_value: {:?}",
-        deposit_value.to_imprecise().unwrap()
-    );
 
     let lp_tokens_to_mint = liquidity_pool.calculate_lp_tokens_on_deposit(
         lp_token,
@@ -87,14 +75,21 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
         deposit_value,
     )?;
 
-    msg!("[restake] lp_tokens_to_mint: {:?}", lp_tokens_to_mint);
-
     require!(
         min_lp_tokens <= lp_tokens_to_mint,
         RlpError::SlippageExceeded
     );
 
-    msg!("minting lp tokens");
+    if let Some(cap) = liquidity_pool.deposit_cap {
+        require!(
+            lp_token
+                .supply
+                .checked_add(lp_tokens_to_mint)
+                .ok_or(RlpError::MathOverflow)?
+                <= cap,
+            RlpError::DepositCapOverflow
+        );
+    }
 
     liquidity_pool.mint_lp_token(
         lp_tokens_to_mint,
@@ -104,7 +99,7 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
         token_program,
     )?;
 
-    emit!(RestakeEvent {
+    emit!(DepositEvent {
         from: signer.key(),
         asset: ctx.accounts.asset_mint.key(),
         amount,
@@ -114,8 +109,8 @@ pub fn restake<'a>(ctx: Context<'_, '_, 'a, 'a, Restake<'a>>, args: RestakeArgs)
 }
 
 #[derive(Accounts)]
-#[instruction(args: RestakeArgs)]
-pub struct Restake<'info> {
+#[instruction(args: DepositArgs)]
+pub struct Deposit<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 

@@ -6,43 +6,28 @@ use crate::errors::RlpError;
 #[derive(BorshSchema, AnchorSerialize,  Default, AnchorDeserialize, Copy, Clone, Debug, PartialEq, Eq, InitSpace, EnumIter)]
 pub enum Action {
     #[default]
-    // Core actions
-    /** Restakes asset. */
     Restake = 0,
-    /** Withdraws asset */
     Withdraw = 1,
-    /** Slashes LP */
     Slash = 2,
-    /** Swaps between two assets in the LP (whitelisted only). */
     Swap = 3,
 
-    // Core actions freeze
-    /** Freezes Restake action. */
-    FreezeRestake = 4,  
-    /** Freezes Withdraw action. */
+    FreezeRestake = 4,
     FreezeWithdraw = 5,
-    /** Freezes Slash action. */
     FreezeSlash = 6,
-    /** Freezes Swap action. */
     FreezeSwap = 7,
 
     InitializeLiquidityPool = 8,
-    /** Adds new asset to the LP. */
     AddAsset = 9,
-    /** Updates how much of asset can be deposited in the LP. */
     UpdateDepositCap = 10,
-    /** Allows depositing liquidity without increasing supply of LP token. */
     DepositRewards = 11,
-    /** Generic management. */
     Management = 12,
-    SuspendDeposits = 13, 
+    SuspendDeposits = 13,
     UpdateRole = 14,
     UpdateAction = 15,
 }
 
 impl Action {
 
-     /// Custom deserialization for Action enum
      pub fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let variant = u8::deserialize(buf)?;
         match variant {
@@ -66,7 +51,6 @@ impl Action {
         }
     }
     
-    /// Custom serialization for Action enum
     pub fn try_serialise<W: Write>(&self, writer: &mut W) -> Result<()> {
         let variant = match self {
             Action::Restake => 0u8,
@@ -113,7 +97,6 @@ impl Action {
         }
     }
 
-    /** Checks if the action is recurrant and can be frozen. */
     pub fn is_core(&self) -> bool {
         match self {
             Action::Restake | Action::Withdraw | Action::Swap | Action::Slash => true,
@@ -121,7 +104,6 @@ impl Action {
         }
     }
 
-    /** Converts a freeze action to its corresponding regular action. */
     pub fn to_action(&self) -> Result<Self> {
         match self {
             Action::FreezeRestake => Ok(Action::Restake),

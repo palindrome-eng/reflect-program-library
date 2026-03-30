@@ -17,7 +17,6 @@ pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> R
     let signer = &ctx.accounts.signer;
     let permissions = &mut ctx.accounts.permissions;
 
-    // validate swap_fee_bps
     require!(
         swap_fee_bps <= 10_000,
         RlpError::InvalidInput

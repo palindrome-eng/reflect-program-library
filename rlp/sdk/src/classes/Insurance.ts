@@ -380,7 +380,7 @@ export class Insurance {
     }) as T;
   }
 
-  async restake(
+  async deposit(
     signer: TransactionSigner,
     amount: number | bigint,
     mint: Address,
@@ -581,7 +581,7 @@ export class Insurance {
   // ========================================================================
 
   /**
-   * Simulate deposit (restake) math off-chain.
+   * Simulate deposit math off-chain.
    *
    * Mirrors the on-chain logic in:
    *   - `OraclePrice::mul`          (oracle_price.rs)

@@ -20,13 +20,11 @@ impl KillSwitch {
         Ok(())
     }
 
-    /** Check if an action is frozen. */
     pub fn is_frozen(&self, action: &Action) -> bool {
         let mask = 1u16 << (*action as u16);
         (self.frozen & mask) != 0
     }
 
-    /** Throw if action can't be performed. */
     pub fn action_unsuspended(&self, action: &Action) -> Result<()> {
         if !self.is_frozen(action) {
             return Ok(());
@@ -34,13 +32,11 @@ impl KillSwitch {
         Err(error!(RlpError::ActionFrozen))
     }
 
-    /** Freeze an action. */
     pub fn freeze(&mut self, action: &Action) {
         let mask = 1u16 << (*action as u16);
         self.frozen |= mask;
     }
 
-    /** Unfreeze an action. */
     pub fn unfreeze(&mut self, action: &Action) {
         let mask = 1u16 << (*action as u16);
         self.frozen &= !mask;

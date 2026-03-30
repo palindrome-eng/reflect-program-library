@@ -15,7 +15,6 @@ pub fn load_assets(
     for i in 0..asset_count {
         let asset_index = liquidity_pool.assets[i];
 
-        // Find the next account owned by the RLP program that deserializes as an Asset
         let maybe_account = remaining_accounts_iter
                 .find(|account| account.owner == &crate::ID);
 
@@ -30,7 +29,6 @@ pub fn load_assets(
                     RlpError::InvalidInput
                 );
 
-                // Verify the account is the correct PDA derived from the asset's mint
                 let (expected_address, _) = Pubkey::find_program_address(
                     &[
                         ASSET_SEED.as_bytes(),

@@ -14,7 +14,6 @@ pub fn load_reserves(
     let mut reserves: Vec<(Pubkey, TokenAccount)> = Vec::with_capacity(assets.len() as usize);
 
     for asset in assets.iter() {
-        // Compute expected ATA address - unique per asset (assets are already verified unique)
         let reserve_key = get_associated_token_address(
             &liquidity_pool.key(),
             &asset.mint,

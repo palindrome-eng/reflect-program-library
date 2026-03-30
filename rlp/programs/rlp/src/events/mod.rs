@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use crate::states::*;
 
 #[event]
-pub struct RestakeEvent {
+pub struct DepositEvent {
     pub from: Pubkey,
     pub asset: Pubkey,
     pub amount: u64

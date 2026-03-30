@@ -19,7 +19,6 @@ impl OraclePrice {
             (normalized_amount as i128)
                 .checked_mul(self.price.into())
                 .ok_or(RlpError::MathOverflow.into())?
-                // If exponent is positive, multiply by power of 10.
                 .checked_mul(
                     i128::try_from(
                         10_i64
@@ -35,7 +34,6 @@ impl OraclePrice {
             (normalized_amount as i128)
                 .checked_mul(self.price.into())
                 .ok_or(RlpError::MathOverflow.into())?
-                // If exponent is negative, divide by power of 10.
                 .checked_div(
                     i128::try_from(
                         10_i64
