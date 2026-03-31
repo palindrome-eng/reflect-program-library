@@ -170,10 +170,6 @@ export type InitializeLpAsyncInput<
   settings?: Address<TAccountSettings>;
   liquidityPool: Address<TAccountLiquidityPool>;
   lpTokenMint: Address<TAccountLpTokenMint>;
-  /**
-   * Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-   * Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-   */
   deadSharesVault?: Address<TAccountDeadSharesVault>;
   systemProgram?: Address<TAccountSystemProgram>;
   tokenProgram?: Address<TAccountTokenProgram>;
@@ -348,10 +344,6 @@ export type InitializeLpInput<
   settings: Address<TAccountSettings>;
   liquidityPool: Address<TAccountLiquidityPool>;
   lpTokenMint: Address<TAccountLpTokenMint>;
-  /**
-   * Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-   * Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-   */
   deadSharesVault: Address<TAccountDeadSharesVault>;
   systemProgram?: Address<TAccountSystemProgram>;
   tokenProgram?: Address<TAccountTokenProgram>;
@@ -479,10 +471,6 @@ export type ParsedInitializeLpInstruction<
     settings: TAccountMetas[2];
     liquidityPool: TAccountMetas[3];
     lpTokenMint: TAccountMetas[4];
-    /**
-     * Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-     * Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-     */
     deadSharesVault: TAccountMetas[5];
     systemProgram: TAccountMetas[6];
     tokenProgram: TAccountMetas[7];

@@ -9,7 +9,6 @@ use crate::generated::types::Role;
 use borsh::BorshSerialize;
 use borsh::BorshDeserialize;
 
-/// Handles role management at any hierarchy level (protocol or strategy).
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LevelRoles {

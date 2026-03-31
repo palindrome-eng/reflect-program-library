@@ -12,9 +12,7 @@ use borsh::BorshDeserialize;
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AccessMap {
-/// Maps each regular action to its permissions.
 pub action_permissions: [ActionMapping; 18],
-/// Counter to track how many mappings are in use.
 pub mapping_count: u8,
 }
 

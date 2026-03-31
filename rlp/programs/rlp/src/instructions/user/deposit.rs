@@ -26,7 +26,7 @@ pub fn deposit<'a>(ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>, args: DepositArgs)
     let permissions = &ctx.accounts.permissions;
 
     action_check_protocol(
-        Action::Restake,
+        Action::Deposit,
         permissions.as_deref(),
         &settings.access_control,
     )?;
@@ -119,7 +119,7 @@ pub struct Deposit<'info> {
             SETTINGS_SEED.as_bytes(),
         ],
         bump,
-        constraint = !settings.access_control.killswitch.is_frozen(&Action::Restake) @ RlpError::Frozen,
+        constraint = !settings.access_control.killswitch.is_frozen(&Action::Deposit) @ RlpError::Frozen,
     )]
     pub settings: Box<Account<'info, Settings>>,
 

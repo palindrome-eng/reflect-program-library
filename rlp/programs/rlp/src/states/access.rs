@@ -273,9 +273,9 @@ impl AccessControl {
         access_control.add_role_to_action(Action::UpdateRole, Role::MANAGER)?;
         access_control.add_role_to_action(Action::AddAsset, Role::MANAGER)?;
         access_control.add_role_to_action(Action::Management, Role::MANAGER)?;
-        access_control.add_role_to_action(Action::Restake, Role::MANAGER)?;
+        access_control.add_role_to_action(Action::Deposit, Role::MANAGER)?;
         access_control.add_role_to_action(Action::Withdraw, Role::MANAGER)?;
-        access_control.add_role_to_action(Action::FreezeRestake, Role::MANAGER)?;
+        access_control.add_role_to_action(Action::FreezeDeposit, Role::MANAGER)?;
         access_control.add_role_to_action(Action::FreezeWithdraw, Role::MANAGER)?;
         access_control.add_role_to_action(Action::SuspendDeposits, Role::MANAGER)?;
         access_control.add_role_to_action(Action::UpdateAction, Role::MANAGER)?;
@@ -283,10 +283,10 @@ impl AccessControl {
         access_control.add_role_to_action(Action::Slash, Role::CRANK)?;
         access_control.add_role_to_action(Action::Swap, Role::CRANK)?;
 
-        access_control.add_role_to_action(Action::Restake, Role::TESTEE)?;
+        access_control.add_role_to_action(Action::Deposit, Role::TESTEE)?;
         access_control.add_role_to_action(Action::Withdraw, Role::TESTEE)?;
 
-        access_control.add_role_to_action(Action::FreezeRestake, Role::FREEZE)?;
+        access_control.add_role_to_action(Action::FreezeDeposit, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeWithdraw, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeSlash, Role::FREEZE)?;
         access_control.add_role_to_action(Action::FreezeSwap, Role::FREEZE)?;

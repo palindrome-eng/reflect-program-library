@@ -18,7 +18,6 @@ import {
 } from "@solana/kit";
 import { getRoleDecoder, getRoleEncoder, type Role, type RoleArgs } from ".";
 
-/** Handles role management at any hierarchy level (protocol or strategy). */
 export type LevelRoles = { roles: Array<Role> };
 
 export type LevelRolesArgs = { roles: Array<RoleArgs> };

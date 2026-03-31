@@ -20,15 +20,15 @@ import {
   type FixedSizeEncoder,
 } from "@solana/kit";
 
-export type RestakeEvent = { from: Address; asset: Address; amount: bigint };
+export type DepositEvent = { from: Address; asset: Address; amount: bigint };
 
-export type RestakeEventArgs = {
+export type DepositEventArgs = {
   from: Address;
   asset: Address;
   amount: number | bigint;
 };
 
-export function getRestakeEventEncoder(): FixedSizeEncoder<RestakeEventArgs> {
+export function getDepositEventEncoder(): FixedSizeEncoder<DepositEventArgs> {
   return getStructEncoder([
     ["from", getAddressEncoder()],
     ["asset", getAddressEncoder()],
@@ -36,7 +36,7 @@ export function getRestakeEventEncoder(): FixedSizeEncoder<RestakeEventArgs> {
   ]);
 }
 
-export function getRestakeEventDecoder(): FixedSizeDecoder<RestakeEvent> {
+export function getDepositEventDecoder(): FixedSizeDecoder<DepositEvent> {
   return getStructDecoder([
     ["from", getAddressDecoder()],
     ["asset", getAddressDecoder()],
@@ -44,9 +44,9 @@ export function getRestakeEventDecoder(): FixedSizeDecoder<RestakeEvent> {
   ]);
 }
 
-export function getRestakeEventCodec(): FixedSizeCodec<
-  RestakeEventArgs,
-  RestakeEvent
+export function getDepositEventCodec(): FixedSizeCodec<
+  DepositEventArgs,
+  DepositEvent
 > {
-  return combineCodec(getRestakeEventEncoder(), getRestakeEventDecoder());
+  return combineCodec(getDepositEventEncoder(), getDepositEventDecoder());
 }

@@ -60,7 +60,7 @@ impl RequestWithdrawal {
             self.signer,
             true
           ));
-                                          accounts.push(solana_instruction::AccountMeta::new(
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.settings,
             false
           ));
@@ -163,7 +163,7 @@ impl RequestWithdrawalInstructionArgs {
 /// ### Accounts:
 ///
                       ///   0. `[writable, signer]` signer
-                ///   1. `[writable]` settings
+          ///   1. `[]` settings
                 ///   2. `[optional]` permissions
                 ///   3. `[writable]` liquidity_pool
                 ///   4. `[writable]` lp_token_mint
@@ -425,7 +425,7 @@ impl<'a, 'b> RequestWithdrawalCpi<'a, 'b> {
             *self.signer.key,
             true
           ));
-                                          accounts.push(solana_instruction::AccountMeta::new(
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.settings.key,
             false
           ));
@@ -518,7 +518,7 @@ impl<'a, 'b> RequestWithdrawalCpi<'a, 'b> {
 /// ### Accounts:
 ///
                       ///   0. `[writable, signer]` signer
-                ///   1. `[writable]` settings
+          ///   1. `[]` settings
                 ///   2. `[optional]` permissions
                 ///   3. `[writable]` liquidity_pool
                 ///   4. `[writable]` lp_token_mint

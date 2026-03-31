@@ -29,7 +29,7 @@ import {
   getInitializeLpInstructionAsync,
   getAddAssetInstructionAsync,
   getSlashInstructionAsync,
-  getRestakeInstructionAsync,
+  getDepositInstructionAsync,
   getRequestWithdrawalInstructionAsync,
   getWithdrawInstructionAsync,
   getSwapInstructionAsync,
@@ -414,7 +414,7 @@ export class Insurance {
       tokenProgram: TOKEN_PROGRAM_ADDRESS,
     });
 
-    const ix = await getRestakeInstructionAsync({
+    const ix = await getDepositInstructionAsync({
       signer,
       permissions: RLP_PROGRAM_ADDRESS,
       liquidityPool: lpEntry.address,

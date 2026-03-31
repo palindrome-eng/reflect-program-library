@@ -16,11 +16,11 @@ import {
 } from "@solana/kit";
 
 export enum Action {
-  Restake,
+  Deposit,
   Withdraw,
   Slash,
   Swap,
-  FreezeRestake,
+  FreezeDeposit,
   FreezeWithdraw,
   FreezeSlash,
   FreezeSwap,

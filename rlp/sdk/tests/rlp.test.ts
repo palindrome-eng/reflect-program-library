@@ -43,7 +43,7 @@ import {
   getCreatePermissionAccountInstructionAsync,
   getUpdateRoleHolderInstructionAsync,
   getUpdateDepositCapInstructionAsync,
-  getRestakeInstructionAsync,
+  getDepositInstructionAsync,
   getRequestWithdrawalInstructionAsync,
   getWithdrawInstructionAsync,
   getSlashInstructionAsync,
@@ -539,7 +539,7 @@ describe("RLP SDK Full Flow Test", function () {
   // ========================================================================
   it("should set Restake, Withdraw, Swap, Slash to PUBLIC", async function () {
     if (!programLoaded) return this.skip();
-    for (const action of [Action.Restake, Action.Withdraw, Action.Swap, Action.Slash]) {
+    for (const action of [Action.Deposit, Action.Withdraw, Action.Swap, Action.Slash]) {
       const ix = await getUpdateActionRoleInstructionAsync({
         admin: admin.signer,
         action,
@@ -624,12 +624,12 @@ describe("RLP SDK Full Flow Test", function () {
   it("should freeze and unfreeze Restake", async function () {
     if (!programLoaded) return this.skip();
     let ix = await getFreezeFunctionalityInstructionAsync({
-      admin: admin.signer, action: Action.FreezeRestake, freeze: true,
+      admin: admin.signer, action: Action.FreezeDeposit, freeze: true,
     });
     assertSuccess(sendSdkInstruction(ix), "freeze Restake");
 
     ix = await getFreezeFunctionalityInstructionAsync({
-      admin: admin.signer, action: Action.FreezeRestake, freeze: false,
+      admin: admin.signer, action: Action.FreezeDeposit, freeze: false,
     });
     assertSuccess(sendSdkInstruction(ix), "unfreeze Restake");
   });

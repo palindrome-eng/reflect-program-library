@@ -19,11 +19,11 @@ import {
 import {
   parseAddAssetInstruction,
   parseCreatePermissionAccountInstruction,
+  parseDepositInstruction,
   parseFreezeFunctionalityInstruction,
   parseInitializeLpInstruction,
   parseInitializeRlpInstruction,
   parseRequestWithdrawalInstruction,
-  parseRestakeInstruction,
   parseSlashInstruction,
   parseSwapInstruction,
   parseUpdateActionRoleInstruction,
@@ -32,11 +32,11 @@ import {
   parseWithdrawInstruction,
   type ParsedAddAssetInstruction,
   type ParsedCreatePermissionAccountInstruction,
+  type ParsedDepositInstruction,
   type ParsedFreezeFunctionalityInstruction,
   type ParsedInitializeLpInstruction,
   type ParsedInitializeRlpInstruction,
   type ParsedRequestWithdrawalInstruction,
-  type ParsedRestakeInstruction,
   type ParsedSlashInstruction,
   type ParsedSwapInstruction,
   type ParsedUpdateActionRoleInstruction,
@@ -123,11 +123,11 @@ export function identifyRlpAccount(
 export enum RlpInstruction {
   AddAsset,
   CreatePermissionAccount,
+  Deposit,
   FreezeFunctionality,
   InitializeLp,
   InitializeRlp,
   RequestWithdrawal,
-  Restake,
   Slash,
   Swap,
   UpdateActionRole,
@@ -161,6 +161,17 @@ export function identifyRlpInstruction(
     )
   ) {
     return RlpInstruction.CreatePermissionAccount;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([242, 35, 198, 137, 82, 225, 242, 182]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.Deposit;
   }
   if (
     containsBytes(
@@ -205,17 +216,6 @@ export function identifyRlpInstruction(
     )
   ) {
     return RlpInstruction.RequestWithdrawal;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([97, 161, 241, 167, 6, 32, 213, 53]),
-      ),
-      0,
-    )
-  ) {
-    return RlpInstruction.Restake;
   }
   if (
     containsBytes(
@@ -298,6 +298,9 @@ export type ParsedRlpInstruction<
       instructionType: RlpInstruction.CreatePermissionAccount;
     } & ParsedCreatePermissionAccountInstruction<TProgram>)
   | ({
+      instructionType: RlpInstruction.Deposit;
+    } & ParsedDepositInstruction<TProgram>)
+  | ({
       instructionType: RlpInstruction.FreezeFunctionality;
     } & ParsedFreezeFunctionalityInstruction<TProgram>)
   | ({
@@ -309,9 +312,6 @@ export type ParsedRlpInstruction<
   | ({
       instructionType: RlpInstruction.RequestWithdrawal;
     } & ParsedRequestWithdrawalInstruction<TProgram>)
-  | ({
-      instructionType: RlpInstruction.Restake;
-    } & ParsedRestakeInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.Slash;
     } & ParsedSlashInstruction<TProgram>)
@@ -348,6 +348,13 @@ export function parseRlpInstruction<TProgram extends string>(
         ...parseCreatePermissionAccountInstruction(instruction),
       };
     }
+    case RlpInstruction.Deposit: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.Deposit,
+        ...parseDepositInstruction(instruction),
+      };
+    }
     case RlpInstruction.FreezeFunctionality: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -374,13 +381,6 @@ export function parseRlpInstruction<TProgram extends string>(
       return {
         instructionType: RlpInstruction.RequestWithdrawal,
         ...parseRequestWithdrawalInstruction(instruction),
-      };
-    }
-    case RlpInstruction.Restake: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: RlpInstruction.Restake,
-        ...parseRestakeInstruction(instruction),
       };
     }
     case RlpInstruction.Slash: {

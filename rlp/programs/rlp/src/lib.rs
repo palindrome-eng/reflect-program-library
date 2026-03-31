@@ -57,7 +57,7 @@ pub mod rlp {
         instructions::slash(ctx, args)
     }
 
-    pub fn restake<'a>(
+    pub fn deposit<'a>(
         ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>,
         args: DepositArgs
     ) -> Result<()> {

@@ -79,7 +79,7 @@ export type RequestWithdrawalInstruction<
             AccountSignerMeta<TAccountSigner>
         : TAccountSigner,
       TAccountSettings extends string
-        ? WritableAccount<TAccountSettings>
+        ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
       TAccountPermissions extends string
         ? ReadonlyAccount<TAccountPermissions>
@@ -230,7 +230,7 @@ export async function getRequestWithdrawalInstructionAsync<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
+    settings: { value: input.settings ?? null, isWritable: false },
     permissions: { value: input.permissions ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: true },
     lpTokenMint: { value: input.lpTokenMint ?? null, isWritable: true },
@@ -423,7 +423,7 @@ export function getRequestWithdrawalInstruction<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
+    settings: { value: input.settings ?? null, isWritable: false },
     permissions: { value: input.permissions ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: true },
     lpTokenMint: { value: input.lpTokenMint ?? null, isWritable: true },

@@ -8,11 +8,11 @@
 
 export * from "./addAsset";
 export * from "./createPermissionAccount";
+export * from "./deposit";
 export * from "./freezeFunctionality";
 export * from "./initializeLp";
 export * from "./initializeRlp";
 export * from "./requestWithdrawal";
-export * from "./restake";
 export * from "./slash";
 export * from "./swap";
 export * from "./updateActionRole";

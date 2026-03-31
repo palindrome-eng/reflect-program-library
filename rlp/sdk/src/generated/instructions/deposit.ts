@@ -43,15 +43,15 @@ import {
   type ResolvedAccount,
 } from "../shared";
 
-export const RESTAKE_DISCRIMINATOR = new Uint8Array([
-  97, 161, 241, 167, 6, 32, 213, 53,
+export const DEPOSIT_DISCRIMINATOR = new Uint8Array([
+  242, 35, 198, 137, 82, 225, 242, 182,
 ]);
 
-export function getRestakeDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(RESTAKE_DISCRIMINATOR);
+export function getDepositDiscriminatorBytes() {
+  return fixEncoderSize(getBytesEncoder(), 8).encode(DEPOSIT_DISCRIMINATOR);
 }
 
-export type RestakeInstruction<
+export type DepositInstruction<
   TProgram extends string = typeof RLP_PROGRAM_ADDRESS,
   TAccountSigner extends string | AccountMeta<string> = string,
   TAccountSettings extends string | AccountMeta<string> = string,
@@ -80,7 +80,7 @@ export type RestakeInstruction<
             AccountSignerMeta<TAccountSigner>
         : TAccountSigner,
       TAccountSettings extends string
-        ? WritableAccount<TAccountSettings>
+        ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
       TAccountPermissions extends string
         ? ReadonlyAccount<TAccountPermissions>
@@ -122,20 +122,20 @@ export type RestakeInstruction<
     ]
   >;
 
-export type RestakeInstructionData = {
+export type DepositInstructionData = {
   discriminator: ReadonlyUint8Array;
   liquidityPoolIndex: number;
   amount: bigint;
   minLpTokens: bigint;
 };
 
-export type RestakeInstructionDataArgs = {
+export type DepositInstructionDataArgs = {
   liquidityPoolIndex: number;
   amount: number | bigint;
   minLpTokens: number | bigint;
 };
 
-export function getRestakeInstructionDataEncoder(): FixedSizeEncoder<RestakeInstructionDataArgs> {
+export function getDepositInstructionDataEncoder(): FixedSizeEncoder<DepositInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
@@ -143,11 +143,11 @@ export function getRestakeInstructionDataEncoder(): FixedSizeEncoder<RestakeInst
       ["amount", getU64Encoder()],
       ["minLpTokens", getU64Encoder()],
     ]),
-    (value) => ({ ...value, discriminator: RESTAKE_DISCRIMINATOR }),
+    (value) => ({ ...value, discriminator: DEPOSIT_DISCRIMINATOR }),
   );
 }
 
-export function getRestakeInstructionDataDecoder(): FixedSizeDecoder<RestakeInstructionData> {
+export function getDepositInstructionDataDecoder(): FixedSizeDecoder<DepositInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["liquidityPoolIndex", getU8Decoder()],
@@ -156,17 +156,17 @@ export function getRestakeInstructionDataDecoder(): FixedSizeDecoder<RestakeInst
   ]);
 }
 
-export function getRestakeInstructionDataCodec(): FixedSizeCodec<
-  RestakeInstructionDataArgs,
-  RestakeInstructionData
+export function getDepositInstructionDataCodec(): FixedSizeCodec<
+  DepositInstructionDataArgs,
+  DepositInstructionData
 > {
   return combineCodec(
-    getRestakeInstructionDataEncoder(),
-    getRestakeInstructionDataDecoder(),
+    getDepositInstructionDataEncoder(),
+    getDepositInstructionDataDecoder(),
   );
 }
 
-export type RestakeAsyncInput<
+export type DepositAsyncInput<
   TAccountSigner extends string = string,
   TAccountSettings extends string = string,
   TAccountPermissions extends string = string,
@@ -196,12 +196,12 @@ export type RestakeAsyncInput<
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
-  liquidityPoolIndex: RestakeInstructionDataArgs["liquidityPoolIndex"];
-  amount: RestakeInstructionDataArgs["amount"];
-  minLpTokens: RestakeInstructionDataArgs["minLpTokens"];
+  liquidityPoolIndex: DepositInstructionDataArgs["liquidityPoolIndex"];
+  amount: DepositInstructionDataArgs["amount"];
+  minLpTokens: DepositInstructionDataArgs["minLpTokens"];
 };
 
-export async function getRestakeInstructionAsync<
+export async function getDepositInstructionAsync<
   TAccountSigner extends string,
   TAccountSettings extends string,
   TAccountPermissions extends string,
@@ -218,7 +218,7 @@ export async function getRestakeInstructionAsync<
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
-  input: RestakeAsyncInput<
+  input: DepositAsyncInput<
     TAccountSigner,
     TAccountSettings,
     TAccountPermissions,
@@ -236,7 +236,7 @@ export async function getRestakeInstructionAsync<
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
-  RestakeInstruction<
+  DepositInstruction<
     TProgramAddress,
     TAccountSigner,
     TAccountSettings,
@@ -260,7 +260,7 @@ export async function getRestakeInstructionAsync<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
+    settings: { value: input.settings ?? null, isWritable: false },
     permissions: { value: input.permissions ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: false },
     lpToken: { value: input.lpToken ?? null, isWritable: true },
@@ -389,11 +389,11 @@ export async function getRestakeInstructionAsync<
       getAccountMeta(accounts.associatedTokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
-    data: getRestakeInstructionDataEncoder().encode(
-      args as RestakeInstructionDataArgs,
+    data: getDepositInstructionDataEncoder().encode(
+      args as DepositInstructionDataArgs,
     ),
     programAddress,
-  } as RestakeInstruction<
+  } as DepositInstruction<
     TProgramAddress,
     TAccountSigner,
     TAccountSettings,
@@ -412,7 +412,7 @@ export async function getRestakeInstructionAsync<
   >);
 }
 
-export type RestakeInput<
+export type DepositInput<
   TAccountSigner extends string = string,
   TAccountSettings extends string = string,
   TAccountPermissions extends string = string,
@@ -442,12 +442,12 @@ export type RestakeInput<
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
-  liquidityPoolIndex: RestakeInstructionDataArgs["liquidityPoolIndex"];
-  amount: RestakeInstructionDataArgs["amount"];
-  minLpTokens: RestakeInstructionDataArgs["minLpTokens"];
+  liquidityPoolIndex: DepositInstructionDataArgs["liquidityPoolIndex"];
+  amount: DepositInstructionDataArgs["amount"];
+  minLpTokens: DepositInstructionDataArgs["minLpTokens"];
 };
 
-export function getRestakeInstruction<
+export function getDepositInstruction<
   TAccountSigner extends string,
   TAccountSettings extends string,
   TAccountPermissions extends string,
@@ -464,7 +464,7 @@ export function getRestakeInstruction<
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
-  input: RestakeInput<
+  input: DepositInput<
     TAccountSigner,
     TAccountSettings,
     TAccountPermissions,
@@ -481,7 +481,7 @@ export function getRestakeInstruction<
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
-): RestakeInstruction<
+): DepositInstruction<
   TProgramAddress,
   TAccountSigner,
   TAccountSettings,
@@ -504,7 +504,7 @@ export function getRestakeInstruction<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
+    settings: { value: input.settings ?? null, isWritable: false },
     permissions: { value: input.permissions ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: false },
     lpToken: { value: input.lpToken ?? null, isWritable: true },
@@ -567,11 +567,11 @@ export function getRestakeInstruction<
       getAccountMeta(accounts.associatedTokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
-    data: getRestakeInstructionDataEncoder().encode(
-      args as RestakeInstructionDataArgs,
+    data: getDepositInstructionDataEncoder().encode(
+      args as DepositInstructionDataArgs,
     ),
     programAddress,
-  } as RestakeInstruction<
+  } as DepositInstruction<
     TProgramAddress,
     TAccountSigner,
     TAccountSettings,
@@ -590,7 +590,7 @@ export function getRestakeInstruction<
   >);
 }
 
-export type ParsedRestakeInstruction<
+export type ParsedDepositInstruction<
   TProgram extends string = typeof RLP_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
@@ -611,17 +611,17 @@ export type ParsedRestakeInstruction<
     associatedTokenProgram: TAccountMetas[12];
     systemProgram: TAccountMetas[13];
   };
-  data: RestakeInstructionData;
+  data: DepositInstructionData;
 };
 
-export function parseRestakeInstruction<
+export function parseDepositInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedRestakeInstruction<TProgram, TAccountMetas> {
+): ParsedDepositInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 14) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
@@ -656,6 +656,6 @@ export function parseRestakeInstruction<
       associatedTokenProgram: getNextAccount(),
       systemProgram: getNextAccount(),
     },
-    data: getRestakeInstructionDataDecoder().decode(instruction.data),
+    data: getDepositInstructionDataDecoder().decode(instruction.data),
   };
 }

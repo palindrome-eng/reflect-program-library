@@ -28,10 +28,7 @@ pub struct InitializeLp {
           
               
           pub lp_token_mint: solana_pubkey::Pubkey,
-                /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-/// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-
-    
+          
               
           pub dead_shares_vault: solana_pubkey::Pubkey,
           
@@ -200,9 +197,7 @@ impl InitializeLpBuilder {
                         self.lp_token_mint = Some(lp_token_mint);
                     self
     }
-            /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-/// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-#[inline(always)]
+            #[inline(always)]
     pub fn dead_shares_vault(&mut self, dead_shares_vault: solana_pubkey::Pubkey) -> &mut Self {
                         self.dead_shares_vault = Some(dead_shares_vault);
                     self
@@ -293,10 +288,7 @@ impl InitializeLpBuilder {
                 
                     
               pub lp_token_mint: &'b solana_account_info::AccountInfo<'a>,
-                        /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-/// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-
-      
+                
                     
               pub dead_shares_vault: &'b solana_account_info::AccountInfo<'a>,
                 
@@ -329,10 +321,7 @@ pub struct InitializeLpCpi<'a, 'b> {
           
               
           pub lp_token_mint: &'b solana_account_info::AccountInfo<'a>,
-                /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-/// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-
-    
+          
               
           pub dead_shares_vault: &'b solana_account_info::AccountInfo<'a>,
           
@@ -525,9 +514,7 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
                         self.instruction.lp_token_mint = Some(lp_token_mint);
                     self
     }
-      /// Dead shares vault - permanently holds dead shares to prevent LP inflation attack
-/// Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable
-#[inline(always)]
+      #[inline(always)]
     pub fn dead_shares_vault(&mut self, dead_shares_vault: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.dead_shares_vault = Some(dead_shares_vault);
                     self

@@ -55,20 +55,14 @@ export function getUserPermissionsDiscriminatorBytes() {
 
 export type UserPermissions = {
   discriminator: ReadonlyUint8Array;
-  /** Bump for PDA derivation. */
   bump: number;
-  /** Account authority - the entity that can modify this permission set. */
   authority: Address;
-  /** Protocol-level roles - permissions that apply across the entire protocol. */
   protocolRoles: LevelRoles;
 };
 
 export type UserPermissionsArgs = {
-  /** Bump for PDA derivation. */
   bump: number;
-  /** Account authority - the entity that can modify this permission set. */
   authority: Address;
-  /** Protocol-level roles - permissions that apply across the entire protocol. */
   protocolRoles: LevelRolesArgs;
 };
 

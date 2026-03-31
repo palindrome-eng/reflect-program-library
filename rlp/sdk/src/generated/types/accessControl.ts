@@ -25,17 +25,10 @@ import {
   type KillSwitchArgs,
 } from ".";
 
-export type AccessControl = {
-  /** Access map for this component. */
-  accessMap: AccessMap;
-  /** State for freezing particular functionality. */
-  killswitch: KillSwitch;
-};
+export type AccessControl = { accessMap: AccessMap; killswitch: KillSwitch };
 
 export type AccessControlArgs = {
-  /** Access map for this component. */
   accessMap: AccessMapArgs;
-  /** State for freezing particular functionality. */
   killswitch: KillSwitchArgs;
 };
 

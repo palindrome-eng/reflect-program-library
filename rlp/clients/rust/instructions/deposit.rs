@@ -8,11 +8,11 @@
 use borsh::BorshSerialize;
 use borsh::BorshDeserialize;
 
-pub const RESTAKE_DISCRIMINATOR: [u8; 8] = [97, 161, 241, 167, 6, 32, 213, 53];
+pub const DEPOSIT_DISCRIMINATOR: [u8; 8] = [242, 35, 198, 137, 82, 225, 242, 182];
 
 /// Accounts.
 #[derive(Debug)]
-pub struct Restake {
+pub struct Deposit {
       
               
           pub signer: solana_pubkey::Pubkey,
@@ -57,19 +57,19 @@ pub struct Restake {
           pub system_program: solana_pubkey::Pubkey,
       }
 
-impl Restake {
-  pub fn instruction(&self, args: RestakeInstructionArgs) -> solana_instruction::Instruction {
+impl Deposit {
+  pub fn instruction(&self, args: DepositInstructionArgs) -> solana_instruction::Instruction {
     self.instruction_with_remaining_accounts(args, &[])
   }
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
-  pub fn instruction_with_remaining_accounts(&self, args: RestakeInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
+  pub fn instruction_with_remaining_accounts(&self, args: DepositInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
     let mut accounts = Vec::with_capacity(14+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
           ));
-                                          accounts.push(solana_instruction::AccountMeta::new(
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.settings,
             false
           ));
@@ -129,7 +129,7 @@ impl Restake {
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
-    let mut data = RestakeInstructionData::new().try_to_vec().unwrap();
+    let mut data = DepositInstructionData::new().try_to_vec().unwrap();
           let mut args = args.try_to_vec().unwrap();
       data.append(&mut args);
     
@@ -143,14 +143,14 @@ impl Restake {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
- pub struct RestakeInstructionData {
+ pub struct DepositInstructionData {
             discriminator: [u8; 8],
                         }
 
-impl RestakeInstructionData {
+impl DepositInstructionData {
   pub fn new() -> Self {
     Self {
-                        discriminator: [97, 161, 241, 167, 6, 32, 213, 53],
+                        discriminator: [242, 35, 198, 137, 82, 225, 242, 182],
                                                             }
   }
 
@@ -159,7 +159,7 @@ impl RestakeInstructionData {
   }
   }
 
-impl Default for RestakeInstructionData {
+impl Default for DepositInstructionData {
   fn default() -> Self {
     Self::new()
   }
@@ -167,25 +167,25 @@ impl Default for RestakeInstructionData {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
- pub struct RestakeInstructionArgs {
+ pub struct DepositInstructionArgs {
                   pub liquidity_pool_index: u8,
                 pub amount: u64,
                 pub min_lp_tokens: u64,
       }
 
-impl RestakeInstructionArgs {
+impl DepositInstructionArgs {
   pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
     borsh::to_vec(self)
   }
 }
 
 
-/// Instruction builder for `Restake`.
+/// Instruction builder for `Deposit`.
 ///
 /// ### Accounts:
 ///
                       ///   0. `[writable, signer]` signer
-                ///   1. `[writable]` settings
+          ///   1. `[]` settings
                 ///   2. `[optional]` permissions
           ///   3. `[]` liquidity_pool
                 ///   4. `[writable]` lp_token
@@ -199,7 +199,7 @@ impl RestakeInstructionArgs {
                 ///   12. `[optional]` associated_token_program (default to `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`)
                 ///   13. `[optional]` system_program (default to `11111111111111111111111111111111`)
 #[derive(Clone, Debug, Default)]
-pub struct RestakeBuilder {
+pub struct DepositBuilder {
             signer: Option<solana_pubkey::Pubkey>,
                 settings: Option<solana_pubkey::Pubkey>,
                 permissions: Option<solana_pubkey::Pubkey>,
@@ -220,7 +220,7 @@ pub struct RestakeBuilder {
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
-impl RestakeBuilder {
+impl DepositBuilder {
   pub fn new() -> Self {
     Self::default()
   }
@@ -327,7 +327,7 @@ impl RestakeBuilder {
   }
   #[allow(clippy::clone_on_copy)]
   pub fn instruction(&self) -> solana_instruction::Instruction {
-    let accounts = Restake {
+    let accounts = Deposit {
                               signer: self.signer.expect("signer is not set"),
                                         settings: self.settings.expect("settings is not set"),
                                         permissions: self.permissions,
@@ -343,7 +343,7 @@ impl RestakeBuilder {
                                         associated_token_program: self.associated_token_program.unwrap_or(solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")),
                                         system_program: self.system_program.unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
                       };
-          let args = RestakeInstructionArgs {
+          let args = DepositInstructionArgs {
                                                               liquidity_pool_index: self.liquidity_pool_index.clone().expect("liquidity_pool_index is not set"),
                                                                   amount: self.amount.clone().expect("amount is not set"),
                                                                   min_lp_tokens: self.min_lp_tokens.clone().expect("min_lp_tokens is not set"),
@@ -353,8 +353,8 @@ impl RestakeBuilder {
   }
 }
 
-  /// `restake` CPI accounts.
-  pub struct RestakeCpiAccounts<'a, 'b> {
+  /// `deposit` CPI accounts.
+  pub struct DepositCpiAccounts<'a, 'b> {
           
                     
               pub signer: &'b solana_account_info::AccountInfo<'a>,
@@ -399,8 +399,8 @@ impl RestakeBuilder {
               pub system_program: &'b solana_account_info::AccountInfo<'a>,
             }
 
-/// `restake` CPI instruction.
-pub struct RestakeCpi<'a, 'b> {
+/// `deposit` CPI instruction.
+pub struct DepositCpi<'a, 'b> {
   /// The program to invoke.
   pub __program: &'b solana_account_info::AccountInfo<'a>,
       
@@ -446,14 +446,14 @@ pub struct RestakeCpi<'a, 'b> {
               
           pub system_program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
-    pub __args: RestakeInstructionArgs,
+    pub __args: DepositInstructionArgs,
   }
 
-impl<'a, 'b> RestakeCpi<'a, 'b> {
+impl<'a, 'b> DepositCpi<'a, 'b> {
   pub fn new(
     program: &'b solana_account_info::AccountInfo<'a>,
-          accounts: RestakeCpiAccounts<'a, 'b>,
-              args: RestakeInstructionArgs,
+          accounts: DepositCpiAccounts<'a, 'b>,
+              args: DepositInstructionArgs,
       ) -> Self {
     Self {
       __program: program,
@@ -499,7 +499,7 @@ impl<'a, 'b> RestakeCpi<'a, 'b> {
             *self.signer.key,
             true
           ));
-                                          accounts.push(solana_instruction::AccountMeta::new(
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.settings.key,
             false
           ));
@@ -565,7 +565,7 @@ impl<'a, 'b> RestakeCpi<'a, 'b> {
           is_writable: remaining_account.2,
       })
     });
-    let mut data = RestakeInstructionData::new().try_to_vec().unwrap();
+    let mut data = DepositInstructionData::new().try_to_vec().unwrap();
           let mut args = self.__args.try_to_vec().unwrap();
       data.append(&mut args);
     
@@ -602,12 +602,12 @@ impl<'a, 'b> RestakeCpi<'a, 'b> {
   }
 }
 
-/// Instruction builder for `Restake` via CPI.
+/// Instruction builder for `Deposit` via CPI.
 ///
 /// ### Accounts:
 ///
                       ///   0. `[writable, signer]` signer
-                ///   1. `[writable]` settings
+          ///   1. `[]` settings
                 ///   2. `[optional]` permissions
           ///   3. `[]` liquidity_pool
                 ///   4. `[writable]` lp_token
@@ -621,13 +621,13 @@ impl<'a, 'b> RestakeCpi<'a, 'b> {
           ///   12. `[]` associated_token_program
           ///   13. `[]` system_program
 #[derive(Clone, Debug)]
-pub struct RestakeCpiBuilder<'a, 'b> {
-  instruction: Box<RestakeCpiBuilderInstruction<'a, 'b>>,
+pub struct DepositCpiBuilder<'a, 'b> {
+  instruction: Box<DepositCpiBuilderInstruction<'a, 'b>>,
 }
 
-impl<'a, 'b> RestakeCpiBuilder<'a, 'b> {
+impl<'a, 'b> DepositCpiBuilder<'a, 'b> {
   pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
-    let instruction = Box::new(RestakeCpiBuilderInstruction {
+    let instruction = Box::new(DepositCpiBuilderInstruction {
       __program: program,
               signer: None,
               settings: None,
@@ -758,12 +758,12 @@ impl<'a, 'b> RestakeCpiBuilder<'a, 'b> {
   #[allow(clippy::clone_on_copy)]
   #[allow(clippy::vec_init_then_push)]
   pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
-          let args = RestakeInstructionArgs {
+          let args = DepositInstructionArgs {
                                                               liquidity_pool_index: self.instruction.liquidity_pool_index.clone().expect("liquidity_pool_index is not set"),
                                                                   amount: self.instruction.amount.clone().expect("amount is not set"),
                                                                   min_lp_tokens: self.instruction.min_lp_tokens.clone().expect("min_lp_tokens is not set"),
                                     };
-        let instruction = RestakeCpi {
+        let instruction = DepositCpi {
         __program: self.instruction.__program,
                   
           signer: self.instruction.signer.expect("signer is not set"),
@@ -800,7 +800,7 @@ impl<'a, 'b> RestakeCpiBuilder<'a, 'b> {
 }
 
 #[derive(Clone, Debug)]
-struct RestakeCpiBuilderInstruction<'a, 'b> {
+struct DepositCpiBuilderInstruction<'a, 'b> {
   __program: &'b solana_account_info::AccountInfo<'a>,
             signer: Option<&'b solana_account_info::AccountInfo<'a>>,
                 settings: Option<&'b solana_account_info::AccountInfo<'a>>,

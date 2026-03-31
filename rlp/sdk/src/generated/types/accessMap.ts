@@ -26,16 +26,12 @@ import {
 } from ".";
 
 export type AccessMap = {
-  /** Maps each regular action to its permissions. */
   actionPermissions: Array<ActionMapping>;
-  /** Counter to track how many mappings are in use. */
   mappingCount: number;
 };
 
 export type AccessMapArgs = {
-  /** Maps each regular action to its permissions. */
   actionPermissions: Array<ActionMappingArgs>;
-  /** Counter to track how many mappings are in use. */
   mappingCount: number;
 };
 

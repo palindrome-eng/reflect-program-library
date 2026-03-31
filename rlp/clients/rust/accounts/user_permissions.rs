@@ -15,12 +15,9 @@ use borsh::BorshDeserialize;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UserPermissions {
 pub discriminator: [u8; 8],
-/// Bump for PDA derivation.
 pub bump: u8,
-/// Account authority - the entity that can modify this permission set.
 #[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
 pub authority: Pubkey,
-/// Protocol-level roles - permissions that apply across the entire protocol.
 pub protocol_roles: LevelRoles,
 }
 
