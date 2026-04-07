@@ -8,46 +8,46 @@ pub fn load_assets(
     liquidity_pool: &Account<LiquidityPool>,
     remaining_accounts: &[AccountInfo],
 ) -> Result<Vec<(Pubkey, Asset)>> {
-    let remaining_accounts_iter = &mut remaining_accounts.iter();
     let asset_count = liquidity_pool.asset_count as usize;
     let mut assets: Vec<(Pubkey, Asset)> = Vec::with_capacity(asset_count);
 
+    require!(
+        remaining_accounts.len() >= asset_count,
+        RlpError::InvalidInput
+    );
+
     for i in 0..asset_count {
         let asset_index = liquidity_pool.assets[i];
+        let account_info = &remaining_accounts[i];
 
-        let maybe_account = remaining_accounts_iter
-                .find(|account| account.owner == &crate::ID);
+        require!(
+            account_info.owner == &crate::ID,
+            RlpError::InvalidInput
+        );
 
-        let (asset_address, asset) = match maybe_account {
-            Some(account_info) => {
-                let account_mut_data = account_info.try_borrow_mut_data()?;
-                let asset = Asset::try_deserialize(&mut account_mut_data.as_ref())
-                    .map_err(|_| error!(RlpError::InvalidInput))?;
+        let account_data = account_info.try_borrow_mut_data()?;
+        let asset = Asset::try_deserialize(&mut account_data.as_ref())
+            .map_err(|_| error!(RlpError::InvalidInput))?;
 
-                require!(
-                    asset.index == asset_index,
-                    RlpError::InvalidInput
-                );
+        require!(
+            asset.index == asset_index,
+            RlpError::InvalidInput
+        );
 
-                let (expected_address, _) = Pubkey::find_program_address(
-                    &[
-                        ASSET_SEED.as_bytes(),
-                        &asset.mint.to_bytes(),
-                    ],
-                    &crate::ID
-                );
+        let (expected_address, _) = Pubkey::find_program_address(
+            &[
+                ASSET_SEED.as_bytes(),
+                &asset.mint.to_bytes(),
+            ],
+            &crate::ID
+        );
 
-                require!(
-                    account_info.key() == expected_address,
-                    RlpError::InvalidInput
-                );
+        require!(
+            account_info.key() == expected_address,
+            RlpError::InvalidInput
+        );
 
-                Ok((account_info.key(), asset))
-            },
-            None => Err(error!(RlpError::InvalidInput))
-        }?;
-
-        assets.push((asset_address, asset));
+        assets.push((account_info.key(), asset));
     }
 
     Ok(assets)

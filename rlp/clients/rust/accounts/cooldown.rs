@@ -15,6 +15,7 @@ use borsh::BorshDeserialize;
 pub struct Cooldown {
 pub discriminator: [u8; 8],
 pub bump: u8,
+pub index: u64,
 #[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
 pub authority: Pubkey,
 pub liquidity_pool_id: u8,
@@ -25,7 +26,7 @@ pub unlock_ts: u64,
 pub const COOLDOWN_DISCRIMINATOR: [u8; 8] = [50, 166, 94, 192, 234, 64, 152, 208];
 
 impl Cooldown {
-      pub const LEN: usize = 50;
+      pub const LEN: usize = 58;
   
   
   

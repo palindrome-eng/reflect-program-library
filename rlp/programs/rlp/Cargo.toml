@@ -26,3 +26,12 @@ spl-math = { version = "0.3.0", features = [ "no-entrypoint" ]}
 strum = "0.27"
 strum_macros = "0.27"
 
+[dev-dependencies]
+mollusk-svm = "0.0.15-solana-2.0"
+rlp-client = { path = "../../clients/rust" }
+solana-sdk = "2.1"
+
+[[test]]
+name = "mollusk"
+path = "tests/mollusk.rs"
+

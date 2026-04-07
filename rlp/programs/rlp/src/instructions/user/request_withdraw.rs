@@ -43,6 +43,7 @@ pub fn request_withdrawal(
     let token_program = &ctx.accounts.token_program;
 
     cooldown.bump = ctx.bumps.cooldown;
+    cooldown.index = liquidity_pool.cooldowns;
     cooldown.liquidity_pool_id = liquidity_pool_id;
     cooldown.authority = signer.key();
 

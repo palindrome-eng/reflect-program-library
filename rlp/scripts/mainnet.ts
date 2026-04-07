@@ -20,8 +20,6 @@ import {createGetUserBalanceAndRewardInstruction, Deposit, depositDiscriminator,
 import sleep from "../tests/helpers/sleep";
 import signAndSendTransaction from "./helpers/signAndSendTransaction";
 
-const RPC_URL = "https://devnet.helius-rpc.com/?api-key=c9d75796-3865-44a8-baa7-4ed4dc0da671";
-console.log(RPC_URL);
 const connection = new Connection(RPC_URL);
 const restaking = new Restaking(connection);
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY;

@@ -1,20 +1,10 @@
 use anchor_lang::prelude::*;
 
-#[derive(InitSpace)]
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
-pub enum CooldownRewards {
-    Single(u64),
-    Dual([u64; 2])
-}
-
-impl CooldownRewards {
-    pub const SIZE: usize = 1 + (2 * 8);
-}
-
 #[derive(InitSpace, Default)]
 #[account]
 pub struct Cooldown {
     pub bump: u8,
+    pub index: u64,
     pub authority: Pubkey,
     pub liquidity_pool_id: u8,
     pub unlock_ts: u64,

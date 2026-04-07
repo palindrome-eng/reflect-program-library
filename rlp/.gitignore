@@ -12,3 +12,4 @@ sdk/node_modules
 .idea
 .crates
 .claude
+/changelog

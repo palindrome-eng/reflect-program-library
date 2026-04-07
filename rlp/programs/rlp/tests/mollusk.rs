@@ -60,10 +60,10 @@ where
     MOLLUSK.with(|m| f(&m.borrow()))
 }
 
-/// Derives an asset PDA
-fn derive_asset_pda(index: u8) -> (Pubkey, u8) {
+/// Derives an asset PDA from its mint
+fn derive_asset_pda(mint: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[ASSET_SEED.as_bytes(), &[index]],
+        &[ASSET_SEED.as_bytes(), &mint.to_bytes()],
         &RLP_ID,
     )
 }
@@ -120,7 +120,7 @@ fn create_mock_mint_account() -> Account {
 }
 
 /// Helper to convert rlp_client instruction to solana_sdk instruction
-fn convert_instruction(client_ix: solana_instruction::Instruction) -> Instruction {
+fn convert_instruction(client_ix: solana_sdk::instruction::Instruction) -> Instruction {
     Instruction {
         program_id: Pubkey::new_from_array(client_ix.program_id.to_bytes()),
         accounts: client_ix
@@ -178,6 +178,7 @@ fn test_initialize_rlp_instruction() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -220,6 +221,7 @@ fn test_freeze_protocol() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -245,7 +247,7 @@ fn test_freeze_protocol() {
             .settings(settings.into())
             .admin_permissions(permissions.into())
             .system_program(system_program::ID.into())
-            .action(Action::FreezeRestake)
+            .action(Action::FreezeDeposit)
             .freeze(true)
             .instruction()
     );
@@ -265,10 +267,10 @@ fn test_freeze_protocol() {
     let final_settings = get_result_account(&freeze_result, 1);
     let settings_data = Settings::from_bytes(&final_settings.data).unwrap();
 
-    let restake_mask = 1u8 << (Action::Restake as u8);
+    let deposit_mask = 1u16 << (Action::Deposit as u8);
     assert!(
-        (settings_data.access_control.killswitch.frozen & restake_mask) != 0,
-        "Restake should be frozen"
+        (settings_data.access_control.killswitch.frozen & deposit_mask) != 0,
+        "Deposit should be frozen"
     );
 }
 
@@ -285,6 +287,7 @@ fn test_unfreeze_protocol() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -309,7 +312,7 @@ fn test_unfreeze_protocol() {
             .settings(settings.into())
             .admin_permissions(permissions.into())
             .system_program(system_program::ID.into())
-            .action(Action::FreezeRestake)
+            .action(Action::FreezeDeposit)
             .freeze(true)
             .instruction()
     );
@@ -334,7 +337,7 @@ fn test_unfreeze_protocol() {
             .settings(settings.into())
             .admin_permissions(permissions.into())
             .system_program(system_program::ID.into())
-            .action(Action::FreezeRestake)
+            .action(Action::FreezeDeposit)
             .freeze(false)
             .instruction()
     );
@@ -369,6 +372,7 @@ fn test_freeze_multiple_actions() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -438,8 +442,8 @@ fn test_freeze_multiple_actions() {
     let final_settings = get_result_account(&result, 1);
     let settings_data = Settings::from_bytes(&final_settings.data).unwrap();
 
-    let withdraw_mask = 1u8 << (Action::Withdraw as u8);
-    let slash_mask = 1u8 << (Action::Slash as u8);
+    let withdraw_mask = 1u16 << (Action::Withdraw as u8);
+    let slash_mask = 1u16 << (Action::Slash as u8);
 
     assert!((settings_data.access_control.killswitch.frozen & withdraw_mask) != 0);
     assert!((settings_data.access_control.killswitch.frozen & slash_mask) != 0);
@@ -462,6 +466,7 @@ fn test_set_restaking_action_to_public() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -486,7 +491,7 @@ fn test_set_restaking_action_to_public() {
             .settings(settings.into())
             .admin_permissions(permissions.into())
             .system_program(system_program::ID.into())
-            .action(Action::Restake)
+            .action(Action::Deposit)
             .role(Role::PUBLIC)
             .update(Update::Add)
             .instruction()
@@ -512,7 +517,7 @@ fn test_set_restaking_action_to_public() {
         .access_map
         .action_permissions
         .iter()
-        .find(|m| m.action == Action::Restake)
+        .find(|m| m.action == Action::Deposit)
         .unwrap();
 
     assert!(restake_mapping.allowed_roles.contains(&Role::PUBLIC));
@@ -531,6 +536,7 @@ fn test_set_withdraw_action_to_public() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -600,6 +606,7 @@ fn test_update_action_role_add_and_remove() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -704,6 +711,7 @@ fn test_action_permissions_for_multiple_roles() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -731,7 +739,7 @@ fn test_action_permissions_for_multiple_roles() {
                 .settings(settings.into())
                 .admin_permissions(permissions.into())
                 .system_program(system_program::ID.into())
-                .action(Action::PrivateSwap)
+                .action(Action::Swap)
                 .role(*role)
                 .update(Update::Add)
                 .instruction()
@@ -758,7 +766,7 @@ fn test_action_permissions_for_multiple_roles() {
         .access_map
         .action_permissions
         .iter()
-        .find(|m| m.action == Action::PrivateSwap)
+        .find(|m| m.action == Action::Swap)
         .unwrap();
 
     for role in roles.iter() {
@@ -783,6 +791,7 @@ fn test_create_permission_account() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -846,6 +855,7 @@ fn test_create_multiple_permission_accounts() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -908,6 +918,7 @@ fn test_update_role_holder_add_role() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -997,6 +1008,7 @@ fn test_update_role_holder_remove_role() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -1118,6 +1130,7 @@ fn test_grant_multiple_roles_to_user() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -1221,6 +1234,7 @@ fn test_add_public_asset() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -1241,7 +1255,7 @@ fn test_add_public_asset() {
     // Set up mock accounts for asset creation
     let mint = Pubkey::new_unique();
     let oracle = Pubkey::new_unique();
-    let (asset, _) = derive_asset_pda(0);
+    let (asset, _) = derive_asset_pda(&mint);
 
     let publish_time = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -1305,6 +1319,7 @@ fn test_add_private_asset() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -1325,7 +1340,7 @@ fn test_add_private_asset() {
     // Set up mock accounts
     let mint = Pubkey::new_unique();
     let oracle = Pubkey::new_unique();
-    let (asset, _) = derive_asset_pda(0);
+    let (asset, _) = derive_asset_pda(&mint);
 
     let publish_time = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -1384,6 +1399,7 @@ fn test_add_multiple_assets() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .swap_fee_bps(30)
             .instruction()
     );
 
@@ -1410,7 +1426,7 @@ fn test_add_multiple_assets() {
     for i in 0..5u8 {
         let mint = Pubkey::new_unique();
         let oracle = Pubkey::new_unique();
-        let (asset, _) = derive_asset_pda(i);
+        let (asset, _) = derive_asset_pda(&mint);
 
         let add_asset_ix = convert_instruction(
             AddAssetBuilder::new()

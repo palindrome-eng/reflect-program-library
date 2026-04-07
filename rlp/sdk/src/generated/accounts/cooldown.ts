@@ -50,6 +50,7 @@ export function getCooldownDiscriminatorBytes() {
 export type Cooldown = {
   discriminator: ReadonlyUint8Array;
   bump: number;
+  index: bigint;
   authority: Address;
   liquidityPoolId: number;
   unlockTs: bigint;
@@ -57,6 +58,7 @@ export type Cooldown = {
 
 export type CooldownArgs = {
   bump: number;
+  index: number | bigint;
   authority: Address;
   liquidityPoolId: number;
   unlockTs: number | bigint;
@@ -68,6 +70,7 @@ export function getCooldownEncoder(): FixedSizeEncoder<CooldownArgs> {
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["bump", getU8Encoder()],
+      ["index", getU64Encoder()],
       ["authority", getAddressEncoder()],
       ["liquidityPoolId", getU8Encoder()],
       ["unlockTs", getU64Encoder()],
@@ -81,6 +84,7 @@ export function getCooldownDecoder(): FixedSizeDecoder<Cooldown> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["bump", getU8Decoder()],
+    ["index", getU64Decoder()],
     ["authority", getAddressDecoder()],
     ["liquidityPoolId", getU8Decoder()],
     ["unlockTs", getU64Decoder()],
@@ -146,5 +150,5 @@ export async function fetchAllMaybeCooldown(
 }
 
 export function getCooldownSize(): number {
-  return 50;
+  return 58;
 }

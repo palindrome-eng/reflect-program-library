@@ -657,7 +657,7 @@ describe("RLP SDK Full Flow Test", function () {
       [
         {
           address: liquidityPoolPda,
-          data: { bump: 0, index: 0, lpToken: lpTokenMint.address, cooldowns: 0n, cooldownDuration: 0n, depositCap: null } as any,
+          data: { bump: 0, index: 0, lpToken: lpTokenMint.address, cooldowns: 0n, cooldownDuration: 0n, depositCap: null, assetCount: 2, assets: new Uint8Array([0, 1, 255, 255]) } as any,
         },
       ],
       [

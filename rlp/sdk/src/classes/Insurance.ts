@@ -306,13 +306,43 @@ export class Insurance {
   }
 
   /**
+   * Return the assets that belong to a specific liquidity pool,
+   * ordered by the pool's `assets` array.
+   */
+  private async getPoolAssets(
+    liquidityPoolId: number,
+  ): Promise<AccountWithAddress<Asset>[]> {
+    const lpEntry = this.liquidityPools.find(
+      (lp) => lp.data.index === liquidityPoolId,
+    );
+    if (!lpEntry)
+      throw new Error(`Liquidity pool ${liquidityPoolId} not found`);
+
+    const allAssets = await this.getAssets();
+    const poolAssetIndices = Array.from(lpEntry.data.assets).slice(
+      0,
+      lpEntry.data.assetCount,
+    );
+
+    return poolAssetIndices.map((assetIndex) => {
+      const asset = allAssets.find((a) => a.data.index === assetIndex);
+      if (!asset)
+        throw new Error(
+          `Asset with index ${assetIndex} not found for pool ${liquidityPoolId}`,
+        );
+      return asset;
+    });
+  }
+
+  /**
    * Build the remaining accounts needed by calculate_total_pool_value().
-   * Per asset (sorted by index): [pool_ata, asset_pda, oracle, mint]
+   * Per asset (in pool asset order): [pool_ata, asset_pda, oracle, mint]
    */
   private async buildPoolValueRemainingAccounts(
     liquidityPoolAddress: Address,
+    liquidityPoolId: number,
   ) {
-    const assets = await this.getAssets();
+    const assets = await this.getPoolAssets(liquidityPoolId);
     const remaining: { address: Address; role: AccountRole }[] = [];
 
     for (const asset of assets) {
@@ -338,38 +368,40 @@ export class Insurance {
    * Build the remaining accounts needed by withdraw's load_assets,
    * load_reserves, and load_user_token_accounts.
    *
-   * Layout:
-   *   - First N: user token ATAs (one per asset in index order)
-   *   - Then per asset: asset_pda, pool_reserve_ata
+   * Layout (must match on-chain expectations):
+   *   - First N: asset PDAs (positional, for load_assets)
+   *   - Then N: pool reserve ATAs (searched by load_reserves)
+   *   - Then N: user token ATAs (searched by load_user_token_accounts)
    */
   private async buildWithdrawRemainingAccounts(
     signer: TransactionSigner,
     liquidityPoolAddress: Address,
+    liquidityPoolId: number,
   ) {
-    const assets = await this.getAssets();
+    const assets = await this.getPoolAssets(liquidityPoolId);
+    const assetPdas: { address: Address; role: AccountRole }[] = [];
+    const reserves: { address: Address; role: AccountRole }[] = [];
     const userAtas: { address: Address; role: AccountRole }[] = [];
-    const assetAndReserves: { address: Address; role: AccountRole }[] = [];
 
     for (const asset of assets) {
-      const [userAta] = await findAssociatedTokenPda({
-        mint: asset.data.mint,
-        owner: signer.address,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS,
-      });
-      userAtas.push({ address: userAta, role: AccountRole.WRITABLE });
+      assetPdas.push({ address: asset.address, role: AccountRole.READONLY });
 
       const [poolReserve] = await findAssociatedTokenPda({
         mint: asset.data.mint,
         owner: liquidityPoolAddress,
         tokenProgram: TOKEN_PROGRAM_ADDRESS,
       });
-      assetAndReserves.push(
-        { address: asset.address, role: AccountRole.READONLY },
-        { address: poolReserve, role: AccountRole.WRITABLE },
-      );
+      reserves.push({ address: poolReserve, role: AccountRole.WRITABLE });
+
+      const [userAta] = await findAssociatedTokenPda({
+        mint: asset.data.mint,
+        owner: signer.address,
+        tokenProgram: TOKEN_PROGRAM_ADDRESS,
+      });
+      userAtas.push({ address: userAta, role: AccountRole.WRITABLE });
     }
 
-    return [...userAtas, ...assetAndReserves];
+    return [...assetPdas, ...reserves, ...userAtas];
   }
 
   /**
@@ -429,6 +461,7 @@ export class Insurance {
 
     const remaining = await this.buildPoolValueRemainingAccounts(
       lpEntry.address,
+      liquidityPoolId,
     );
 
     return this.appendRemainingAccounts(ix, remaining);
@@ -497,6 +530,7 @@ export class Insurance {
     const remaining = await this.buildWithdrawRemainingAccounts(
       signer,
       lpEntry.address,
+      liquidityPoolId,
     );
 
     return this.appendRemainingAccounts(ix, remaining);
