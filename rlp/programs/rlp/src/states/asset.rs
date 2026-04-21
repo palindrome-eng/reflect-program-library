@@ -1,12 +1,14 @@
 use anchor_lang::prelude::*;
 use crate::helpers::{
     get_price_from_pyth,
+    get_price_from_doppler,
     OraclePrice
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug, InitSpace)]
 pub enum Oracle {
     Pyth(Pubkey),
+    Doppler(Pubkey),
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, PartialEq, Debug)]
@@ -19,6 +21,7 @@ impl Oracle {
     pub fn key(&self) -> &Pubkey {
         match self {
             Oracle::Pyth(key) => key,
+            Oracle::Doppler(key) => key,
         }
     }
 }
@@ -42,6 +45,7 @@ impl Asset {
     ) -> Result<OraclePrice> {
         match self.oracle {
             Oracle::Pyth(_) => get_price_from_pyth(account, clock),
+            Oracle::Doppler(_) => get_price_from_doppler(account),
         }
     }
 

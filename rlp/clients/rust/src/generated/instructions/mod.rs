@@ -8,28 +8,38 @@
   pub(crate) mod r#add_asset;
   pub(crate) mod r#create_permission_account;
   pub(crate) mod r#deposit;
+  pub(crate) mod r#drain_pool_reserves;
+  pub(crate) mod r#force_withdraw_cooldown;
   pub(crate) mod r#freeze_functionality;
   pub(crate) mod r#initialize_lp;
   pub(crate) mod r#initialize_rlp;
+  pub(crate) mod r#migrate_dead_shares;
+  pub(crate) mod r#migrate_settings;
   pub(crate) mod r#request_withdrawal;
   pub(crate) mod r#slash;
   pub(crate) mod r#swap;
   pub(crate) mod r#update_action_role;
   pub(crate) mod r#update_deposit_cap;
+  pub(crate) mod r#update_oracle;
   pub(crate) mod r#update_role_holder;
   pub(crate) mod r#withdraw;
 
   pub use self::r#add_asset::*;
   pub use self::r#create_permission_account::*;
   pub use self::r#deposit::*;
+  pub use self::r#drain_pool_reserves::*;
+  pub use self::r#force_withdraw_cooldown::*;
   pub use self::r#freeze_functionality::*;
   pub use self::r#initialize_lp::*;
   pub use self::r#initialize_rlp::*;
+  pub use self::r#migrate_dead_shares::*;
+  pub use self::r#migrate_settings::*;
   pub use self::r#request_withdrawal::*;
   pub use self::r#slash::*;
   pub use self::r#swap::*;
   pub use self::r#update_action_role::*;
   pub use self::r#update_deposit_cap::*;
+  pub use self::r#update_oracle::*;
   pub use self::r#update_role_holder::*;
   pub use self::r#withdraw::*;
 

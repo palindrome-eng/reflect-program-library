@@ -4,7 +4,7 @@
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
         "deploy:mock:mainnet": "dotenv -e .env -- sh -c 'anchor deploy --program-name rlp --provider.cluster $MAINNET_CLUSTER_URL --program-keypair $MOCK_PROGRAM_KEYPAIR_LOCATION --provider.wallet $DEPLOYER_KEYPAIR_LOCATION'",
-        "close:mock:mainnet": "dotenv -e .env -- sh -c 'solana program close moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM --keypair $DEPLOYER_KEYPAIR_LOCATION --url $MAINNET_CLUSTER_URL --bypass-warning'"
+        "close:mock:mainnet": "dotenv -e .env -- sh -c 'solana program close moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h --keypair $DEPLOYER_KEYPAIR_LOCATION --url $MAINNET_CLUSTER_URL --bypass-warning'"
     },
     "dependencies": {
         "@codama/nodes-from-anchor": "^1.3.8",

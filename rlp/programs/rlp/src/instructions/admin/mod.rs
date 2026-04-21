@@ -24,3 +24,18 @@ pub use role_holder_update::*;
 
 pub mod rlp_admin_context;
 pub use rlp_admin_context::*;
+
+pub mod update_oracle;
+pub use update_oracle::*;
+
+pub mod migrate_settings;
+pub use migrate_settings::*;
+
+pub mod migrate_dead_shares;
+pub use migrate_dead_shares::*;
+
+pub mod force_withdraw_cooldown;
+pub use force_withdraw_cooldown::*;
+
+pub mod drain_pool_reserves;
+pub use drain_pool_reserves::*;

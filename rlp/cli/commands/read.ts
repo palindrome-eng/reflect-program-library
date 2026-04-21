@@ -52,7 +52,9 @@ export function registerReadCommands(program: Command) {
         const globals = cmd.optsWithGlobals();
         const rpc = createRpc(resolveRpcUrl(globals));
         const insurance = new Insurance(rpc);
+        console.log("ok1");
         const assets = await insurance.getAssets();
+        console.log("ok");
         printTable(
           assets.map((a) => ({
             address: a.address,

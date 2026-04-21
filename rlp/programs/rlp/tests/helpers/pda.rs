@@ -2,7 +2,7 @@ use solana_sdk::{
     pubkey::Pubkey,
 };
 use rlp::constants::{PERMISSIONS_SEED, SETTINGS_SEED};
-use rlp_client::RLP_ID;
+use rlp_client::generated::programs::RLP_ID;
 
 pub fn derive_settings_pda() -> (Pubkey, u8) {
     Pubkey::find_program_address(

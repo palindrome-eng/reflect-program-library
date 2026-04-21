@@ -9,7 +9,7 @@ pub mod helpers;
 
 use crate::instructions::*;
 
-declare_id!("moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM");
+declare_id!("moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h");
 
 #[program]
 pub mod rlp {
@@ -104,5 +104,38 @@ pub mod rlp {
         args: UpdateRoleHolderArgs
     ) -> Result<()> {
         instructions::update_role_holder_protocol(ctx, args)
+    }
+
+    pub fn update_oracle(
+        ctx: Context<UpdateOracle>,
+    ) -> Result<()> {
+        instructions::update_oracle(ctx)
+    }
+
+    pub fn migrate_settings(
+        ctx: Context<MigrateSettings>,
+    ) -> Result<()> {
+        instructions::migrate_settings(ctx)
+    }
+
+    pub fn migrate_dead_shares(
+        ctx: Context<MigrateDeadShares>,
+        args: MigrateDeadSharesArgs,
+    ) -> Result<()> {
+        instructions::migrate_dead_shares(ctx, args)
+    }
+
+    pub fn force_withdraw_cooldown<'a>(
+        ctx: Context<'_, '_, 'a, 'a, ForceWithdrawCooldown<'a>>,
+        args: ForceWithdrawCooldownArgs,
+    ) -> Result<()> {
+        instructions::force_withdraw_cooldown(ctx, args)
+    }
+
+    pub fn drain_pool_reserves<'a>(
+        ctx: Context<'_, '_, 'a, 'a, DrainPoolReserves<'a>>,
+        args: DrainPoolReservesArgs,
+    ) -> Result<()> {
+        instructions::drain_pool_reserves(ctx, args)
     }
 }

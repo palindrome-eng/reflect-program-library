@@ -20,33 +20,43 @@ import {
   parseAddAssetInstruction,
   parseCreatePermissionAccountInstruction,
   parseDepositInstruction,
+  parseDrainPoolReservesInstruction,
+  parseForceWithdrawCooldownInstruction,
   parseFreezeFunctionalityInstruction,
   parseInitializeLpInstruction,
   parseInitializeRlpInstruction,
+  parseMigrateDeadSharesInstruction,
+  parseMigrateSettingsInstruction,
   parseRequestWithdrawalInstruction,
   parseSlashInstruction,
   parseSwapInstruction,
   parseUpdateActionRoleInstruction,
   parseUpdateDepositCapInstruction,
+  parseUpdateOracleInstruction,
   parseUpdateRoleHolderInstruction,
   parseWithdrawInstruction,
   type ParsedAddAssetInstruction,
   type ParsedCreatePermissionAccountInstruction,
   type ParsedDepositInstruction,
+  type ParsedDrainPoolReservesInstruction,
+  type ParsedForceWithdrawCooldownInstruction,
   type ParsedFreezeFunctionalityInstruction,
   type ParsedInitializeLpInstruction,
   type ParsedInitializeRlpInstruction,
+  type ParsedMigrateDeadSharesInstruction,
+  type ParsedMigrateSettingsInstruction,
   type ParsedRequestWithdrawalInstruction,
   type ParsedSlashInstruction,
   type ParsedSwapInstruction,
   type ParsedUpdateActionRoleInstruction,
   type ParsedUpdateDepositCapInstruction,
+  type ParsedUpdateOracleInstruction,
   type ParsedUpdateRoleHolderInstruction,
   type ParsedWithdrawInstruction,
 } from "../instructions";
 
 export const RLP_PROGRAM_ADDRESS =
-  "moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM" as Address<"moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM">;
+  "moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h" as Address<"moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h">;
 
 export enum RlpAccount {
   Asset,
@@ -124,14 +134,19 @@ export enum RlpInstruction {
   AddAsset,
   CreatePermissionAccount,
   Deposit,
+  DrainPoolReserves,
+  ForceWithdrawCooldown,
   FreezeFunctionality,
   InitializeLp,
   InitializeRlp,
+  MigrateDeadShares,
+  MigrateSettings,
   RequestWithdrawal,
   Slash,
   Swap,
   UpdateActionRole,
   UpdateDepositCap,
+  UpdateOracle,
   UpdateRoleHolder,
   Withdraw,
 }
@@ -177,6 +192,28 @@ export function identifyRlpInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([107, 71, 6, 25, 237, 95, 100, 154]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.DrainPoolReserves;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([198, 149, 225, 74, 204, 179, 68, 57]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.ForceWithdrawCooldown;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([65, 152, 119, 202, 25, 239, 206, 157]),
       ),
       0,
@@ -205,6 +242,28 @@ export function identifyRlpInstruction(
     )
   ) {
     return RlpInstruction.InitializeRlp;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([4, 227, 153, 135, 240, 255, 179, 254]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.MigrateDeadShares;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([68, 101, 236, 165, 239, 88, 56, 172]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.MigrateSettings;
   }
   if (
     containsBytes(
@@ -265,6 +324,17 @@ export function identifyRlpInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([112, 41, 209, 18, 248, 226, 252, 188]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.UpdateOracle;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([96, 224, 166, 55, 4, 62, 152, 53]),
       ),
       0,
@@ -289,7 +359,7 @@ export function identifyRlpInstruction(
 }
 
 export type ParsedRlpInstruction<
-  TProgram extends string = "moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM",
+  TProgram extends string = "moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h",
 > =
   | ({
       instructionType: RlpInstruction.AddAsset;
@@ -301,6 +371,12 @@ export type ParsedRlpInstruction<
       instructionType: RlpInstruction.Deposit;
     } & ParsedDepositInstruction<TProgram>)
   | ({
+      instructionType: RlpInstruction.DrainPoolReserves;
+    } & ParsedDrainPoolReservesInstruction<TProgram>)
+  | ({
+      instructionType: RlpInstruction.ForceWithdrawCooldown;
+    } & ParsedForceWithdrawCooldownInstruction<TProgram>)
+  | ({
       instructionType: RlpInstruction.FreezeFunctionality;
     } & ParsedFreezeFunctionalityInstruction<TProgram>)
   | ({
@@ -309,6 +385,12 @@ export type ParsedRlpInstruction<
   | ({
       instructionType: RlpInstruction.InitializeRlp;
     } & ParsedInitializeRlpInstruction<TProgram>)
+  | ({
+      instructionType: RlpInstruction.MigrateDeadShares;
+    } & ParsedMigrateDeadSharesInstruction<TProgram>)
+  | ({
+      instructionType: RlpInstruction.MigrateSettings;
+    } & ParsedMigrateSettingsInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.RequestWithdrawal;
     } & ParsedRequestWithdrawalInstruction<TProgram>)
@@ -322,6 +404,9 @@ export type ParsedRlpInstruction<
   | ({
       instructionType: RlpInstruction.UpdateDepositCap;
     } & ParsedUpdateDepositCapInstruction<TProgram>)
+  | ({
+      instructionType: RlpInstruction.UpdateOracle;
+    } & ParsedUpdateOracleInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.UpdateRoleHolder;
     } & ParsedUpdateRoleHolderInstruction<TProgram>)
@@ -355,6 +440,20 @@ export function parseRlpInstruction<TProgram extends string>(
         ...parseDepositInstruction(instruction),
       };
     }
+    case RlpInstruction.DrainPoolReserves: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.DrainPoolReserves,
+        ...parseDrainPoolReservesInstruction(instruction),
+      };
+    }
+    case RlpInstruction.ForceWithdrawCooldown: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.ForceWithdrawCooldown,
+        ...parseForceWithdrawCooldownInstruction(instruction),
+      };
+    }
     case RlpInstruction.FreezeFunctionality: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -374,6 +473,20 @@ export function parseRlpInstruction<TProgram extends string>(
       return {
         instructionType: RlpInstruction.InitializeRlp,
         ...parseInitializeRlpInstruction(instruction),
+      };
+    }
+    case RlpInstruction.MigrateDeadShares: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.MigrateDeadShares,
+        ...parseMigrateDeadSharesInstruction(instruction),
+      };
+    }
+    case RlpInstruction.MigrateSettings: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.MigrateSettings,
+        ...parseMigrateSettingsInstruction(instruction),
       };
     }
     case RlpInstruction.RequestWithdrawal: {
@@ -409,6 +522,13 @@ export function parseRlpInstruction<TProgram extends string>(
       return {
         instructionType: RlpInstruction.UpdateDepositCap,
         ...parseUpdateDepositCapInstruction(instruction),
+      };
+    }
+    case RlpInstruction.UpdateOracle: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.UpdateOracle,
+        ...parseUpdateOracleInstruction(instruction),
       };
     }
     case RlpInstruction.UpdateRoleHolder: {

@@ -104,6 +104,28 @@ export function registerAdminCommands(program: Command) {
     });
 
   program
+    .command("update-oracle")
+    .description("Update the oracle address for an asset")
+    .requiredOption("--mint <address>", "Asset mint address")
+    .requiredOption("--oracle <address>", "New Pyth oracle address")
+    .action(async (opts, cmd) => {
+      try {
+        const globals = cmd.optsWithGlobals();
+        const kp = loadKeypairFile(resolveKeypairPath(globals));
+        const signer = keypairToSigner(kp);
+        const rpc = createRpc(resolveRpcUrl(globals));
+        const insurance = new Insurance(rpc);
+        const ix = await insurance.updateOracle(
+          signer,
+          address(opts.mint),
+          address(opts.oracle),
+        );
+        const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
+        printSuccess(`Oracle updated. Signature: ${sig}`);
+      } catch (e) { printError(e); }
+    });
+
+  program
     .command("create-permission-account")
     .description("Create a permission account for an address")
     .requiredOption("--new-admin <address>", "Address to create permissions for")
@@ -222,6 +244,87 @@ export function registerAdminCommands(program: Command) {
         const ix = await insurance.freezeFunctionality(signer, parseAction(opts.action), false);
         const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
         printSuccess(`Action unfrozen. Signature: ${sig}`);
+      } catch (e) { printError(e); }
+    });
+
+  program
+    .command("migrate-settings")
+    .description("Migrate settings account from u16 to u32 killswitch (one-time, SUPREMO only)")
+    .action(async (_opts, cmd) => {
+      try {
+        const globals = cmd.optsWithGlobals();
+        const kp = loadKeypairFile(resolveKeypairPath(globals));
+        const signer = keypairToSigner(kp);
+        const rpc = createRpc(resolveRpcUrl(globals));
+        const insurance = new Insurance(rpc);
+        const ix = await insurance.migrateSettings(signer);
+        const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
+        printSuccess(`Settings migrated. Signature: ${sig}`);
+      } catch (e) { printError(e); }
+    });
+
+  program
+    .command("migrate-dead-shares")
+    .description("Burn excess dead shares from an existing pool (one-time, SUPREMO only)")
+    .requiredOption("--pool-id <n>", "Liquidity pool index")
+    .action(async (opts, cmd) => {
+      try {
+        const globals = cmd.optsWithGlobals();
+        const kp = loadKeypairFile(resolveKeypairPath(globals));
+        const signer = keypairToSigner(kp);
+        const rpc = createRpc(resolveRpcUrl(globals));
+        const insurance = new Insurance(rpc);
+        const ix = await insurance.migrateDeadShares(signer, Number(opts.poolId));
+        const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
+        printSuccess(`Dead shares migrated for pool ${opts.poolId}. Signature: ${sig}`);
+      } catch (e) { printError(e); }
+    });
+
+  program
+    .command("force-withdraw-cooldown")
+    .description("Force-withdraw a cooldown, skipping the timer (SUPREMO only)")
+    .requiredOption("--pool-id <n>", "Liquidity pool index")
+    .requiredOption("--cooldown-id <n>", "Cooldown ID")
+    .requiredOption("--destination <address>", "Destination wallet for withdrawn tokens")
+    .action(async (opts, cmd) => {
+      try {
+        const globals = cmd.optsWithGlobals();
+        const kp = loadKeypairFile(resolveKeypairPath(globals));
+        const signer = keypairToSigner(kp);
+        const rpc = createRpc(resolveRpcUrl(globals));
+        const insurance = new Insurance(rpc);
+        await insurance.load();
+        const ix = await insurance.forceWithdrawCooldown(
+          signer,
+          Number(opts.poolId),
+          BigInt(opts.cooldownId),
+          address(opts.destination),
+        );
+        const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
+        printSuccess(`Cooldown ${opts.cooldownId} force-withdrawn from pool ${opts.poolId}. Signature: ${sig}`);
+      } catch (e) { printError(e); }
+    });
+
+  program
+    .command("drain-pool-reserves")
+    .description("Drain all token reserves from a pool (SUPREMO only)")
+    .requiredOption("--pool-id <n>", "Liquidity pool index")
+    .requiredOption("--destination <address>", "Destination wallet for drained tokens")
+    .action(async (opts, cmd) => {
+      try {
+        const globals = cmd.optsWithGlobals();
+        const kp = loadKeypairFile(resolveKeypairPath(globals));
+        const signer = keypairToSigner(kp);
+        const rpc = createRpc(resolveRpcUrl(globals));
+        const insurance = new Insurance(rpc);
+        await insurance.load();
+        const ix = await insurance.drainPoolReserves(
+          signer,
+          Number(opts.poolId),
+          address(opts.destination),
+        );
+        const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
+        printSuccess(`Pool ${opts.poolId} reserves drained. Signature: ${sig}`);
       } catch (e) { printError(e); }
     });
 }
