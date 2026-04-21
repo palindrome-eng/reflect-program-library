@@ -8,7 +8,7 @@
     "url": "https://github.com/palindrome-eng/reflect-program-library.git"
   },
   "scripts": {
-    "build": "npx tsc --build",
+    "build": "npx tsc",
     "test": "mocha --require tsx --timeout 120000 tests/**/*.test.ts"
   },
   "dependencies": {
