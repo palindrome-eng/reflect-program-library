@@ -32,6 +32,7 @@ export enum Action {
   SuspendDeposits,
   UpdateRole,
   UpdateAction,
+  UpdateOracle,
 }
 
 export type ActionArgs = Action;

@@ -28,5 +28,6 @@ export * from "./swapEvent";
 export * from "./update";
 export * from "./updateActionRoleEvent";
 export * from "./updateDepositCapEvent";
+export * from "./updateOracleEvent";
 export * from "./updateRoleHolderEvent";
 export * from "./withdrawEvent";

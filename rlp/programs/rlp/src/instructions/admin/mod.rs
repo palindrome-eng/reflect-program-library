@@ -24,3 +24,6 @@ pub use role_holder_update::*;
 
 pub mod rlp_admin_context;
 pub use rlp_admin_context::*;
+
+pub mod update_oracle;
+pub use update_oracle::*;

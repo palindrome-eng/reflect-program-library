@@ -1,7 +1,7 @@
 use crate::constants::*;
 use crate::errors::RlpError;
 use crate::events::AddAssetEvent;
-use crate::helpers::get_price_from_pyth;
+use crate::helpers::{get_price_from_pyth, get_price_from_doppler};
 use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
@@ -24,6 +24,9 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
     let oracle = if oracle.owner.as_ref() == PYTH_PROGRAM_ID.as_ref() {
         get_price_from_pyth(oracle, &clock)?;
         Oracle::Pyth(oracle.key())
+    } else if oracle.owner == &DOPPLER_ORACLE_PROGRAM_ID {
+        get_price_from_doppler(oracle)?;
+        Oracle::Doppler(oracle.key())
     } else {
         return Err(RlpError::InvalidOracle.into());
     };

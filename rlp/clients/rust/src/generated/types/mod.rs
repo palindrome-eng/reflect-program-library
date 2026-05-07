@@ -27,6 +27,7 @@
   pub(crate) mod r#update;
   pub(crate) mod r#update_action_role_event;
   pub(crate) mod r#update_deposit_cap_event;
+  pub(crate) mod r#update_oracle_event;
   pub(crate) mod r#update_role_holder_event;
   pub(crate) mod r#withdraw_event;
 
@@ -52,6 +53,7 @@
   pub use self::r#update::*;
   pub use self::r#update_action_role_event::*;
   pub use self::r#update_deposit_cap_event::*;
+  pub use self::r#update_oracle_event::*;
   pub use self::r#update_role_holder_event::*;
   pub use self::r#withdraw_event::*;
 

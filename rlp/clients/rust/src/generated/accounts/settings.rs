@@ -25,7 +25,7 @@ pub swap_fee_bps: u16,
 pub const SETTINGS_DISCRIMINATOR: [u8; 8] = [223, 179, 163, 190, 177, 224, 67, 173];
 
 impl Settings {
-      pub const LEN: usize = 376;
+      pub const LEN: usize = 378;
   
   
   

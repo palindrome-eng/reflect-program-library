@@ -10,8 +10,8 @@ import {
   combineCodec,
   getStructDecoder,
   getStructEncoder,
-  getU16Decoder,
-  getU16Encoder,
+  getU32Decoder,
+  getU32Encoder,
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
@@ -22,11 +22,11 @@ export type KillSwitch = { frozen: number };
 export type KillSwitchArgs = KillSwitch;
 
 export function getKillSwitchEncoder(): FixedSizeEncoder<KillSwitchArgs> {
-  return getStructEncoder([["frozen", getU16Encoder()]]);
+  return getStructEncoder([["frozen", getU32Encoder()]]);
 }
 
 export function getKillSwitchDecoder(): FixedSizeDecoder<KillSwitch> {
-  return getStructDecoder([["frozen", getU16Decoder()]]);
+  return getStructDecoder([["frozen", getU32Decoder()]]);
 }
 
 export function getKillSwitchCodec(): FixedSizeCodec<

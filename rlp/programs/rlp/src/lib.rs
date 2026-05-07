@@ -9,7 +9,7 @@ pub mod helpers;
 
 use crate::instructions::*;
 
-declare_id!("moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM");
+declare_id!("RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz");
 
 #[program]
 pub mod rlp {
@@ -104,5 +104,11 @@ pub mod rlp {
         args: UpdateRoleHolderArgs
     ) -> Result<()> {
         instructions::update_role_holder_protocol(ctx, args)
+    }
+
+    pub fn update_oracle(
+        ctx: Context<UpdateOracle>,
+    ) -> Result<()> {
+        instructions::update_oracle(ctx)
     }
 }

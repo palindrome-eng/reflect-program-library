@@ -11,9 +11,13 @@ use borsh::BorshDeserialize;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum Oracle {
+pub struct WithdrawEvent {
 #[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
-Pyth(Pubkey),
+pub from: Pubkey,
+pub liquidity_pool_id: u8,
+pub amount_in: u64,
+pub amount_out: u64,
+pub usd_value: u128,
 }
 
 

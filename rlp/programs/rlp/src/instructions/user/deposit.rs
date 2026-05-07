@@ -66,7 +66,8 @@ pub fn deposit<'a>(ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>, args: DepositArgs)
     let oracle = &ctx.accounts.oracle;
     let deposit_asset_price = asset.get_price(oracle, &clock)?;
 
-    let deposit_value = PreciseNumber::new(deposit_asset_price.mul(amount, *token_decimals)?)
+    let deposit_value_raw = deposit_asset_price.mul(amount, *token_decimals)?;
+    let deposit_value = PreciseNumber::new(deposit_value_raw)
         .ok_or(RlpError::MathOverflow)?;
 
     let lp_tokens_to_mint = liquidity_pool.calculate_lp_tokens_on_deposit(
@@ -101,8 +102,11 @@ pub fn deposit<'a>(ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>, args: DepositArgs)
 
     emit!(DepositEvent {
         from: signer.key(),
+        liquidity_pool_id: liquidity_pool.index,
         asset: ctx.accounts.asset_mint.key(),
-        amount,
+        amount_in: amount,
+        amount_out: lp_tokens_to_mint,
+        usd_value: deposit_value_raw,
     });
 
     Ok(())

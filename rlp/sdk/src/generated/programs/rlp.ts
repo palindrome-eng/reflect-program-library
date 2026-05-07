@@ -28,6 +28,7 @@ import {
   parseSwapInstruction,
   parseUpdateActionRoleInstruction,
   parseUpdateDepositCapInstruction,
+  parseUpdateOracleInstruction,
   parseUpdateRoleHolderInstruction,
   parseWithdrawInstruction,
   type ParsedAddAssetInstruction,
@@ -41,12 +42,13 @@ import {
   type ParsedSwapInstruction,
   type ParsedUpdateActionRoleInstruction,
   type ParsedUpdateDepositCapInstruction,
+  type ParsedUpdateOracleInstruction,
   type ParsedUpdateRoleHolderInstruction,
   type ParsedWithdrawInstruction,
 } from "../instructions";
 
 export const RLP_PROGRAM_ADDRESS =
-  "moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM" as Address<"moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM">;
+  "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz" as Address<"RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz">;
 
 export enum RlpAccount {
   Asset,
@@ -132,6 +134,7 @@ export enum RlpInstruction {
   Swap,
   UpdateActionRole,
   UpdateDepositCap,
+  UpdateOracle,
   UpdateRoleHolder,
   Withdraw,
 }
@@ -265,6 +268,17 @@ export function identifyRlpInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([112, 41, 209, 18, 248, 226, 252, 188]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.UpdateOracle;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([96, 224, 166, 55, 4, 62, 152, 53]),
       ),
       0,
@@ -289,7 +303,7 @@ export function identifyRlpInstruction(
 }
 
 export type ParsedRlpInstruction<
-  TProgram extends string = "moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM",
+  TProgram extends string = "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz",
 > =
   | ({
       instructionType: RlpInstruction.AddAsset;
@@ -322,6 +336,9 @@ export type ParsedRlpInstruction<
   | ({
       instructionType: RlpInstruction.UpdateDepositCap;
     } & ParsedUpdateDepositCapInstruction<TProgram>)
+  | ({
+      instructionType: RlpInstruction.UpdateOracle;
+    } & ParsedUpdateOracleInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.UpdateRoleHolder;
     } & ParsedUpdateRoleHolderInstruction<TProgram>)
@@ -409,6 +426,13 @@ export function parseRlpInstruction<TProgram extends string>(
       return {
         instructionType: RlpInstruction.UpdateDepositCap,
         ...parseUpdateDepositCapInstruction(instruction),
+      };
+    }
+    case RlpInstruction.UpdateOracle: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.UpdateOracle,
+        ...parseUpdateOracleInstruction(instruction),
       };
     }
     case RlpInstruction.UpdateRoleHolder: {

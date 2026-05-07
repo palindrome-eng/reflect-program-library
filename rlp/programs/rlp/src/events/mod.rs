@@ -4,8 +4,11 @@ use crate::states::*;
 #[event]
 pub struct DepositEvent {
     pub from: Pubkey,
+    pub liquidity_pool_id: u8,
     pub asset: Pubkey,
-    pub amount: u64
+    pub amount_in: u64,
+    pub amount_out: u64,
+    pub usd_value: u128,
 }
 
 #[event]
@@ -18,7 +21,10 @@ pub struct RequestWithdrawEvent {
 #[event]
 pub struct WithdrawEvent {
     pub from: Pubkey,
-    pub amount: u64
+    pub liquidity_pool_id: u8,
+    pub amount_in: u64,
+    pub amount_out: u64,
+    pub usd_value: u128,
 }
 
 #[event]
@@ -94,4 +100,12 @@ pub struct SwapEvent {
     pub liquidity_pool: Pubkey,
     pub amount_in: u64,
     pub amount_out: u64,
+}
+
+#[event]
+pub struct UpdateOracleEvent {
+    pub admin: Pubkey,
+    pub asset: Pubkey,
+    pub old_oracle: Pubkey,
+    pub new_oracle: Pubkey,
 }

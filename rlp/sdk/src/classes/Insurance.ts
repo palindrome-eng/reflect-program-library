@@ -37,6 +37,7 @@ import {
   getUpdateRoleHolderInstructionAsync,
   getUpdateActionRoleInstructionAsync,
   getUpdateDepositCapInstructionAsync,
+  getUpdateOracleInstructionAsync,
   getFreezeFunctionalityInstructionAsync,
   type Action,
   type Role,
@@ -130,7 +131,7 @@ export class Insurance {
       })
       .send();
 
-    const result = programAccounts
+    const preSorted = programAccounts
       .map((account: any) => {
         const [b64] = account.account.data;
         const bytes = new Uint8Array(Buffer.from(b64, "base64"));
@@ -138,8 +139,9 @@ export class Insurance {
           address: account.pubkey,
           data: decoder.decode(bytes),
         };
-      })
-      .sort((a: any, b: any) => a.data.index - b.data.index);
+      });
+
+    const result = preSorted.sort((a: any, b: any) => a.data.index - b.data.index);
 
     this.assets = result;
     return result;
@@ -256,6 +258,22 @@ export class Insurance {
       assetMint,
       oracle,
       accessLevel,
+    });
+  }
+
+  async updateOracle(
+    signer: TransactionSigner,
+    assetMint: Address,
+    oracle: Address,
+  ) {
+    const assets = await this.getAssets();
+    const assetEntry = assets.find((a) => a.data.mint === assetMint);
+    if (!assetEntry) throw new Error(`Asset not found for mint ${assetMint}`);
+
+    return getUpdateOracleInstructionAsync({
+      signer,
+      asset: assetEntry.address,
+      oracle,
     });
   }
 

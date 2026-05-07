@@ -86,6 +86,8 @@ pub fn withdraw<'a>(
     let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
     let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;
 
+    let mut total_withdrawn: u64 = 0;
+
     for i in 0..assets.len() {
         let (reserve_key, reserve) = &reserves[i];
         let (user_token_account_key, _) = &user_token_accounts[i];
@@ -132,6 +134,10 @@ pub fn withdraw<'a>(
                 ),
                 user_pool_share_amount
             )?;
+
+            total_withdrawn = total_withdrawn
+                .checked_add(user_pool_share_amount)
+                .ok_or(RlpError::MathOverflow)?;
         }
     }
 
@@ -167,9 +173,14 @@ pub fn withdraw<'a>(
         )
     )?;
 
+    // usd_value is 0 because the withdraw path does not load oracle accounts.
+    // Off-chain indexers can price the per-asset amounts from transaction logs.
     emit!(WithdrawEvent {
-        amount: lp_token_amount,
         from: signer.key(),
+        liquidity_pool_id: liquidity_pool.index,
+        amount_in: lp_token_amount,
+        amount_out: total_withdrawn,
+        usd_value: 0,
     });
 
     Ok(())

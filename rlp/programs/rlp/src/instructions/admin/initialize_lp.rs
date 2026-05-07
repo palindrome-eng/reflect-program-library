@@ -68,6 +68,15 @@ pub fn initialize_lp(
         &[ctx.bumps.liquidity_pool]
     ];
 
+    require!(
+        lp_token.decimals >= 3,
+        RlpError::InvalidReceiptTokenDecimals
+    );
+
+    let dead_shares = 10u64
+        .checked_pow(lp_token.decimals as u32 - 3)
+        .ok_or(RlpError::MathOverflow)?;
+
     mint_to(
         CpiContext::new_with_signer(
             token_program.to_account_info(),
@@ -78,7 +87,7 @@ pub fn initialize_lp(
             },
             &[signer_seeds]
         ),
-        DEAD_SHARES
+        dead_shares
     )?;
 
     settings.liquidity_pools = settings.liquidity_pools
@@ -139,9 +148,9 @@ pub struct InitializeLiquidityPool<'info> {
         mut,
         constraint = lp_token_mint.supply == 0 @ RlpError::InvalidReceiptTokenSupply,
         constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ RlpError::InvalidReceiptTokenMintAuthority,
-        constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
+        // constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
         constraint = lp_token_mint.is_initialized @ RlpError::InvalidReceiptTokenSetup,
-        constraint = lp_token_mint.decimals == 9 @ RlpError::InvalidReceiptTokenDecimals
+        // constraint = lp_token_mint.decimals == 9 @ RlpError::InvalidReceiptTokenDecimals
     )]
     pub lp_token_mint: Box<Account<'info, Mint>>,
 

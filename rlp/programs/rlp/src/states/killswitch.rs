@@ -6,12 +6,12 @@ use crate::errors::RlpError;
 #[repr(C)]
 #[derive(BorshSchema, AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace, Default)]
 pub struct KillSwitch {
-    pub frozen: u16,
+    pub frozen: u32,
 }
 
 impl KillSwitch {
     pub fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let frozen = u16::deserialize(buf)?;
+        let frozen = u32::deserialize(buf)?;
         Ok(KillSwitch { frozen })
     }
 
@@ -21,7 +21,7 @@ impl KillSwitch {
     }
 
     pub fn is_frozen(&self, action: &Action) -> bool {
-        let mask = 1u16 << (*action as u16);
+        let mask = 1u32 << (*action as u32);
         (self.frozen & mask) != 0
     }
 
@@ -33,12 +33,12 @@ impl KillSwitch {
     }
 
     pub fn freeze(&mut self, action: &Action) {
-        let mask = 1u16 << (*action as u16);
+        let mask = 1u32 << (*action as u32);
         self.frozen |= mask;
     }
 
     pub fn unfreeze(&mut self, action: &Action) {
-        let mask = 1u16 << (*action as u16);
+        let mask = 1u32 << (*action as u32);
         self.frozen &= !mask;
     }
 }

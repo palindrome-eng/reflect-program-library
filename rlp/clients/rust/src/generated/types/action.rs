@@ -28,6 +28,7 @@ Management,
 SuspendDeposits,
 UpdateRole,
 UpdateAction,
+UpdateOracle,
 }
 
 

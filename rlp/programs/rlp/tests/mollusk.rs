@@ -2,27 +2,28 @@ use std::cell::RefCell;
 use mollusk_svm::Mollusk;
 use mollusk_svm::result::Check;
 use rlp::constants::ASSET_SEED;
-use rlp_client::{
-    // Instructions
+use rlp_client::generated::types::{
+    // Types
+    AccessLevel,
+    Action,
+    Role,
+    Update
+};
+use rlp_client::generated::instructions::{
     InitializeRlpBuilder,
     AddAssetBuilder,
     FreezeFunctionalityBuilder,
     UpdateActionRoleBuilder,
     CreatePermissionAccountBuilder,
     UpdateRoleHolderBuilder,
-    // Types
-    AccessLevel,
-    Action,
-    Role,
-    Update,
-    // Accounts
-    Settings,
-    UserPermissions,
-    // Constants
-    RLP_ID,
+};
+use rlp_client::generated::accounts::{
     SETTINGS_DISCRIMINATOR,
     USER_PERMISSIONS_DISCRIMINATOR,
+    Settings,
+    UserPermissions
 };
+use rlp_client::generated::programs::RLP_ID;
 use solana_sdk::{
     account::Account,
     instruction::{AccountMeta, Instruction},
@@ -267,7 +268,7 @@ fn test_freeze_protocol() {
     let final_settings = get_result_account(&freeze_result, 1);
     let settings_data = Settings::from_bytes(&final_settings.data).unwrap();
 
-    let deposit_mask = 1u16 << (Action::Deposit as u8);
+    let deposit_mask = 1u32 << (Action::Deposit as u8);
     assert!(
         (settings_data.access_control.killswitch.frozen & deposit_mask) != 0,
         "Deposit should be frozen"
@@ -442,8 +443,8 @@ fn test_freeze_multiple_actions() {
     let final_settings = get_result_account(&result, 1);
     let settings_data = Settings::from_bytes(&final_settings.data).unwrap();
 
-    let withdraw_mask = 1u16 << (Action::Withdraw as u8);
-    let slash_mask = 1u16 << (Action::Slash as u8);
+    let withdraw_mask = 1u32 << (Action::Withdraw as u8);
+    let slash_mask = 1u32 << (Action::Slash as u8);
 
     assert!((settings_data.access_control.killswitch.frozen & withdraw_mask) != 0);
     assert!((settings_data.access_control.killswitch.frozen & slash_mask) != 0);

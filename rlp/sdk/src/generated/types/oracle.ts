@@ -24,7 +24,9 @@ import {
   type GetDiscriminatedUnionVariantContent,
 } from "@solana/kit";
 
-export type Oracle = { __kind: "Pyth"; fields: readonly [Address] };
+export type Oracle =
+  | { __kind: "Pyth"; fields: readonly [Address] }
+  | { __kind: "Doppler"; fields: readonly [Address] };
 
 export type OracleArgs = Oracle;
 
@@ -34,6 +36,10 @@ export function getOracleEncoder(): FixedSizeEncoder<OracleArgs> {
       "Pyth",
       getStructEncoder([["fields", getTupleEncoder([getAddressEncoder()])]]),
     ],
+    [
+      "Doppler",
+      getStructEncoder([["fields", getTupleEncoder([getAddressEncoder()])]]),
+    ],
   ]) as FixedSizeEncoder<OracleArgs>;
 }
 
@@ -41,6 +47,10 @@ export function getOracleDecoder(): FixedSizeDecoder<Oracle> {
   return getDiscriminatedUnionDecoder([
     [
       "Pyth",
+      getStructDecoder([["fields", getTupleDecoder([getAddressDecoder()])]]),
+    ],
+    [
+      "Doppler",
       getStructDecoder([["fields", getTupleDecoder([getAddressDecoder()])]]),
     ],
   ]) as FixedSizeDecoder<Oracle>;
@@ -59,6 +69,14 @@ export function oracle(
     "Pyth"
   >["fields"],
 ): GetDiscriminatedUnionVariant<OracleArgs, "__kind", "Pyth">;
+export function oracle(
+  kind: "Doppler",
+  data: GetDiscriminatedUnionVariantContent<
+    OracleArgs,
+    "__kind",
+    "Doppler"
+  >["fields"],
+): GetDiscriminatedUnionVariant<OracleArgs, "__kind", "Doppler">;
 export function oracle<K extends OracleArgs["__kind"], Data>(
   kind: K,
   data?: Data,

@@ -12,29 +12,51 @@ import {
   getAddressEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU128Decoder,
+  getU128Encoder,
   getU64Decoder,
   getU64Encoder,
+  getU8Decoder,
+  getU8Encoder,
   type Address,
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
 } from "@solana/kit";
 
-export type WithdrawEvent = { from: Address; amount: bigint };
+export type WithdrawEvent = {
+  from: Address;
+  liquidityPoolId: number;
+  amountIn: bigint;
+  amountOut: bigint;
+  usdValue: bigint;
+};
 
-export type WithdrawEventArgs = { from: Address; amount: number | bigint };
+export type WithdrawEventArgs = {
+  from: Address;
+  liquidityPoolId: number;
+  amountIn: number | bigint;
+  amountOut: number | bigint;
+  usdValue: number | bigint;
+};
 
 export function getWithdrawEventEncoder(): FixedSizeEncoder<WithdrawEventArgs> {
   return getStructEncoder([
     ["from", getAddressEncoder()],
-    ["amount", getU64Encoder()],
+    ["liquidityPoolId", getU8Encoder()],
+    ["amountIn", getU64Encoder()],
+    ["amountOut", getU64Encoder()],
+    ["usdValue", getU128Encoder()],
   ]);
 }
 
 export function getWithdrawEventDecoder(): FixedSizeDecoder<WithdrawEvent> {
   return getStructDecoder([
     ["from", getAddressDecoder()],
-    ["amount", getU64Decoder()],
+    ["liquidityPoolId", getU8Decoder()],
+    ["amountIn", getU64Decoder()],
+    ["amountOut", getU64Decoder()],
+    ["usdValue", getU128Decoder()],
   ]);
 }
 

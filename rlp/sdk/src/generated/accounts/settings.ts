@@ -154,5 +154,5 @@ export async function fetchAllMaybeSettings(
 }
 
 export function getSettingsSize(): number {
-  return 376;
+  return 378;
 }

@@ -15,7 +15,7 @@ const jsOutputDir = path.join(__dirname, "sdk", "src", "generated");
 visit(rootNode, renderJsVisitor(jsOutputDir));
 
 // Generate Rust SDK
-const rustCrateDir = path.join(__dirname, "clients", "rust");
+const rustCrateDir = path.join(__dirname, "clients", "rust", "src", "generated");
 visit(rootNode, renderRustVisitor(rustCrateDir, {
   formatCode: true
 }));

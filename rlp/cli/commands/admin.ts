@@ -104,6 +104,28 @@ export function registerAdminCommands(program: Command) {
     });
 
   program
+    .command("update-oracle")
+    .description("Update the oracle address for an asset")
+    .requiredOption("--mint <address>", "Asset mint address")
+    .requiredOption("--oracle <address>", "New Pyth oracle address")
+    .action(async (opts, cmd) => {
+      try {
+        const globals = cmd.optsWithGlobals();
+        const kp = loadKeypairFile(resolveKeypairPath(globals));
+        const signer = keypairToSigner(kp);
+        const rpc = createRpc(resolveRpcUrl(globals));
+        const insurance = new Insurance(rpc);
+        const ix = await insurance.updateOracle(
+          signer,
+          address(opts.mint),
+          address(opts.oracle),
+        );
+        const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
+        printSuccess(`Oracle updated. Signature: ${sig}`);
+      } catch (e) { printError(e); }
+    });
+
+  program
     .command("create-permission-account")
     .description("Create a permission account for an address")
     .requiredOption("--new-admin <address>", "Address to create permissions for")
@@ -224,4 +246,5 @@ export function registerAdminCommands(program: Command) {
         printSuccess(`Action unfrozen. Signature: ${sig}`);
       } catch (e) { printError(e); }
     });
+
 }
