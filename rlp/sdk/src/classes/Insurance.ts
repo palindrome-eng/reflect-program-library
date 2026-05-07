@@ -38,10 +38,6 @@ import {
   getUpdateActionRoleInstructionAsync,
   getUpdateDepositCapInstructionAsync,
   getUpdateOracleInstructionAsync,
-  getMigrateSettingsInstructionAsync,
-  getMigrateDeadSharesInstructionAsync,
-  getForceWithdrawCooldownInstructionAsync,
-  getDrainPoolReservesInstructionAsync,
   getFreezeFunctionalityInstructionAsync,
   type Action,
   type Role,
@@ -698,115 +694,6 @@ export class Insurance {
       action,
       freeze,
     });
-  }
-
-  async migrateSettings(signer: TransactionSigner) {
-    return getMigrateSettingsInstructionAsync({ signer });
-  }
-
-  async migrateDeadShares(signer: TransactionSigner, poolId: number) {
-    const pools = await this.getLiquidityPools();
-    const pool = pools.find((p) => p.data.index === poolId);
-    if (!pool) throw new Error(`Pool ${poolId} not found`);
-
-    const [liquidityPoolAddress] = await PdaClient.deriveLiquidityPool(poolId);
-
-    return getMigrateDeadSharesInstructionAsync({
-      signer,
-      liquidityPool: liquidityPoolAddress,
-      lpTokenMint: pool.data.lpToken,
-      poolId,
-    });
-  }
-
-  async forceWithdrawCooldown(
-    signer: TransactionSigner,
-    poolId: number,
-    cooldownId: number | bigint,
-    destination: Address,
-  ) {
-    const pools = await this.getLiquidityPools();
-    const pool = pools.find((p) => p.data.index === poolId);
-    if (!pool) throw new Error(`Pool ${poolId} not found`);
-
-    const [liquidityPoolAddress] = await PdaClient.deriveLiquidityPool(poolId);
-    const [cooldownAddress] = await PdaClient.deriveCooldown(poolId, cooldownId);
-
-    const assets = await this.getPoolAssets(poolId);
-
-    // Remaining accounts: [asset_pdas...] [reserve_atas...] [destination_atas...]
-    const assetPdas: { address: Address; role: AccountRole }[] = [];
-    const reserveAtas: { address: Address; role: AccountRole }[] = [];
-    const destAtas: { address: Address; role: AccountRole }[] = [];
-
-    for (const asset of assets) {
-      assetPdas.push({ address: asset.address, role: AccountRole.READONLY });
-
-      const [poolAta] = await findAssociatedTokenPda({
-        mint: asset.data.mint,
-        owner: liquidityPoolAddress,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS,
-      });
-      reserveAtas.push({ address: poolAta, role: AccountRole.WRITABLE });
-
-      const [destAta] = await findAssociatedTokenPda({
-        mint: asset.data.mint,
-        owner: destination,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS,
-      });
-      destAtas.push({ address: destAta, role: AccountRole.WRITABLE });
-    }
-
-    const ix = await getForceWithdrawCooldownInstructionAsync({
-      signer,
-      liquidityPool: liquidityPoolAddress,
-      lpTokenMint: pool.data.lpToken,
-      cooldown: cooldownAddress,
-      poolId,
-      cooldownId,
-    });
-
-    return this.appendRemainingAccounts(ix, [...assetPdas, ...reserveAtas, ...destAtas]);
-  }
-
-  async drainPoolReserves(
-    signer: TransactionSigner,
-    poolId: number,
-    destination: Address,
-  ) {
-    const pools = await this.getLiquidityPools();
-    const pool = pools.find((p) => p.data.index === poolId);
-    if (!pool) throw new Error(`Pool ${poolId} not found`);
-
-    const [liquidityPoolAddress] = await PdaClient.deriveLiquidityPool(poolId);
-    const assets = await this.getPoolAssets(poolId);
-
-    const remaining: { address: Address; role: AccountRole }[] = [];
-
-    for (const asset of assets) {
-      const [poolAta] = await findAssociatedTokenPda({
-        mint: asset.data.mint,
-        owner: liquidityPoolAddress,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS,
-      });
-      const [destAta] = await findAssociatedTokenPda({
-        mint: asset.data.mint,
-        owner: destination,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS,
-      });
-      remaining.push(
-        { address: poolAta, role: AccountRole.WRITABLE },
-        { address: destAta, role: AccountRole.WRITABLE },
-      );
-    }
-
-    const ix = await getDrainPoolReservesInstructionAsync({
-      signer,
-      liquidityPool: liquidityPoolAddress,
-      poolId,
-    });
-
-    return this.appendRemainingAccounts(ix, remaining);
   }
 
   async findAssetFromMint(mint: Address): Promise<Address> {

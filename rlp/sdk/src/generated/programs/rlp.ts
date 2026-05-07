@@ -20,13 +20,9 @@ import {
   parseAddAssetInstruction,
   parseCreatePermissionAccountInstruction,
   parseDepositInstruction,
-  parseDrainPoolReservesInstruction,
-  parseForceWithdrawCooldownInstruction,
   parseFreezeFunctionalityInstruction,
   parseInitializeLpInstruction,
   parseInitializeRlpInstruction,
-  parseMigrateDeadSharesInstruction,
-  parseMigrateSettingsInstruction,
   parseRequestWithdrawalInstruction,
   parseSlashInstruction,
   parseSwapInstruction,
@@ -38,13 +34,9 @@ import {
   type ParsedAddAssetInstruction,
   type ParsedCreatePermissionAccountInstruction,
   type ParsedDepositInstruction,
-  type ParsedDrainPoolReservesInstruction,
-  type ParsedForceWithdrawCooldownInstruction,
   type ParsedFreezeFunctionalityInstruction,
   type ParsedInitializeLpInstruction,
   type ParsedInitializeRlpInstruction,
-  type ParsedMigrateDeadSharesInstruction,
-  type ParsedMigrateSettingsInstruction,
   type ParsedRequestWithdrawalInstruction,
   type ParsedSlashInstruction,
   type ParsedSwapInstruction,
@@ -56,7 +48,7 @@ import {
 } from "../instructions";
 
 export const RLP_PROGRAM_ADDRESS =
-  "moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h" as Address<"moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h">;
+  "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz" as Address<"RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz">;
 
 export enum RlpAccount {
   Asset,
@@ -134,13 +126,9 @@ export enum RlpInstruction {
   AddAsset,
   CreatePermissionAccount,
   Deposit,
-  DrainPoolReserves,
-  ForceWithdrawCooldown,
   FreezeFunctionality,
   InitializeLp,
   InitializeRlp,
-  MigrateDeadShares,
-  MigrateSettings,
   RequestWithdrawal,
   Slash,
   Swap,
@@ -192,28 +180,6 @@ export function identifyRlpInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([107, 71, 6, 25, 237, 95, 100, 154]),
-      ),
-      0,
-    )
-  ) {
-    return RlpInstruction.DrainPoolReserves;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([198, 149, 225, 74, 204, 179, 68, 57]),
-      ),
-      0,
-    )
-  ) {
-    return RlpInstruction.ForceWithdrawCooldown;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([65, 152, 119, 202, 25, 239, 206, 157]),
       ),
       0,
@@ -242,28 +208,6 @@ export function identifyRlpInstruction(
     )
   ) {
     return RlpInstruction.InitializeRlp;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([4, 227, 153, 135, 240, 255, 179, 254]),
-      ),
-      0,
-    )
-  ) {
-    return RlpInstruction.MigrateDeadShares;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([68, 101, 236, 165, 239, 88, 56, 172]),
-      ),
-      0,
-    )
-  ) {
-    return RlpInstruction.MigrateSettings;
   }
   if (
     containsBytes(
@@ -359,7 +303,7 @@ export function identifyRlpInstruction(
 }
 
 export type ParsedRlpInstruction<
-  TProgram extends string = "moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h",
+  TProgram extends string = "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz",
 > =
   | ({
       instructionType: RlpInstruction.AddAsset;
@@ -371,12 +315,6 @@ export type ParsedRlpInstruction<
       instructionType: RlpInstruction.Deposit;
     } & ParsedDepositInstruction<TProgram>)
   | ({
-      instructionType: RlpInstruction.DrainPoolReserves;
-    } & ParsedDrainPoolReservesInstruction<TProgram>)
-  | ({
-      instructionType: RlpInstruction.ForceWithdrawCooldown;
-    } & ParsedForceWithdrawCooldownInstruction<TProgram>)
-  | ({
       instructionType: RlpInstruction.FreezeFunctionality;
     } & ParsedFreezeFunctionalityInstruction<TProgram>)
   | ({
@@ -385,12 +323,6 @@ export type ParsedRlpInstruction<
   | ({
       instructionType: RlpInstruction.InitializeRlp;
     } & ParsedInitializeRlpInstruction<TProgram>)
-  | ({
-      instructionType: RlpInstruction.MigrateDeadShares;
-    } & ParsedMigrateDeadSharesInstruction<TProgram>)
-  | ({
-      instructionType: RlpInstruction.MigrateSettings;
-    } & ParsedMigrateSettingsInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.RequestWithdrawal;
     } & ParsedRequestWithdrawalInstruction<TProgram>)
@@ -440,20 +372,6 @@ export function parseRlpInstruction<TProgram extends string>(
         ...parseDepositInstruction(instruction),
       };
     }
-    case RlpInstruction.DrainPoolReserves: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: RlpInstruction.DrainPoolReserves,
-        ...parseDrainPoolReservesInstruction(instruction),
-      };
-    }
-    case RlpInstruction.ForceWithdrawCooldown: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: RlpInstruction.ForceWithdrawCooldown,
-        ...parseForceWithdrawCooldownInstruction(instruction),
-      };
-    }
     case RlpInstruction.FreezeFunctionality: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -473,20 +391,6 @@ export function parseRlpInstruction<TProgram extends string>(
       return {
         instructionType: RlpInstruction.InitializeRlp,
         ...parseInitializeRlpInstruction(instruction),
-      };
-    }
-    case RlpInstruction.MigrateDeadShares: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: RlpInstruction.MigrateDeadShares,
-        ...parseMigrateDeadSharesInstruction(instruction),
-      };
-    }
-    case RlpInstruction.MigrateSettings: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: RlpInstruction.MigrateSettings,
-        ...parseMigrateSettingsInstruction(instruction),
       };
     }
     case RlpInstruction.RequestWithdrawal: {

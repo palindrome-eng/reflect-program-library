@@ -9,7 +9,7 @@ pub mod helpers;
 
 use crate::instructions::*;
 
-declare_id!("moCkrLsd1dMvqQgzFgLWSEgYUR7SAMMrNzRwo3TjW2h");
+declare_id!("RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz");
 
 #[program]
 pub mod rlp {
@@ -110,32 +110,5 @@ pub mod rlp {
         ctx: Context<UpdateOracle>,
     ) -> Result<()> {
         instructions::update_oracle(ctx)
-    }
-
-    pub fn migrate_settings(
-        ctx: Context<MigrateSettings>,
-    ) -> Result<()> {
-        instructions::migrate_settings(ctx)
-    }
-
-    pub fn migrate_dead_shares(
-        ctx: Context<MigrateDeadShares>,
-        args: MigrateDeadSharesArgs,
-    ) -> Result<()> {
-        instructions::migrate_dead_shares(ctx, args)
-    }
-
-    pub fn force_withdraw_cooldown<'a>(
-        ctx: Context<'_, '_, 'a, 'a, ForceWithdrawCooldown<'a>>,
-        args: ForceWithdrawCooldownArgs,
-    ) -> Result<()> {
-        instructions::force_withdraw_cooldown(ctx, args)
-    }
-
-    pub fn drain_pool_reserves<'a>(
-        ctx: Context<'_, '_, 'a, 'a, DrainPoolReserves<'a>>,
-        args: DrainPoolReservesArgs,
-    ) -> Result<()> {
-        instructions::drain_pool_reserves(ctx, args)
     }
 }
