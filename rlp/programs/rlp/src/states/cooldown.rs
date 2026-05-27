@@ -8,6 +8,7 @@ pub struct Cooldown {
     pub authority: Pubkey,
     pub liquidity_pool_id: u8,
     pub unlock_ts: u64,
+    pub locked_amount: u64,
 }
 
 impl Cooldown {
