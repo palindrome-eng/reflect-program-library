@@ -130,6 +130,8 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         .checked_div(BPS_PRECISION)
         .ok_or(RlpError::MathOverflow)?;
 
+    require!(amount_out > 0, RlpError::NotEnoughFunds);
+
     require!(
         token_to_pool.amount as u128 >= amount_out,
         RlpError::NotEnoughFunds
