@@ -173,7 +173,7 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         amount_out as u64,
     )?;
 
-    emit!(SwapEvent {
+    emit_cpi!(SwapEvent {
         signer: signer.key(),
         liquidity_pool: liquidity_pool.key(),
         amount_in,
@@ -183,6 +183,7 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct Swap<'info> {
     #[account(mut)]

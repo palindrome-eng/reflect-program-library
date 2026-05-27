@@ -44,7 +44,7 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
         .checked_add(1)
         .ok_or(RlpError::MathOverflow)?;
 
-    emit!(AddAssetEvent {
+    emit_cpi!(AddAssetEvent {
         admin: signer.key(),
         asset: asset_mint.key(),
         oracle: *oracle.key()
@@ -53,6 +53,7 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct AddAsset<'info> {
     #[account(mut)]

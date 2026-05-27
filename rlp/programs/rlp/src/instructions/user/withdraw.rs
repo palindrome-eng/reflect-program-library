@@ -175,7 +175,7 @@ pub fn withdraw<'a>(
 
     // usd_value is 0 because the withdraw path does not load oracle accounts.
     // Off-chain indexers can price the per-asset amounts from transaction logs.
-    emit!(WithdrawEvent {
+    emit_cpi!(WithdrawEvent {
         from: signer.key(),
         liquidity_pool_id: liquidity_pool.index,
         amount_in: lp_token_amount,
@@ -186,6 +186,7 @@ pub fn withdraw<'a>(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(
     args: WithdrawArgs

@@ -22,6 +22,7 @@ pub fn create_permission_account(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(new_admin: Pubkey)]
 pub struct RlpUserPermissionsInit<'info> {

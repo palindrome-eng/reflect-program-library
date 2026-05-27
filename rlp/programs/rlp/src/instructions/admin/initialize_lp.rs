@@ -94,7 +94,7 @@ pub fn initialize_lp(
         .checked_add(1)
         .ok_or(RlpError::MathOverflow)?;
 
-    emit!(InitializeLiquidityPoolEvent {
+    emit_cpi!(InitializeLiquidityPoolEvent {
         admin: ctx.accounts.signer.key(),
         liquidity_pool: liquidity_pool.key(),
         lp_token: lp_token.key(),
@@ -103,6 +103,7 @@ pub fn initialize_lp(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct InitializeLiquidityPool<'info> {
     #[account(mut)]

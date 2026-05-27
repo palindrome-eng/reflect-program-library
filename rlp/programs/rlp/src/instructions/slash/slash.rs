@@ -70,7 +70,7 @@ pub fn slash(
         amount
     )?;
 
-    emit!(SlashEvent {
+    emit_cpi!(SlashEvent {
         admin: ctx.accounts.signer.key(),
         liquidity_pool: liquidity_pool.key(),
         amount,
@@ -80,6 +80,7 @@ pub fn slash(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(
     args: SlashArgs

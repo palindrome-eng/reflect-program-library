@@ -13,10 +13,10 @@ pub struct UpdateRoleHolderArgs {
 }
 
 pub fn update_role_holder_protocol(
-    ctx: Context<RlpAdminRoleUpdate>,
+    mut ctx: Context<RlpAdminRoleUpdate>,
     args: UpdateRoleHolderArgs
 ) -> Result<()> {
-    let accounts = ctx.accounts;
+    let accounts = &mut ctx.accounts;
     let settings = &mut accounts.settings;
     let update_admin_permissions = &mut accounts.update_admin_permissions;
 
@@ -47,7 +47,7 @@ pub fn update_role_holder_protocol(
         }
     }
 
-    emit!(UpdateRoleHolderEvent {
+    emit_cpi!(UpdateRoleHolderEvent {
         address,
         role,
         update
@@ -56,6 +56,7 @@ pub fn update_role_holder_protocol(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct RlpAdminRoleUpdate<'info> {
     #[account(mut)]

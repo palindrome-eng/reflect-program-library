@@ -69,7 +69,7 @@ pub fn request_withdrawal(
         .checked_add(1)
         .ok_or(RlpError::MathOverflow)?;
 
-    emit!(RequestWithdrawEvent {
+    emit_cpi!(RequestWithdrawEvent {
         amount,
         authority: signer.key(),
         liquidity_pool_id
@@ -78,6 +78,7 @@ pub fn request_withdrawal(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(
     args: RequestWithdrawalArgs
