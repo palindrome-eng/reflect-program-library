@@ -46,6 +46,9 @@ pub const LIQUIDITY_POOL_LOCKUP_SEED: &str = "lp_lockup";
 pub const ORACLE_MAXIMUM_AGE: u64 = 2 * 60;
 
 #[constant]
+pub const MAX_ORACLE_CONFIDENCE_RATIO: u64 = 50;
+
+#[constant]
 pub const BPS_PRECISION: u128 = 10_000;
 
 #[constant]

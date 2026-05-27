@@ -23,8 +23,18 @@ pub fn get_price_from_pyth(oracle_account: &AccountInfo, clock: &Clock) -> Resul
         RlpError::PriceError
     );
 
+    let price = oracle.price_message.price;
+    let conf = oracle.price_message.conf;
+
+    require!(price > 0, RlpError::PriceError);
+    require!(
+        conf.checked_mul(MAX_ORACLE_CONFIDENCE_RATIO)
+            .map_or(false, |c| c <= price as u64),
+        RlpError::PriceError
+    );
+
     Ok(OraclePrice {
-        price: oracle.price_message.price,
+        price,
         exponent: oracle.price_message.exponent,
     })
 }
