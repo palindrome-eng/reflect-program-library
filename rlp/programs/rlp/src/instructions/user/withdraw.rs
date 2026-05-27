@@ -2,7 +2,6 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::close_account;
 use anchor_spl::token::CloseAccount;
 use anchor_spl::token::Token;
-use spl_math::precise_number::PreciseNumber;
 use crate::errors::RlpError;
 use crate::helpers::action_check_protocol;
 use crate::states::*;
@@ -92,19 +91,10 @@ pub fn withdraw<'a>(
         let (reserve_key, reserve) = &reserves[i];
         let (user_token_account_key, _) = &user_token_accounts[i];
 
-        let user_pool_share_amount = PreciseNumber::new(reserve.amount as u128)
+        let user_pool_share_amount: u128 = (reserve.amount as u128)
+            .checked_mul(lp_token_amount as u128)
             .ok_or(RlpError::MathOverflow)?
-            .checked_mul(
-                &PreciseNumber::new(lp_token_amount as u128)
-                .ok_or(RlpError::MathOverflow)?
-            )
-            .ok_or(RlpError::MathOverflow)?
-            .checked_div(
-                &PreciseNumber::new(lp_token_supply as u128)
-                .ok_or(RlpError::MathOverflow)?
-            )
-            .ok_or(RlpError::MathOverflow)?
-            .to_imprecise()
+            .checked_div(lp_token_supply as u128)
             .ok_or(RlpError::MathOverflow)?;
 
         let user_pool_share_amount: u64 = user_pool_share_amount

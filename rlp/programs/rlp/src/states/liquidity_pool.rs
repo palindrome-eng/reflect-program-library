@@ -196,6 +196,8 @@ impl LiquidityPool {
             deposit_value
                 .checked_div(&scale_down_precise)
                 .ok_or(crate::errors::RlpError::MathOverflow)?
+                .floor()
+                .ok_or(crate::errors::RlpError::MathOverflow)?
                 .to_imprecise()
                 .ok_or(crate::errors::RlpError::MathOverflow)?
                 .try_into()
@@ -211,6 +213,8 @@ impl LiquidityPool {
                 .ok_or(crate::errors::RlpError::MathOverflow)?;
 
             deposit_ratio
+                .floor()
+                .ok_or(crate::errors::RlpError::MathOverflow)?
                 .to_imprecise()
                 .ok_or(crate::errors::RlpError::MathOverflow)?
                 .try_into()
