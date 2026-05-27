@@ -35,6 +35,7 @@ pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> R
         access_control: AccessControl::new_defaults()?,
         liquidity_pools: 0,
         swap_fee_bps,
+        supremo_count: 1,
     });
 
     emit!(InitializeRlpEvent {

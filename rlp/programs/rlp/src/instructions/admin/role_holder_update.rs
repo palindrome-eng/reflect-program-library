@@ -40,10 +40,24 @@ pub fn update_role_holder_protocol(
 
     match update{
         Update::Add => {
-            update_admin_permissions.add_protocol_role(role)?;            
+            update_admin_permissions.add_protocol_role(role)?;
+            if role == Role::SUPREMO {
+                settings.supremo_count = settings.supremo_count
+                    .checked_add(1)
+                    .ok_or(RlpError::MathOverflow)?;
+            }
         },
         Update::Remove => {
+            if role == Role::SUPREMO {
+                require!(
+                    settings.supremo_count > 1,
+                    RlpError::MinimumSuperadminsRequired
+                );
+            }
             update_admin_permissions.remove_protocol_role(role)?;
+            if role == Role::SUPREMO {
+                settings.supremo_count = settings.supremo_count.saturating_sub(1);
+            }
         }
     }
 
