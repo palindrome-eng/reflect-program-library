@@ -108,6 +108,10 @@ impl Action {
         }
     }
 
+    pub fn is_publicly_assignable(&self) -> bool {
+        matches!(self, Action::Deposit | Action::Withdraw | Action::Swap)
+    }
+
     pub fn to_action(&self) -> Result<Self> {
         match self {
             Action::FreezeDeposit => Ok(Action::Deposit),

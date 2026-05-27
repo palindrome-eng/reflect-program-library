@@ -198,12 +198,16 @@ impl AccessMap {
     }
 
     pub fn add_role_to_action(&mut self, action: Action, role: Role) -> Result<()> {
+        if role == Role::PUBLIC && !action.is_publicly_assignable() {
+            return Err(RlpError::InvalidInput.into());
+        }
+
         for i in 0..self.action_permissions.len() {
             if self.action_permissions[i].action == action && self.action_permissions[i].role_count > 0 {
                 return self.action_permissions[i].add_role(role);
             }
         }
-        
+
         for i in 0..self.action_permissions.len() {
             if self.action_permissions[i].role_count == 0 {
                 self.action_permissions[i].action = action;
