@@ -13,7 +13,9 @@ impl OraclePrice {
             return Err(RlpError::PriceError);
         }
 
-        let decimal_adjustment = PRECISION.saturating_sub(token_decimals as u32);
+        let decimal_adjustment = PRECISION
+            .checked_sub(token_decimals as u32)
+            .ok_or(RlpError::MathOverflow)?;
 
         let normalized_amount = (amount as u128)
             .checked_mul(10u128.pow(decimal_adjustment))

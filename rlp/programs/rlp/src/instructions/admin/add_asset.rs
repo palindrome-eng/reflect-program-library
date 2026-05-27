@@ -19,6 +19,24 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
     let oracle = &ctx.accounts.oracle;
     let signer = &ctx.accounts.signer;
 
+    require!(
+        (asset_mint.decimals as u32) <= PRECISION,
+        RlpError::InvalidInput
+    );
+
+    if let Some(mint_authority) = Option::<Pubkey>::from(asset_mint.mint_authority) {
+        for pool_index in 0..settings.liquidity_pools {
+            let (pool_pda, _) = Pubkey::find_program_address(
+                &[LIQUIDITY_POOL_SEED.as_bytes(), &pool_index.to_le_bytes()],
+                &crate::ID,
+            );
+            require!(
+                mint_authority != pool_pda,
+                RlpError::InvalidInput
+            );
+        }
+    }
+
     let clock = Clock::get()?;
 
     let oracle = if oracle.owner.as_ref() == PYTH_PROGRAM_ID.as_ref() {
