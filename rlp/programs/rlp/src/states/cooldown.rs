@@ -19,9 +19,11 @@ impl Cooldown {
     pub fn lock(&mut self, duration: u64) -> Result<()> {
         let clock = Clock::get()?;
 
-        let now = clock.unix_timestamp;
-        self.unlock_ts = (now as u64) + duration;
-        
+        let now = clock.unix_timestamp as u64;
+        self.unlock_ts = now
+            .checked_add(duration)
+            .ok_or(crate::errors::RlpError::MathOverflow)?;
+
         Ok(())
     }
 }

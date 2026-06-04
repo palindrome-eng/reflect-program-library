@@ -34,6 +34,11 @@ pub fn initialize_lp(
         RlpError::InvalidInput
     );
 
+    require!(
+        cooldown_duration <= MAX_COOLDOWN_DURATION,
+        RlpError::InvalidInput
+    );
+
     for (i, &asset_index) in assets.iter().enumerate() {
         require!(
             asset_index < settings.assets,
