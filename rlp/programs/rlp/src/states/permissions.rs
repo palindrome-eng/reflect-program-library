@@ -24,6 +24,10 @@ impl LevelRoles {
     }
 
     pub fn add_role(&mut self, role: Role) -> Result<()> {
+        if role == Role::UNSET {
+            return Err(RlpError::InvalidInput.into());
+        }
+
         if self.has_role(role) {
             return Err(RlpError::InvalidInput.into());
         }

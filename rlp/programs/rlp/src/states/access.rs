@@ -92,6 +92,10 @@ impl ActionMapping {
     }
 
     pub fn add_role(&mut self, role: Role) -> Result<()> {
+        if role == Role::UNSET {
+            return Err(RlpError::InvalidInput.into());
+        }
+
         if self.role_count as usize >= MAX_ROLES {
             return Err(RlpError::NoEntriesLeft.into());
         }
