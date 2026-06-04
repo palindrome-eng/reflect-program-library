@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{mint_to, Mint, MintTo, Token, TokenAccount};
 use crate::states::*;
@@ -147,7 +148,7 @@ pub struct InitializeLiquidityPool<'info> {
     #[account(
         mut,
         constraint = lp_token_mint.supply == 0 @ RlpError::InvalidReceiptTokenSupply,
-        constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ RlpError::InvalidReceiptTokenMintAuthority,
+        constraint = lp_token_mint.mint_authority == COption::Some(liquidity_pool.key()) @ RlpError::InvalidReceiptTokenMintAuthority,
         // constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
         constraint = lp_token_mint.is_initialized @ RlpError::InvalidReceiptTokenSetup,
         // constraint = lp_token_mint.decimals == 9 @ RlpError::InvalidReceiptTokenDecimals
