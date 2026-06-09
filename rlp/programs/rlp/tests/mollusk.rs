@@ -1940,3 +1940,162 @@ fn test_m04_add_asset_rejects_high_decimals() {
         )
     });
 }
+
+// ============================================================================
+// HELPERS: LP MINT + TOKEN ACCOUNT + ATA + LP/POOL SETUP
+// ============================================================================
+
+/// SPL Associated Token Program ID.
+const SPL_ASSOCIATED_TOKEN_ID: Pubkey = solana_sdk::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+
+/// Derive the LP PDA for a given liquidity_pool index.
+fn derive_lp_pda(index: u8) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[rlp::constants::LIQUIDITY_POOL_SEED.as_bytes(), &index.to_le_bytes()],
+        &Pubkey::new_from_array(RLP_ID.to_bytes()),
+    )
+}
+
+/// Derive the canonical SPL ATA for (owner, mint).
+fn derive_ata(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(
+        &[owner.as_ref(), &SPL_TOKEN_ID.to_bytes(), &mint.to_bytes()],
+        &SPL_ASSOCIATED_TOKEN_ID,
+    ).0
+}
+
+/// SPL Token mint account with explicit authority + decimals + freeze_authority.
+fn create_mint_account(mint_authority: Option<Pubkey>, decimals: u8, freeze_authority: Option<Pubkey>) -> Account {
+    let mut data = vec![0u8; 82];
+    match mint_authority {
+        Some(pk) => {
+            data[0] = 1; // Some
+            data[4..36].copy_from_slice(&pk.to_bytes());
+        }
+        None => data[0] = 0, // None
+    }
+    // supply at 36..44 = 0
+    data[44] = decimals;
+    data[45] = 1; // is_initialized
+    match freeze_authority {
+        Some(pk) => {
+            data[46] = 1; // Some
+            data[50..82].copy_from_slice(&pk.to_bytes());
+        }
+        None => data[46] = 0, // None
+    }
+    Account {
+        lamports: 1_000_000,
+        data,
+        owner: SPL_TOKEN_ID,
+        executable: false,
+        rent_epoch: 0,
+    }
+}
+
+/// SPL TokenAccount (165 bytes) with mint, owner, balance. State = Initialized.
+fn create_token_account(mint: &Pubkey, owner: &Pubkey, amount: u64) -> Account {
+    let mut data = vec![0u8; 165];
+    data[0..32].copy_from_slice(&mint.to_bytes());
+    data[32..64].copy_from_slice(&owner.to_bytes());
+    data[64..72].copy_from_slice(&amount.to_le_bytes());
+    // delegate: 72..108 = None (option tag 0 at offset 72)
+    data[108] = 1; // state = Initialized
+    // is_native: 109..121 = None
+    // delegated_amount: 121..129 = 0
+    // close_authority: 129..165 = None
+    Account {
+        lamports: 2_039_280,
+        data,
+        owner: SPL_TOKEN_ID,
+        executable: false,
+        rent_epoch: 0,
+    }
+}
+
+/// SPL TokenAccount with state = Frozen.
+fn create_frozen_token_account(mint: &Pubkey, owner: &Pubkey, amount: u64) -> Account {
+    let mut acc = create_token_account(mint, owner, amount);
+    acc.data[108] = 2; // state = Frozen
+    acc
+}
+
+/// SPL Token program loader account.
+fn spl_token_program_account() -> Account {
+    Account {
+        executable: true,
+        lamports: 0,
+        data: vec![],
+        owner: native_loader::ID,
+        rent_epoch: 0,
+    }
+}
+
+/// SPL Associated Token program loader account.
+fn spl_ata_program_account() -> Account {
+    Account {
+        executable: true,
+        lamports: 0,
+        data: vec![],
+        owner: native_loader::ID,
+        rent_epoch: 0,
+    }
+}
+
+/// Adds a Pyth-backed asset to the protocol. Returns (asset_pda, oracle, mint, updated_settings, updated_permissions).
+fn add_test_asset(
+    signer: Pubkey,
+    settings: Pubkey,
+    settings_acc: Account,
+    permissions: Pubkey,
+    permissions_acc: Account,
+    decimals: u8,
+    price: i64,
+    access_level: AccessLevel,
+) -> (Pubkey, Pubkey, Pubkey, Account, Account) {
+    let (event_authority, _) = derive_event_authority();
+    let mint = Pubkey::new_unique();
+    let oracle = Pubkey::new_unique();
+    let (asset, _) = derive_asset_pda(&mint);
+
+    let ix = convert_instruction(
+        AddAssetBuilder::new()
+            .signer(signer.into())
+            .admin(permissions.into())
+            .settings(settings.into())
+            .asset(asset.into())
+            .asset_mint(mint.into())
+            .oracle(oracle.into())
+            .system_program(system_program::ID.into())
+            .access_level(access_level)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (permissions, permissions_acc),
+        (settings, settings_acc),
+        (asset, empty_account()),
+        (mint, create_mock_mint_with_decimals(decimals)),
+        (oracle, Account {
+            lamports: 1_000_000,
+            data: create_mock_pyth_price_data(price, -8, 0),
+            owner: PYTH_PROGRAM_ID,
+            executable: false,
+            rent_epoch: 0,
+        }),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    let result = with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(&ix, &accounts, &[Check::success()])
+    });
+
+    let updated_permissions = result.resulting_accounts.iter().find(|(k, _)| *k == permissions).unwrap().1.clone();
+    let updated_settings = result.resulting_accounts.iter().find(|(k, _)| *k == settings).unwrap().1.clone();
+    (asset, oracle, mint, updated_settings, updated_permissions)
+}
+
