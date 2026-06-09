@@ -97,8 +97,10 @@ pub struct UpdateDepositCapEvent {
 pub struct SlashEvent {
     pub admin: Pubkey,
     pub liquidity_pool: Pubkey,
-    pub amount: u64,
-    pub mint: Pubkey
+    pub protected_vault: Pubkey,
+    pub stablecoin_mint: Pubkey,
+    pub loss_usdc: u64,
+    pub amount_tokens: u64,
 }
 
 #[event]

@@ -143,9 +143,6 @@ pub enum RlpError {
     #[msg("AlreadyUnfrozen")]
     AlreadyUnfrozen,
 
-    #[msg("SlashAmountExceedsLimit")]
-    SlashAmountExceedsLimit,
-
     #[msg("OracleDataTooStale")]
     OracleDataTooStale,
 
@@ -157,4 +154,19 @@ pub enum RlpError {
 
     #[msg("CannotRemoveLastAsset")]
     CannotRemoveLastAsset,
+
+    #[msg("PoolHasNoProtectedVault")]
+    PoolHasNoProtectedVault,
+
+    #[msg("ProtectedVaultMismatch")]
+    ProtectedVaultMismatch,
+
+    #[msg("NoNavLossToCover")]
+    NoNavLossToCover,
+
+    #[msg("NavCoverageExceedsLoss")]
+    NavCoverageExceedsLoss,
+
+    #[msg("ProtectedVaultMintMismatch")]
+    ProtectedVaultMintMismatch,
 }
