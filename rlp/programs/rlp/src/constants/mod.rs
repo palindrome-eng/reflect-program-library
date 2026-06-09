@@ -52,12 +52,6 @@ pub const BPS_PRECISION: u128 = 10_000;
 pub const PRECISION: u32 = 18;
 
 #[constant]
-pub const MAX_SLASH_BPS: u64 = 1_000;
-
-#[constant]
-pub const BPS_DENOMINATOR: u64 = 10_000;
-
-#[constant]
 pub const DEAD_SHARES: u64 = 1_000_000;
 
 pub const DOPPLER_ORACLE_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
@@ -69,3 +63,17 @@ pub const DOPPLER_ORACLE_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
 
 #[constant]
 pub const DOPPLER_MAX_STALENESS: u64 = 200;
+
+#[constant]
+pub const PROXY_STATE_SEED: &str = "proxy";
+
+/// Reflect proxy program ID (mainnet/dev). Used to verify that a ProxyState
+/// account passed to `slash_for_nav_coverage` is owned by the expected proxy
+/// program. Production deploy ID:
+/// `pRoxYU64BSjv8HbhENna8a7LVCrkzzNrnvbYuTwas8C`.
+pub const PROXY_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
+    0x0c, 0x26, 0x59, 0xb0, 0x54, 0xea, 0x06, 0xd1,
+    0x8e, 0x37, 0x13, 0x58, 0x2b, 0x58, 0x6c, 0x62,
+    0xcf, 0x86, 0xe3, 0x62, 0x24, 0xa0, 0xb3, 0xe9,
+    0xca, 0x39, 0xf5, 0x71, 0xfe, 0x85, 0xff, 0xf1,
+]);
