@@ -3021,3 +3021,60 @@ fn test_h01_request_withdrawal_tolerates_cooldown_ata_squat() {
 
     with_mollusk(|m| m.process_and_validate_instruction(&ix, &accounts, &[Check::success()]));
 }
+
+/// audit-40 (L01): With `init_if_needed` on `dead_shares_vault`, a pre-existing
+/// ATA at the canonical (lp_pda, lp_mint) address must be tolerated by
+/// initialize_lp instead of reverting with IllegalOwner.
+#[test]
+fn test_l01_initialize_lp_tolerates_dead_shares_vault_squat() {
+    use rlp_client::generated::instructions::InitializeLpBuilder;
+
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+    let (_a, _o, _m, current_settings, current_permissions, _ac) =
+        add_test_asset(signer, settings, current_settings, permissions, current_permissions, 6, 100_00000000, AccessLevel::Public);
+
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .cooldown_duration(60)
+            .assets(vec![0])
+            .instruction()
+    );
+
+    // The squat — pre-existing TokenAccount at the canonical address with
+    // matching mint and authority. `init` would have reverted; `init_if_needed`
+    // tolerates.
+    let squatted = create_token_account(&lp_token_mint, &lp_pda, 0);
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (permissions, current_permissions),
+        (settings, current_settings),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, None)),
+        (dead_shares_vault, squatted),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    with_mollusk(|m| m.process_and_validate_instruction(&ix, &accounts, &[Check::success()]));
+}
