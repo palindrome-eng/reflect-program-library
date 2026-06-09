@@ -23,8 +23,7 @@ pub struct WithdrawEvent {
     pub from: Pubkey,
     pub liquidity_pool_id: u8,
     pub amount_in: u64,
-    pub amount_out: u64,
-    pub usd_value: u128,
+    pub amounts_out: Vec<(Pubkey, u64)>,
 }
 
 #[event]
