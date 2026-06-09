@@ -80,7 +80,7 @@ impl LiquidityPool {
             );
 
             let token_account = TokenAccount::try_deserialize(
-                &mut token_account_info.try_borrow_mut_data()?.as_ref(),
+                &mut token_account_info.try_borrow_data()?.as_ref(),
             )
             .map_err(|_| crate::errors::RlpError::InvalidInput)?;
 
@@ -94,7 +94,7 @@ impl LiquidityPool {
                 crate::errors::RlpError::InvalidInput
             );
 
-            let asset = Asset::try_deserialize(&mut asset_info.try_borrow_mut_data()?.as_ref())
+            let asset = Asset::try_deserialize(&mut asset_info.try_borrow_data()?.as_ref())
                 .map_err(|_| crate::errors::RlpError::InvalidInput)?;
 
             require!(
@@ -156,7 +156,7 @@ impl LiquidityPool {
                 crate::errors::RlpError::InvalidInput
             );
 
-            let mint_data = &mut mint_info.try_borrow_mut_data()?;
+            let mint_data = mint_info.try_borrow_data()?;
             let mint_account = Mint::try_deserialize(&mut mint_data.as_ref())
                 .map_err(|_| crate::errors::RlpError::InvalidInput)?;
 
