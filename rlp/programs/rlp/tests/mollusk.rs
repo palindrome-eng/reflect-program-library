@@ -3468,3 +3468,228 @@ fn test_h02_withdraw_refunds_excess_in_cooldown_ata() {
         "excess in cooldown ATA refunded to signer's LP account"
     );
 }
+
+// ============================================================================
+// SWAP TESTS
+// ============================================================================
+
+/// Set up a pool with TWO whitelisted assets and both reserves initialized.
+/// Returns (PoolFixture for asset 0, second_asset_pda, second_oracle, second_mint,
+/// second_asset_acc, second_pool_reserve, second_pool_reserve_acc, second_mint_acc).
+fn setup_pool_with_two_assets(signer: Pubkey) -> (PoolFixture, Pubkey, Pubkey, Pubkey, Account, Pubkey, Account, Account) {
+    use rlp_client::generated::instructions::{InitializeLpBuilder, InitializePoolReserveBuilder};
+
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (settings_acc, permissions_acc) = setup_initialized_rlp(signer);
+
+    let (asset0, oracle0, mint0, settings_acc, permissions_acc, asset0_acc) =
+        add_test_asset(signer, settings, settings_acc, permissions, permissions_acc, 6, 1_00000000, AccessLevel::Public);
+    let (asset1, oracle1, mint1, settings_acc, permissions_acc, asset1_acc) =
+        add_test_asset(signer, settings, settings_acc, permissions, permissions_acc, 6, 1_00000000, AccessLevel::Public);
+
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let init_lp_ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .cooldown_duration(60)
+            .assets(vec![0, 1])
+            .instruction()
+    );
+    let mut init_lp_accounts = vec![
+        (signer, signer_account()),
+        (permissions, permissions_acc),
+        (settings, settings_acc),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, None)),
+        (dead_shares_vault, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    init_lp_accounts.extend(spl_program_accounts());
+    init_lp_accounts.extend(event_cpi_accounts());
+    let r = with_mollusk(|m| m.process_and_validate_instruction(&init_lp_ix, &init_lp_accounts, &[Check::success()]));
+    let g = |k: Pubkey| r.resulting_accounts.iter().find(|(kk, _)| *kk == k).unwrap().1.clone();
+    let settings_acc = g(settings);
+    let permissions_acc = g(permissions);
+    let lp_pda_acc = g(lp_pda);
+    let lp_token_mint_acc = g(lp_token_mint);
+    let dead_shares_vault_acc = g(dead_shares_vault);
+
+    // init reserve for asset0
+    let pool_reserve_0 = derive_ata(&lp_pda, &mint0);
+    let ix0 = convert_instruction(
+        InitializePoolReserveBuilder::new()
+            .signer(signer.into()).permissions(permissions.into()).settings(settings.into())
+            .liquidity_pool(lp_pda.into()).asset(asset0.into()).asset_mint(mint0.into())
+            .pool_asset_account(pool_reserve_0.into())
+            .system_program(system_program::ID.into()).token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .liquidity_pool_id(0).instruction()
+    );
+    let mut a0 = vec![
+        (signer, signer_account()),
+        (permissions, permissions_acc.clone()),
+        (settings, settings_acc.clone()),
+        (lp_pda, lp_pda_acc.clone()),
+        (asset0, asset0_acc.clone()),
+        (mint0, create_mock_mint_with_decimals(6)),
+        (pool_reserve_0, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    a0.extend(spl_program_accounts());
+    let r0 = with_mollusk(|m| m.process_and_validate_instruction(&ix0, &a0, &[Check::success()]));
+    let g0 = |k: Pubkey| r0.resulting_accounts.iter().find(|(kk, _)| *kk == k).unwrap().1.clone();
+    let pool_reserve_0_acc = g0(pool_reserve_0);
+    let mint0_acc = g0(mint0);
+
+    // init reserve for asset1
+    let pool_reserve_1 = derive_ata(&lp_pda, &mint1);
+    let ix1 = convert_instruction(
+        InitializePoolReserveBuilder::new()
+            .signer(signer.into()).permissions(permissions.into()).settings(settings.into())
+            .liquidity_pool(lp_pda.into()).asset(asset1.into()).asset_mint(mint1.into())
+            .pool_asset_account(pool_reserve_1.into())
+            .system_program(system_program::ID.into()).token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .liquidity_pool_id(0).instruction()
+    );
+    let mut a1 = vec![
+        (signer, signer_account()),
+        (permissions, permissions_acc.clone()),
+        (settings, g0(settings)),
+        (lp_pda, g0(lp_pda)),
+        (asset1, asset1_acc.clone()),
+        (mint1, create_mock_mint_with_decimals(6)),
+        (pool_reserve_1, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    a1.extend(spl_program_accounts());
+    let r1 = with_mollusk(|m| m.process_and_validate_instruction(&ix1, &a1, &[Check::success()]));
+    let g1 = |k: Pubkey| r1.resulting_accounts.iter().find(|(kk, _)| *kk == k).unwrap().1.clone();
+
+    // Open swap to PUBLIC
+    let mut settings_acc = g1(settings);
+    let mut permissions_acc = g1(permissions);
+    for action in [Action::Swap] {
+        let upd_ix = convert_instruction(
+            rlp_client::generated::instructions::UpdateActionRoleBuilder::new()
+                .admin(signer.into()).settings(settings.into()).admin_permissions(permissions.into())
+                .system_program(system_program::ID.into())
+                .action(action).role(Role::PUBLIC).update(Update::Add)
+                .event_authority(event_authority.into()).program(RLP_ID).instruction()
+        );
+        let mut a = vec![
+            (signer, signer_account()),
+            (settings, settings_acc.clone()),
+            (permissions, permissions_acc.clone()),
+            (system_program::ID, system_program_account()),
+        ];
+        a.extend(event_cpi_accounts());
+        let rr = with_mollusk(|m| m.process_and_validate_instruction(&upd_ix, &a, &[Check::success()]));
+        settings_acc = rr.resulting_accounts.iter().find(|(k, _)| *k == settings).unwrap().1.clone();
+        permissions_acc = rr.resulting_accounts.iter().find(|(k, _)| *k == permissions).unwrap().1.clone();
+    }
+
+    let p = PoolFixture {
+        signer, settings, permissions,
+        asset: asset0, oracle: oracle0, asset_mint: mint0,
+        lp_pda, lp_token_mint, dead_shares_vault, pool_asset_account: pool_reserve_0,
+        settings_acc, permissions_acc,
+        asset_acc: asset0_acc, asset_mint_acc: mint0_acc,
+        lp_pda_acc: g1(lp_pda), lp_token_mint_acc, dead_shares_vault_acc,
+        pool_asset_account_acc: pool_reserve_0_acc,
+    };
+    let pool_reserve_1_acc = g1(pool_reserve_1);
+    let mint1_acc = g1(mint1);
+    (p, asset1, oracle1, mint1, asset1_acc, pool_reserve_1, pool_reserve_1_acc, mint1_acc)
+}
+
+/// audit-38 (L02): `swap` must reject when the target reserve is empty (the
+/// impact math saturates to amount_out=0 and old code silently consumed input).
+#[test]
+fn test_l02_swap_rejects_zero_output() {
+    use rlp_client::generated::instructions::SwapBuilder;
+
+    let admin = Pubkey::new_unique();
+    let (p, asset1, oracle1, mint1, asset1_acc, pool_reserve_1, pool_reserve_1_acc, mint1_acc) =
+        setup_pool_with_two_assets(admin);
+    let user = Pubkey::new_unique();
+    let (event_authority, _) = derive_event_authority();
+
+    // User has some of token 0, wants to swap into token 1 — but token 1's
+    // pool reserve is empty (we never funded it).
+    let user_token_from = derive_ata(&user, &p.asset_mint);
+    let user_token_to = derive_ata(&user, &mint1);
+
+    let oracle_acc = Account {
+        lamports: 1_000_000,
+        data: create_mock_pyth_price_data(1_00000000, -8, 0),
+        owner: PYTH_PROGRAM_ID,
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    let ix = convert_instruction(
+        SwapBuilder::new()
+            .signer(user.into())
+            .admin(None)
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .token_from(p.asset_mint.into())
+            .token_from_asset(p.asset.into())
+            .token_from_oracle(p.oracle.into())
+            .token_to(mint1.into())
+            .token_to_asset(asset1.into())
+            .token_to_oracle(oracle1.into())
+            .token_from_pool(p.pool_asset_account.into())
+            .token_to_pool(pool_reserve_1.into())
+            .token_from_signer_account(user_token_from.into())
+            .token_to_signer_account(user_token_to.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .amount_in(1_000_000)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (user, signer_account()),
+        (p.settings, p.settings_acc.clone()),
+        (p.lp_pda, p.lp_pda_acc.clone()),
+        (p.asset_mint, p.asset_mint_acc.clone()),
+        (p.asset, p.asset_acc.clone()),
+        (p.oracle, oracle_acc.clone()),
+        (mint1, mint1_acc),
+        (asset1, asset1_acc),
+        (oracle1, oracle_acc),
+        (p.pool_asset_account, p.pool_asset_account_acc.clone()),
+        (pool_reserve_1, pool_reserve_1_acc), // empty reserve
+        (user_token_from, create_token_account(&p.asset_mint, &user, 10_000_000)),
+        (user_token_to, create_token_account(&mint1, &user, 0)),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    // NotEnoughFunds = variant 5. amount_out > 0 check returns this when
+    // target reserve = 0 (oracle_out * 0 / (0 + oracle_out) = 0).
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(5))],
+    ));
+}
