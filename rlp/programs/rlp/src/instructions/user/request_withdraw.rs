@@ -143,7 +143,7 @@ pub struct RequestWithdrawal<'info> {
     pub cooldown: Box<Account<'info, Cooldown>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = signer,
         associated_token::mint = lp_token_mint,
         associated_token::authority = cooldown,
