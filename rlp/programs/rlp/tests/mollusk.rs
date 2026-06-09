@@ -2752,3 +2752,200 @@ fn test_m02_force_remove_asset_rejects_unfrozen() {
         &[Check::err(rlp_error_code(49))],
     ));
 }
+
+// ============================================================================
+// NAV SLASH TESTS (audit-2-37: NAV-based junior tranche coverage)
+// ============================================================================
+
+/// PROXY_PROGRAM_ID from rlp::constants — owner of every ProxyState account.
+fn proxy_program_id() -> Pubkey {
+    Pubkey::new_from_array(rlp::constants::PROXY_PROGRAM_ID.to_bytes())
+}
+
+/// Build a 124-byte ProxyState account matching `ProxyStateView`'s layout.
+/// principal + integrators_commission = booked senior claims (USDC-denominated).
+fn create_proxy_state_account(
+    branded_mint: &Pubkey,
+    stablecoin_mint: &Pubkey,
+    principal: u64,
+    integrators_commission: u64,
+) -> Account {
+    let mut data = vec![0u8; 124];
+    data[0..32].copy_from_slice(&branded_mint.to_bytes());
+    data[32..64].copy_from_slice(&stablecoin_mint.to_bytes());
+    // 64..66: fee = 0
+    data[66..74].copy_from_slice(&principal.to_le_bytes());
+    data[74..82].copy_from_slice(&integrators_commission.to_le_bytes());
+    // 82..114: authority = zeros
+    // 114: bump
+    // 115: frozen = 0
+    // 116..124: deposit_cap = 0
+    Account {
+        lamports: 2_000_000,
+        data,
+        owner: proxy_program_id(),
+        executable: false,
+        rent_epoch: 0,
+    }
+}
+
+/// audit-NAV (M06): `slash` must reject when the protected vault has no
+/// mark-to-market loss (vault_value >= principal + commission → no gap).
+#[test]
+fn test_nav_slash_rejects_when_no_gap() {
+    use rlp_client::generated::instructions::SlashBuilder;
+
+    // Set up a pool whose protected_vault is a mock ProxyState.
+    let admin = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(admin);
+    let (event_authority, _) = derive_event_authority();
+    let (settings_acc, permissions_acc) = setup_initialized_rlp(admin);
+
+    // Add USDC+ as the protected stablecoin (and the pool's slashable asset).
+    let (asset, oracle, stablecoin_mint, settings_acc, permissions_acc, asset_acc) =
+        add_test_asset(admin, settings, settings_acc, permissions, permissions_acc, 6, 1_00000000, AccessLevel::Public);
+
+    // Mock proxy state at a unique pubkey, with principal=1000, commission=0, vault holding $1000 worth.
+    let branded_mint = Pubkey::new_unique();
+    let proxy_state = Pubkey::new_unique();
+    let principal: u64 = 1_000_000_000; // 1000 USDC raw (assuming 6 decimals)
+    let proxy_state_acc = create_proxy_state_account(&branded_mint, &stablecoin_mint, principal, 0);
+    let proxy_vault = derive_ata(&proxy_state, &stablecoin_mint);
+    // Vault holds exactly enough USDC+ to cover principal at price=1.0 (oracle: 1_00000000 with exp=-8 → 1.0):
+    // vault_balance * 1.0 = vault_value. principal = 1_000_000_000.
+    // To have value = principal, vault_balance = principal = 1_000_000_000.
+    let proxy_vault_acc = create_token_account(&stablecoin_mint, &proxy_state, principal);
+
+    // Initialize LP with protected_vault = proxy_state.
+    use rlp_client::generated::instructions::{InitializeLpBuilder, InitializePoolReserveBuilder};
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let init_lp_ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(admin.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .cooldown_duration(60)
+            .assets(vec![0])
+            .protected_vault(proxy_state.into())
+            .instruction()
+    );
+
+    let mut init_lp_accounts = vec![
+        (admin, signer_account()),
+        (permissions, permissions_acc),
+        (settings, settings_acc),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, None)),
+        (dead_shares_vault, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    init_lp_accounts.extend(spl_program_accounts());
+    init_lp_accounts.extend(event_cpi_accounts());
+
+    let r = with_mollusk(|m| m.process_and_validate_instruction(&init_lp_ix, &init_lp_accounts, &[Check::success()]));
+    let g = |k: Pubkey| r.resulting_accounts.iter().find(|(kk, _)| *kk == k).unwrap().1.clone();
+    let settings_acc = g(settings);
+    let permissions_acc = g(permissions);
+    let lp_pda_acc = g(lp_pda);
+
+    // Init the pool reserve for USDC+.
+    let pool_asset_account = derive_ata(&lp_pda, &stablecoin_mint);
+    let init_reserve_ix = convert_instruction(
+        InitializePoolReserveBuilder::new()
+            .signer(admin.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .asset(asset.into())
+            .asset_mint(stablecoin_mint.into())
+            .pool_asset_account(pool_asset_account.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .liquidity_pool_id(0)
+            .instruction()
+    );
+    let mut init_reserve_accounts = vec![
+        (admin, signer_account()),
+        (permissions, permissions_acc.clone()),
+        (settings, settings_acc.clone()),
+        (lp_pda, lp_pda_acc.clone()),
+        (asset, asset_acc.clone()),
+        (stablecoin_mint, create_mock_mint_with_decimals(6)),
+        (pool_asset_account, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    init_reserve_accounts.extend(spl_program_accounts());
+    let r2 = with_mollusk(|m| m.process_and_validate_instruction(&init_reserve_ix, &init_reserve_accounts, &[Check::success()]));
+    let g2 = |k: Pubkey| r2.resulting_accounts.iter().find(|(kk, _)| *kk == k).unwrap().1.clone();
+    let permissions_acc = g2(permissions);
+    let settings_acc = g2(settings);
+    let lp_pda_acc = g2(lp_pda);
+    let asset_acc = g2(asset);
+    let pool_reserve_acc = g2(pool_asset_account);
+
+    // Fund the pool reserve so a slash would have something to transfer.
+    let mut pool_reserve_funded = pool_reserve_acc.clone();
+    pool_reserve_funded.data[64..72].copy_from_slice(&500_000_000u64.to_le_bytes());
+
+    // Call slash. Vault_value = vault_balance × 1.0 = principal. Gap = 0 → expect NoNavLossToCover.
+    let ix = convert_instruction(
+        SlashBuilder::new()
+            .signer(admin.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .asset(asset.into())
+            .stablecoin_mint(stablecoin_mint.into())
+            .liquidity_pool_token_account(pool_asset_account.into())
+            .proxy_state(proxy_state.into())
+            .protected_vault_token_account(proxy_vault.into())
+            .oracle(oracle.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_id(0)
+            .amount(100_000_000)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (admin, signer_account()),
+        (permissions, permissions_acc),
+        (settings, settings_acc),
+        (lp_pda, lp_pda_acc),
+        (asset, asset_acc),
+        (stablecoin_mint, create_mock_mint_with_decimals(6)),
+        (pool_asset_account, pool_reserve_funded),
+        (proxy_state, proxy_state_acc),
+        (proxy_vault, proxy_vault_acc),
+        (oracle, Account {
+            lamports: 1_000_000,
+            data: create_mock_pyth_price_data(1_00000000, -8, 0),
+            owner: PYTH_PROGRAM_ID,
+            executable: false,
+            rent_epoch: 0,
+        }),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    // NoNavLossToCover = variant 53.
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(53))],
+    ));
+}
