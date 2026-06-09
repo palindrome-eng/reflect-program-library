@@ -7,7 +7,7 @@ use crate::helpers::{
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Debug, InitSpace)]
 pub enum Oracle {
-    Pyth(Pubkey),
+    Pyth { account: Pubkey, feed_id: [u8; 32] },
     Doppler(Pubkey),
 }
 
@@ -20,7 +20,7 @@ pub enum AccessLevel {
 impl Oracle {
     pub fn key(&self) -> &Pubkey {
         match self {
-            Oracle::Pyth(key) => key,
+            Oracle::Pyth { account, .. } => account,
             Oracle::Doppler(key) => key,
         }
     }
@@ -44,7 +44,7 @@ impl Asset {
         clock: &Clock
     ) -> Result<OraclePrice> {
         match self.oracle {
-            Oracle::Pyth(_) => get_price_from_pyth(account, clock),
+            Oracle::Pyth { feed_id, .. } => get_price_from_pyth(account, clock, &feed_id),
             Oracle::Doppler(_) => get_price_from_doppler(account),
         }
     }

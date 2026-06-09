@@ -6,6 +6,7 @@ use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
+use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct AddAssetArgs {
@@ -22,8 +23,15 @@ pub fn add_asset(ctx: Context<AddAsset>, args: AddAssetArgs) -> Result<()> {
     let clock = Clock::get()?;
 
     let oracle = if oracle.owner.as_ref() == PYTH_PROGRAM_ID.as_ref() {
-        get_price_from_pyth(oracle, &clock)?;
-        Oracle::Pyth(oracle.key())
+        let feed_id = {
+            let data = oracle.try_borrow_data()?;
+            let mut slice: &[u8] = &data;
+            let price_update = PriceUpdateV2::try_deserialize(&mut slice)
+                .map_err(|_| RlpError::InvalidOracle)?;
+            price_update.price_message.feed_id
+        };
+        get_price_from_pyth(oracle, &clock, &feed_id)?;
+        Oracle::Pyth { account: oracle.key(), feed_id }
     } else if oracle.owner == &DOPPLER_ORACLE_PROGRAM_ID {
         get_price_from_doppler(oracle)?;
         Oracle::Doppler(oracle.key())

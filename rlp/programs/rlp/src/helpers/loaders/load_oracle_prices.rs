@@ -22,8 +22,8 @@ pub fn load_oracle_prices(
         let result = match maybe_account {
             Some(account_info) => {
                 match asset.oracle {
-                    Oracle::Pyth(_) => {
-                        get_price_from_pyth(account_info, clock)
+                    Oracle::Pyth { feed_id, .. } => {
+                        get_price_from_pyth(account_info, clock, &feed_id)
                     },
                     Oracle::Doppler(_) => {
                         get_price_from_doppler(account_info)
