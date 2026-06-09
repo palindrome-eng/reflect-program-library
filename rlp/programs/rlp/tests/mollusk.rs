@@ -36,7 +36,32 @@ use solana_sdk::system_program;
 const SPL_TOKEN_ID: Pubkey = solana_sdk::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
 pub mod helpers;
-pub use helpers::pda::{derive_permissions_pda, derive_settings_pda};
+pub use helpers::pda::{derive_event_authority, derive_permissions_pda, derive_settings_pda};
+
+/// Returns the program-as-account entry for the RLP program ID, which is
+/// required by every instruction that uses #[event_cpi] (audit-E09 fix).
+/// Mollusk pre-loads the program; this is just so the instruction's account
+/// list resolves.
+fn rlp_program_account() -> Account {
+    Account {
+        executable: true,
+        lamports: 0,
+        data: vec![],
+        owner: solana_sdk::bpf_loader_upgradeable::ID,
+        rent_epoch: 0,
+    }
+}
+
+/// Pair (event_authority_pda, empty_account) used by every #[event_cpi]
+/// instruction. The PDA itself doesn't need any data — it's only used as a
+/// CPI signer by the emit_cpi! macro.
+fn event_cpi_accounts() -> Vec<(Pubkey, Account)> {
+    let (event_authority, _) = derive_event_authority();
+    vec![
+        (event_authority, empty_account()),
+        (Pubkey::new_from_array(RLP_ID.to_bytes()), rlp_program_account()),
+    ]
+}
 
 // Pyth program ID
 const PYTH_PROGRAM_ID: Pubkey = solana_sdk::pubkey!("rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ");
@@ -69,14 +94,19 @@ fn derive_asset_pda(mint: &Pubkey) -> (Pubkey, u8) {
     )
 }
 
-/// Creates mock Pyth PriceUpdateV2 data (134 bytes)
+/// Creates mock Pyth PriceUpdateV2 data (133 bytes).
+///
+/// VerificationLevel::Full is a 1-byte Borsh enum tag (no payload). The
+/// previous mock wrote 2 bytes for it, which shifted every subsequent field
+/// by one and produced garbage feed_id, price, and publish_time when the
+/// audit-3 hardening enabled strict deserialization via try_deserialize.
 fn create_mock_pyth_price_data(price: i64, exponent: i32, publish_time: i64) -> Vec<u8> {
-    let mut data = Vec::with_capacity(134);
-    
+    let mut data = Vec::with_capacity(133);
+
     // Discriminator for PriceUpdateV2
     data.extend_from_slice(&[34, 241, 35, 99, 157, 126, 244, 205]);
     data.extend_from_slice(&[0u8; 32]); // write_authority
-    data.push(1); data.push(0); // verification_level (Full)
+    data.push(1); // verification_level (Full) — 1-byte Borsh enum tag, no payload
     data.extend_from_slice(&[1u8; 32]); // feed_id
     data.extend_from_slice(&price.to_le_bytes());
     data.extend_from_slice(&100u64.to_le_bytes()); // conf
@@ -86,8 +116,8 @@ fn create_mock_pyth_price_data(price: i64, exponent: i32, publish_time: i64) -> 
     data.extend_from_slice(&price.to_le_bytes()); // ema_price
     data.extend_from_slice(&100u64.to_le_bytes()); // ema_conf
     data.extend_from_slice(&1u64.to_le_bytes()); // posted_slot
-    
-    assert_eq!(data.len(), 134);
+
+    assert_eq!(data.len(), 133);
     data
 }
 
@@ -172,6 +202,7 @@ fn test_initialize_rlp_instruction() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     let ix = convert_instruction(
         InitializeRlpBuilder::new()
@@ -179,16 +210,19 @@ fn test_initialize_rlp_instruction() {
             .permissions(permissions.into())
             .settings(settings.into())
             .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .swap_fee_bps(30)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&ix, &accounts, &[Check::success()])
@@ -214,6 +248,7 @@ fn test_freeze_protocol() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // First initialize
     let init_ix = convert_instruction(
@@ -223,15 +258,18 @@ fn test_freeze_protocol() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -250,15 +288,18 @@ fn test_freeze_protocol() {
             .system_program(system_program::ID.into())
             .action(Action::FreezeDeposit)
             .freeze(true)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let freeze_accounts = vec![
+    let mut freeze_accounts = vec![
         (signer, signer_account()),
         (settings, updated_settings),
         (permissions, updated_permissions),
         (system_program::ID, system_program_account()),
     ];
+    freeze_accounts.extend(event_cpi_accounts());
 
     let freeze_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&freeze_ix, &freeze_accounts, &[Check::success()])
@@ -280,6 +321,7 @@ fn test_unfreeze_protocol() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -289,15 +331,18 @@ fn test_unfreeze_protocol() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -315,15 +360,18 @@ fn test_unfreeze_protocol() {
             .system_program(system_program::ID.into())
             .action(Action::FreezeDeposit)
             .freeze(true)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let freeze_accounts = vec![
+    let mut freeze_accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions.clone()),
         (system_program::ID, system_program_account()),
     ];
+    freeze_accounts.extend(event_cpi_accounts());
 
     let freeze_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&freeze_ix, &freeze_accounts, &[Check::success()])
@@ -340,15 +388,18 @@ fn test_unfreeze_protocol() {
             .system_program(system_program::ID.into())
             .action(Action::FreezeDeposit)
             .freeze(false)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let unfreeze_accounts = vec![
+    let mut unfreeze_accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions),
         (system_program::ID, system_program_account()),
     ];
+    unfreeze_accounts.extend(event_cpi_accounts());
 
     let unfreeze_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&unfreeze_ix, &unfreeze_accounts, &[Check::success()])
@@ -365,6 +416,7 @@ fn test_freeze_multiple_actions() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -374,15 +426,18 @@ fn test_freeze_multiple_actions() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -400,15 +455,18 @@ fn test_freeze_multiple_actions() {
             .system_program(system_program::ID.into())
             .action(Action::FreezeWithdraw)
             .freeze(true)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions.clone()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&freeze_withdraw_ix, &accounts, &[Check::success()])
@@ -425,15 +483,18 @@ fn test_freeze_multiple_actions() {
             .system_program(system_program::ID.into())
             .action(Action::FreezeSlash)
             .freeze(true)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&freeze_slash_ix, &accounts, &[Check::success()])
@@ -459,6 +520,7 @@ fn test_set_restaking_action_to_public() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -468,15 +530,18 @@ fn test_set_restaking_action_to_public() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -495,15 +560,18 @@ fn test_set_restaking_action_to_public() {
             .action(Action::Deposit)
             .role(Role::PUBLIC)
             .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&update_ix, &accounts, &[Check::success()])
@@ -529,6 +597,7 @@ fn test_set_withdraw_action_to_public() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -538,15 +607,18 @@ fn test_set_withdraw_action_to_public() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -565,15 +637,18 @@ fn test_set_withdraw_action_to_public() {
             .action(Action::Withdraw)
             .role(Role::PUBLIC)
             .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&update_ix, &accounts, &[Check::success()])
@@ -599,6 +674,7 @@ fn test_update_action_role_add_and_remove() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -608,15 +684,18 @@ fn test_update_action_role_add_and_remove() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -635,15 +714,18 @@ fn test_update_action_role_add_and_remove() {
             .action(Action::SuspendDeposits)
             .role(Role::TESTEE)
             .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions.clone()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let add_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&add_ix, &accounts, &[Check::success()])
@@ -672,15 +754,18 @@ fn test_update_action_role_add_and_remove() {
             .action(Action::SuspendDeposits)
             .role(Role::TESTEE)
             .update(Update::Remove)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let remove_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&remove_ix, &accounts, &[Check::success()])
@@ -704,6 +789,7 @@ fn test_action_permissions_for_multiple_roles() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -713,15 +799,18 @@ fn test_action_permissions_for_multiple_roles() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -743,15 +832,18 @@ fn test_action_permissions_for_multiple_roles() {
                 .action(Action::Swap)
                 .role(*role)
                 .update(Update::Add)
+                .event_authority(event_authority.into())
+                .program(RLP_ID)
                 .instruction()
         );
 
-        let accounts = vec![
+        let mut accounts = vec![
             (signer, signer_account()),
             (settings, current_settings),
             (permissions, current_permissions.clone()),
             (system_program::ID, system_program_account()),
         ];
+        accounts.extend(event_cpi_accounts());
 
         let result = with_mollusk(|mollusk| {
             mollusk.process_and_validate_instruction(&add_ix, &accounts, &[Check::success()])
@@ -784,6 +876,7 @@ fn test_create_permission_account() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -793,15 +886,18 @@ fn test_create_permission_account() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -820,15 +916,18 @@ fn test_create_permission_account() {
             .caller(signer.into())
             .system_program(system_program::ID.into())
             .new_admin(new_admin.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (settings, current_settings),
         (new_admin_permissions, empty_account()),
         (signer, signer_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&create_ix, &accounts, &[Check::success()])
@@ -848,6 +947,7 @@ fn test_create_multiple_permission_accounts() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -857,15 +957,18 @@ fn test_create_multiple_permission_accounts() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -885,15 +988,18 @@ fn test_create_multiple_permission_accounts() {
                 .caller(signer.into())
                 .system_program(system_program::ID.into())
                 .new_admin(new_admin.into())
+                .event_authority(event_authority.into())
+                .program(RLP_ID)
                 .instruction()
         );
 
-        let accounts = vec![
+        let mut accounts = vec![
             (settings, current_settings.clone()),
             (new_admin_permissions, empty_account()),
             (signer, signer_account()),
             (system_program::ID, system_program_account()),
         ];
+        accounts.extend(event_cpi_accounts());
 
         let result = with_mollusk(|mollusk| {
             mollusk.process_and_validate_instruction(&create_ix, &accounts, &[Check::success()])
@@ -911,6 +1017,7 @@ fn test_update_role_holder_add_role() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -920,15 +1027,18 @@ fn test_update_role_holder_add_role() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -948,15 +1058,18 @@ fn test_update_role_holder_add_role() {
             .caller(signer.into())
             .system_program(system_program::ID.into())
             .new_admin(target_user.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (settings, current_settings.clone()),
         (target_user_permissions, empty_account()),
         (signer, signer_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let create_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&create_ix, &accounts, &[Check::success()])
@@ -975,16 +1088,19 @@ fn test_update_role_holder_add_role() {
             .address(target_user.into())
             .role(Role::CRANK)
             .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions),
         (target_user_permissions, target_permissions_account),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&update_ix, &accounts, &[Check::success()])
@@ -1001,6 +1117,7 @@ fn test_update_role_holder_remove_role() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -1010,15 +1127,18 @@ fn test_update_role_holder_remove_role() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -1038,15 +1158,18 @@ fn test_update_role_holder_remove_role() {
             .caller(signer.into())
             .system_program(system_program::ID.into())
             .new_admin(target_user.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (settings, current_settings.clone()),
         (target_user_permissions, empty_account()),
         (signer, signer_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let create_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&create_ix, &accounts, &[Check::success()])
@@ -1065,16 +1188,19 @@ fn test_update_role_holder_remove_role() {
             .address(target_user.into())
             .role(Role::FREEZE)
             .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings.clone()),
         (permissions, current_permissions.clone()),
         (target_user_permissions, target_permissions_account),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let add_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&add_ix, &accounts, &[Check::success()])
@@ -1097,16 +1223,19 @@ fn test_update_role_holder_remove_role() {
             .address(target_user.into())
             .role(Role::FREEZE)
             .update(Update::Remove)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (settings, current_settings),
         (permissions, current_permissions),
         (target_user_permissions, target_permissions_account),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&remove_ix, &accounts, &[Check::success()])
@@ -1123,6 +1252,7 @@ fn test_grant_multiple_roles_to_user() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -1132,15 +1262,18 @@ fn test_grant_multiple_roles_to_user() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -1160,15 +1293,18 @@ fn test_grant_multiple_roles_to_user() {
             .caller(signer.into())
             .system_program(system_program::ID.into())
             .new_admin(target_user.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (settings, current_settings.clone()),
         (target_user_permissions, empty_account()),
         (signer, signer_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let create_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&create_ix, &accounts, &[Check::success()])
@@ -1190,16 +1326,19 @@ fn test_grant_multiple_roles_to_user() {
                 .address(target_user.into())
                 .role(*role)
                 .update(Update::Add)
+                .event_authority(event_authority.into())
+                .program(RLP_ID)
                 .instruction()
         );
 
-        let accounts = vec![
+        let mut accounts = vec![
             (signer, signer_account()),
             (settings, current_settings.clone()),
             (permissions, current_permissions.clone()),
             (target_user_permissions, target_permissions_account),
             (system_program::ID, system_program_account()),
         ];
+        accounts.extend(event_cpi_accounts());
 
         let result = with_mollusk(|mollusk| {
             mollusk.process_and_validate_instruction(&add_ix, &accounts, &[Check::success()])
@@ -1227,6 +1366,7 @@ fn test_add_public_asset() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -1236,15 +1376,18 @@ fn test_add_public_asset() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -1258,10 +1401,7 @@ fn test_add_public_asset() {
     let oracle = Pubkey::new_unique();
     let (asset, _) = derive_asset_pda(&mint);
 
-    let publish_time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let publish_time: i64 = 0;
 
     let add_asset_ix = convert_instruction(
         AddAssetBuilder::new()
@@ -1273,10 +1413,12 @@ fn test_add_public_asset() {
             .oracle(oracle.into())
             .system_program(system_program::ID.into())
             .access_level(AccessLevel::Public)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, current_permissions),
         (settings, current_settings),
@@ -1291,6 +1433,7 @@ fn test_add_public_asset() {
         }),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&add_asset_ix, &accounts, &[Check::success()])
@@ -1312,6 +1455,7 @@ fn test_add_private_asset() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -1321,15 +1465,18 @@ fn test_add_private_asset() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -1343,10 +1490,7 @@ fn test_add_private_asset() {
     let oracle = Pubkey::new_unique();
     let (asset, _) = derive_asset_pda(&mint);
 
-    let publish_time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let publish_time: i64 = 0;
 
     let add_asset_ix = convert_instruction(
         AddAssetBuilder::new()
@@ -1358,10 +1502,12 @@ fn test_add_private_asset() {
             .oracle(oracle.into())
             .system_program(system_program::ID.into())
             .access_level(AccessLevel::Private)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, current_permissions),
         (settings, current_settings),
@@ -1376,6 +1522,7 @@ fn test_add_private_asset() {
         }),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&add_asset_ix, &accounts, &[Check::success()])
@@ -1392,6 +1539,7 @@ fn test_add_multiple_assets() {
     let signer = Pubkey::new_unique();
     let (settings, _) = derive_settings_pda();
     let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
 
     // Initialize
     let init_ix = convert_instruction(
@@ -1401,15 +1549,18 @@ fn test_add_multiple_assets() {
             .settings(settings.into())
             .system_program(system_program::ID.into())
             .swap_fee_bps(30)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
             .instruction()
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         (signer, signer_account()),
         (permissions, empty_account()),
         (settings, empty_account()),
         (system_program::ID, system_program_account()),
     ];
+    accounts.extend(event_cpi_accounts());
 
     let init_result = with_mollusk(|mollusk| {
         mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
@@ -1418,10 +1569,7 @@ fn test_add_multiple_assets() {
     let mut current_settings = get_result_account(&init_result, 2);
     let current_permissions = get_result_account(&init_result, 1);
 
-    let publish_time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let publish_time: i64 = 0;
 
     // Add 5 assets
     for i in 0..5u8 {
@@ -1439,10 +1587,12 @@ fn test_add_multiple_assets() {
                 .oracle(oracle.into())
                 .system_program(system_program::ID.into())
                 .access_level(if i % 2 == 0 { AccessLevel::Public } else { AccessLevel::Private })
+                .event_authority(event_authority.into())
+                .program(RLP_ID)
                 .instruction()
         );
 
-        let accounts = vec![
+        let mut accounts = vec![
             (signer, signer_account()),
             (permissions, current_permissions.clone()),
             (settings, current_settings),
@@ -1457,6 +1607,7 @@ fn test_add_multiple_assets() {
             }),
             (system_program::ID, system_program_account()),
         ];
+        accounts.extend(event_cpi_accounts());
 
         let result = with_mollusk(|mollusk| {
             mollusk.process_and_validate_instruction(&add_asset_ix, &accounts, &[Check::success()])
