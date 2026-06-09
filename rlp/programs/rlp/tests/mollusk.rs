@@ -1620,3 +1620,248 @@ fn test_add_multiple_assets() {
     let settings_data = Settings::from_bytes(&current_settings.data).unwrap();
     assert_eq!(settings_data.assets, 5);
 }
+
+// ============================================================================
+// AUDIT-FIX NEGATIVE TESTS
+// ============================================================================
+
+/// Anchor encodes custom errors as `6000 + variant_index`. Helper to translate
+/// an `RlpError` discriminant position into a `ProgramError`.
+fn rlp_error_code(variant_index: u32) -> solana_sdk::program_error::ProgramError {
+    solana_sdk::program_error::ProgramError::Custom(6000 + variant_index)
+}
+
+/// Helper: initialize RLP and return (current_settings, current_permissions).
+fn setup_initialized_rlp(signer: Pubkey) -> (Account, Account) {
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+
+    let init_ix = convert_instruction(
+        InitializeRlpBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .swap_fee_bps(30)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (permissions, empty_account()),
+        (settings, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    let result = with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(&init_ix, &accounts, &[Check::success()])
+    });
+
+    let current_permissions = get_result_account(&result, 1);
+    let current_settings = get_result_account(&result, 2);
+    (current_settings, current_permissions)
+}
+
+/// M01: `update_action_role` must reject `Role::UNSET` at the instruction
+/// boundary. Otherwise UNSET could be composed with a user-side write to
+/// produce a silent access-control bypass.
+#[test]
+fn test_m01_update_action_role_rejects_unset() {
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+
+    let ix = convert_instruction(
+        UpdateActionRoleBuilder::new()
+            .admin(signer.into())
+            .settings(settings.into())
+            .admin_permissions(permissions.into())
+            .system_program(system_program::ID.into())
+            .action(Action::Deposit)
+            .role(Role::UNSET)
+            .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (settings, current_settings),
+        (permissions, current_permissions),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    // RlpError::InvalidInput is variant index 1 → custom error code 6001.
+    with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(
+            &ix,
+            &accounts,
+            &[Check::err(rlp_error_code(1))],
+        )
+    });
+}
+
+/// M01 companion: `update_role_holder` must reject `Role::UNSET`.
+#[test]
+fn test_m01_update_role_holder_rejects_unset() {
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+
+    // Create a target permission account first.
+    let target = Pubkey::new_unique();
+    let (target_perms, _) = derive_permissions_pda(target);
+    let create_ix = convert_instruction(
+        CreatePermissionAccountBuilder::new()
+            .caller(signer.into())
+            .settings(settings.into())
+            .new_creds(target_perms.into())
+            .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .new_admin(target.into())
+            .instruction()
+    );
+    let mut create_accounts = vec![
+        (settings, current_settings.clone()),
+        (target_perms, empty_account()),
+        (signer, signer_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    create_accounts.extend(event_cpi_accounts());
+
+    let create_result = with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(&create_ix, &create_accounts, &[Check::success()])
+    });
+
+    let updated_target_perms = create_result.resulting_accounts
+        .iter()
+        .find(|(k, _)| *k == target_perms)
+        .unwrap()
+        .1
+        .clone();
+
+    // Now try to assign UNSET role to the target — should reject.
+    let ix = convert_instruction(
+        UpdateRoleHolderBuilder::new()
+            .admin(signer.into())
+            .settings(settings.into())
+            .admin_permissions(permissions.into())
+            .update_admin_permissions(target_perms.into())
+            .system_program(system_program::ID.into())
+            .address(target.into())
+            .role(Role::UNSET)
+            .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (settings, current_settings),
+        (permissions, current_permissions),
+        (target_perms, updated_target_perms),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(
+            &ix,
+            &accounts,
+            &[Check::err(rlp_error_code(1))],
+        )
+    });
+}
+
+/// M03: `update_action_role` must reject `Role::PUBLIC` for any action that
+/// isn't in the publicly-assignable allowlist (Deposit/Withdraw/Swap).
+/// Trying to assign PUBLIC to e.g. `UpdateRole` would otherwise grant
+/// privileged action to all callers.
+#[test]
+fn test_m03_update_action_role_rejects_public_for_privileged() {
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+
+    let ix = convert_instruction(
+        UpdateActionRoleBuilder::new()
+            .admin(signer.into())
+            .settings(settings.into())
+            .admin_permissions(permissions.into())
+            .system_program(system_program::ID.into())
+            .action(Action::UpdateRole) // privileged, not in is_publicly_assignable
+            .role(Role::PUBLIC)
+            .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (settings, current_settings),
+        (permissions, current_permissions),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(
+            &ix,
+            &accounts,
+            &[Check::err(rlp_error_code(1))],
+        )
+    });
+}
+
+/// M03 positive: `update_action_role` must accept `Role::PUBLIC` for an
+/// action that IS in the allowlist (e.g., Deposit). Symmetric to the
+/// negative test above.
+#[test]
+fn test_m03_update_action_role_accepts_public_for_user_action() {
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+
+    let ix = convert_instruction(
+        UpdateActionRoleBuilder::new()
+            .admin(signer.into())
+            .settings(settings.into())
+            .admin_permissions(permissions.into())
+            .system_program(system_program::ID.into())
+            .action(Action::Deposit)
+            .role(Role::PUBLIC)
+            .update(Update::Add)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (settings, current_settings),
+        (permissions, current_permissions),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(&ix, &accounts, &[Check::success()])
+    });
+}
