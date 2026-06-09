@@ -2949,3 +2949,75 @@ fn test_nav_slash_rejects_when_no_gap() {
         &[Check::err(rlp_error_code(53))],
     ));
 }
+
+/// audit-39 (H01): With `init_if_needed` on `cooldown_lp_token_account`, a
+/// pre-existing ATA at the canonical (cooldown_pda, lp_mint) address must
+/// be tolerated, not revert the whole instruction. This blocks the DoS-squat
+/// attack the auditor demonstrated.
+#[test]
+fn test_h01_request_withdrawal_tolerates_cooldown_ata_squat() {
+    use rlp_client::generated::instructions::RequestWithdrawalBuilder;
+
+    let admin = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(admin, 6);
+
+    // User has some LP tokens — we need to seed an LP token account and the
+    // mint must have non-zero supply to be realistic. Simulate by overriding
+    // the lp_token_mint account and the user's LP balance.
+    let user = Pubkey::new_unique();
+    let (event_authority, _) = derive_event_authority();
+
+    let signer_lp_account = derive_ata(&user, &p.lp_token_mint);
+    let cooldown_pda = Pubkey::find_program_address(
+        &[
+            rlp::constants::COOLDOWN_SEED.as_bytes(),
+            &0u8.to_le_bytes(),
+            &0u64.to_le_bytes(),
+        ],
+        &Pubkey::new_from_array(RLP_ID.to_bytes()),
+    ).0;
+    let cooldown_lp_token_account = derive_ata(&cooldown_pda, &p.lp_token_mint);
+
+    // Mint with non-zero supply so the LP token math is well-defined.
+    let mut lp_mint_acc_funded = p.lp_token_mint_acc.clone();
+    lp_mint_acc_funded.data[36..44].copy_from_slice(&1_000_000_000u64.to_le_bytes());
+
+    // The squat — a pre-existing TokenAccount at the canonical address with
+    // matching mint and authority. With `init` this would revert; with
+    // `init_if_needed` (audit-39 fix), Anchor tolerates and reuses it.
+    let squatted_cooldown_ata = create_token_account(&p.lp_token_mint, &cooldown_pda, 0);
+
+    let ix = convert_instruction(
+        RequestWithdrawalBuilder::new()
+            .signer(user.into())
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .lp_token_mint(p.lp_token_mint.into())
+            .signer_lp_token_account(signer_lp_account.into())
+            .cooldown(cooldown_pda.into())
+            .cooldown_lp_token_account(cooldown_lp_token_account.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_id(0)
+            .amount(100_000_000)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (user, signer_account()),
+        (p.settings, p.settings_acc.clone()),
+        (p.lp_pda, p.lp_pda_acc.clone()),
+        (p.lp_token_mint, lp_mint_acc_funded),
+        (signer_lp_account, create_token_account(&p.lp_token_mint, &user, 500_000_000)),
+        (cooldown_pda, empty_account()),
+        (cooldown_lp_token_account, squatted_cooldown_ata),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    with_mollusk(|m| m.process_and_validate_instruction(&ix, &accounts, &[Check::success()]));
+}
