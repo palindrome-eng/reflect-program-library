@@ -50,7 +50,6 @@ pub fn deposit<'a>(ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>, args: DepositArgs)
     let total_pool_value_before = liquidity_pool.calculate_total_pool_value(
         &ctx.remaining_accounts,
         liquidity_pool,
-        settings,
         &clock,
     )?;
 

@@ -54,7 +54,6 @@ impl LiquidityPool {
         &self,
         remaining_accounts: &[AccountInfo],
         liquidity_pool: &Account<LiquidityPool>,
-        settings: &Account<Settings>,
         clock: &Clock,
     ) -> Result<PreciseNumber> {
         let expected_len = self.asset_count as usize * 4;
