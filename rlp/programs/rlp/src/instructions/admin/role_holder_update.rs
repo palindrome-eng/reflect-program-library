@@ -26,6 +26,8 @@ pub fn update_role_holder_protocol(
         update
     } = args;
 
+    require!(role != Role::UNSET, RlpError::InvalidInput);
+
     require!(
         update_admin_permissions.authority == address,
         RlpError::InvalidInput
