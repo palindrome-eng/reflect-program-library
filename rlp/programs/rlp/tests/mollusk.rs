@@ -3693,3 +3693,241 @@ fn test_l02_swap_rejects_zero_output() {
         &[Check::err(rlp_error_code(5))],
     ));
 }
+
+// ============================================================================
+// AUDIT-3 (M05) PYTH FEED-ID BINDING
+// ============================================================================
+
+/// Variant of `create_mock_pyth_price_data` with a controllable feed_id.
+fn create_mock_pyth_price_data_with_feed_id(
+    price: i64,
+    exponent: i32,
+    publish_time: i64,
+    feed_id: [u8; 32],
+) -> Vec<u8> {
+    let mut data = Vec::with_capacity(133);
+    data.extend_from_slice(&[34, 241, 35, 99, 157, 126, 244, 205]);
+    data.extend_from_slice(&[0u8; 32]);
+    data.push(1);
+    data.extend_from_slice(&feed_id);
+    data.extend_from_slice(&price.to_le_bytes());
+    data.extend_from_slice(&100u64.to_le_bytes());
+    data.extend_from_slice(&exponent.to_le_bytes());
+    data.extend_from_slice(&publish_time.to_le_bytes());
+    data.extend_from_slice(&(publish_time - 1).to_le_bytes());
+    data.extend_from_slice(&price.to_le_bytes());
+    data.extend_from_slice(&100u64.to_le_bytes());
+    data.extend_from_slice(&1u64.to_le_bytes());
+    assert_eq!(data.len(), 133);
+    data
+}
+
+/// M05: A previously-bound oracle whose feed_id no longer matches what was
+/// stored at add_asset time must be rejected at price-read. Simulates a
+/// Pyth account being repointed at a different feed (the attack vector the
+/// audit highlighted).
+#[test]
+fn test_m05_deposit_rejects_oracle_with_mismatched_feed_id() {
+    use rlp_client::generated::instructions::DepositBuilder;
+
+    let admin = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(admin, 6); // stores feed_id [1u8; 32]
+    let user = Pubkey::new_unique();
+    let (event_authority, _) = derive_event_authority();
+
+    // Build the deposit accounts but override the oracle's bytes to use a
+    // DIFFERENT feed_id than was stored at add_asset.
+    let user_asset_account = derive_ata(&user, &p.asset_mint);
+    let user_lp_account = derive_user_lp_ata(&user, &p.lp_token_mint);
+
+    let bad_oracle_acc = Account {
+        lamports: 1_000_000,
+        data: create_mock_pyth_price_data_with_feed_id(1_00000000, -8, 0, [2u8; 32]),
+        owner: PYTH_PROGRAM_ID,
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    let mut ix = convert_instruction(
+        DepositBuilder::new()
+            .signer(user.into())
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .lp_token(p.lp_token_mint.into())
+            .user_lp_account(user_lp_account.into())
+            .asset(p.asset.into())
+            .asset_mint(p.asset_mint.into())
+            .user_asset_account(user_asset_account.into())
+            .pool_asset_account(p.pool_asset_account.into())
+            .oracle(p.oracle.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_index(0)
+            .amount(100_000)
+            .min_lp_tokens(0)
+            .instruction()
+    );
+    ix.accounts.extend(pool_value_remaining_accounts(&p));
+
+    let mut accounts = vec![
+        (user, signer_account()),
+        (p.settings, p.settings_acc.clone()),
+        (p.lp_pda, p.lp_pda_acc.clone()),
+        (p.lp_token_mint, p.lp_token_mint_acc.clone()),
+        (user_lp_account, create_token_account(&p.lp_token_mint, &user, 0)),
+        (p.asset, p.asset_acc.clone()),
+        (p.asset_mint, p.asset_mint_acc.clone()),
+        (user_asset_account, create_token_account(&p.asset_mint, &user, 1_000_000)),
+        (p.pool_asset_account, p.pool_asset_account_acc.clone()),
+        (p.oracle, bad_oracle_acc),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    // calculate_total_pool_value maps any get_price failure to InvalidInput.
+    // The underlying check is the audit-3 feed_id binding inside get_price_from_pyth.
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(1))],
+    ));
+}
+
+/// audit-NAV (M06): `slash` must cap the requested amount at the current gap.
+/// If the caller requests more than the gap converts to in token terms,
+/// the program rejects with NavCoverageExceedsLoss.
+#[test]
+fn test_nav_slash_rejects_when_amount_exceeds_gap() {
+    use rlp_client::generated::instructions::{SlashBuilder, InitializeLpBuilder, InitializePoolReserveBuilder};
+
+    let admin = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(admin);
+    let (event_authority, _) = derive_event_authority();
+    let (settings_acc, permissions_acc) = setup_initialized_rlp(admin);
+    let (asset, oracle, stablecoin_mint, settings_acc, permissions_acc, asset_acc) =
+        add_test_asset(admin, settings, settings_acc, permissions, permissions_acc, 6, 1_00000000, AccessLevel::Public);
+
+    let branded_mint = Pubkey::new_unique();
+    let proxy_state = Pubkey::new_unique();
+    // Principal = 1000 USDC. Vault holds only 900 USDC+ at price 1.0 = $900 of value.
+    // Gap = 1000 - 900 = 100 USDC. Max slashable (token terms at price 1.0) = 100 USDC+.
+    let principal: u64 = 1_000_000_000;
+    let vault_balance: u64 = 900_000_000;
+    let proxy_state_acc = create_proxy_state_account(&branded_mint, &stablecoin_mint, principal, 0);
+    let proxy_vault = derive_ata(&proxy_state, &stablecoin_mint);
+    let proxy_vault_acc = create_token_account(&stablecoin_mint, &proxy_state, vault_balance);
+
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let init_lp_ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(admin.into()).permissions(permissions.into()).settings(settings.into())
+            .liquidity_pool(lp_pda.into()).lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into()).token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into()).program(RLP_ID)
+            .cooldown_duration(60).assets(vec![0])
+            .protected_vault(proxy_state.into())
+            .instruction()
+    );
+    let mut a = vec![
+        (admin, signer_account()),
+        (permissions, permissions_acc),
+        (settings, settings_acc),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, None)),
+        (dead_shares_vault, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    a.extend(spl_program_accounts());
+    a.extend(event_cpi_accounts());
+    let r = with_mollusk(|m| m.process_and_validate_instruction(&init_lp_ix, &a, &[Check::success()]));
+    let g = |k: Pubkey| r.resulting_accounts.iter().find(|(kk, _)| *kk == k).unwrap().1.clone();
+    let settings_acc = g(settings); let permissions_acc = g(permissions); let lp_pda_acc = g(lp_pda);
+
+    let pool_asset_account = derive_ata(&lp_pda, &stablecoin_mint);
+    let init_res_ix = convert_instruction(
+        InitializePoolReserveBuilder::new()
+            .signer(admin.into()).permissions(permissions.into()).settings(settings.into())
+            .liquidity_pool(lp_pda.into()).asset(asset.into()).asset_mint(stablecoin_mint.into())
+            .pool_asset_account(pool_asset_account.into())
+            .system_program(system_program::ID.into()).token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .liquidity_pool_id(0).instruction()
+    );
+    let mut a2 = vec![
+        (admin, signer_account()),
+        (permissions, permissions_acc.clone()),
+        (settings, settings_acc.clone()),
+        (lp_pda, lp_pda_acc.clone()),
+        (asset, asset_acc.clone()),
+        (stablecoin_mint, create_mock_mint_with_decimals(6)),
+        (pool_asset_account, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    a2.extend(spl_program_accounts());
+    let r2 = with_mollusk(|m| m.process_and_validate_instruction(&init_res_ix, &a2, &[Check::success()]));
+    let g2 = |k: Pubkey| r2.resulting_accounts.iter().find(|(kk, _)| *kk == k).unwrap().1.clone();
+    let permissions_acc = g2(permissions);
+    let settings_acc = g2(settings);
+    let lp_pda_acc = g2(lp_pda);
+    let asset_acc = g2(asset);
+    let pool_reserve_acc = g2(pool_asset_account);
+
+    // Fund pool reserve.
+    let mut pool_reserve_funded = pool_reserve_acc.clone();
+    pool_reserve_funded.data[64..72].copy_from_slice(&500_000_000u64.to_le_bytes());
+
+    // Try to slash MORE than the gap allows. Gap = 100 USDC → max ~100M tokens.
+    // Request 500M tokens — should reject with NavCoverageExceedsLoss.
+    let ix = convert_instruction(
+        SlashBuilder::new()
+            .signer(admin.into()).permissions(permissions.into()).settings(settings.into())
+            .liquidity_pool(lp_pda.into()).asset(asset.into()).stablecoin_mint(stablecoin_mint.into())
+            .liquidity_pool_token_account(pool_asset_account.into())
+            .proxy_state(proxy_state.into())
+            .protected_vault_token_account(proxy_vault.into())
+            .oracle(oracle.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .event_authority(event_authority.into()).program(RLP_ID)
+            .liquidity_pool_id(0)
+            .amount(500_000_000)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (admin, signer_account()),
+        (permissions, permissions_acc),
+        (settings, settings_acc),
+        (lp_pda, lp_pda_acc),
+        (asset, asset_acc),
+        (stablecoin_mint, create_mock_mint_with_decimals(6)),
+        (pool_asset_account, pool_reserve_funded),
+        (proxy_state, proxy_state_acc),
+        (proxy_vault, proxy_vault_acc),
+        (oracle, Account {
+            lamports: 1_000_000,
+            data: create_mock_pyth_price_data(1_00000000, -8, 0),
+            owner: PYTH_PROGRAM_ID,
+            executable: false,
+            rent_epoch: 0,
+        }),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    // NavCoverageExceedsLoss = variant 54.
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(54))],
+    ));
+}
