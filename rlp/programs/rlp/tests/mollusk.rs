@@ -71,11 +71,16 @@ fn program_id() -> Pubkey {
     Pubkey::new_from_array(RLP_ID.to_bytes())
 }
 
-// Thread-local Mollusk instance - shared across tests when run with --test-threads=1
+// Thread-local Mollusk instance - shared across tests when run with --test-threads=1.
+// SPL Token and SPL Associated Token programs are loaded so instructions that
+// CPI into them (initialize_lp, deposit, withdraw, swap, slash, etc.) work.
 thread_local! {
-    static MOLLUSK: RefCell<Mollusk> = RefCell::new(
-        Mollusk::new(&program_id(), "../../target/deploy/rlp")
-    );
+    static MOLLUSK: RefCell<Mollusk> = RefCell::new({
+        let mut m = Mollusk::new(&program_id(), "../../target/deploy/rlp");
+        mollusk_svm_programs_token::token::add_program(&mut m);
+        mollusk_svm_programs_token::associated_token::add_program(&mut m);
+        m
+    });
 }
 
 // Helper to run code with the shared Mollusk instance
@@ -2099,3 +2104,187 @@ fn add_test_asset(
     (asset, oracle, mint, updated_settings, updated_permissions)
 }
 
+
+// ============================================================================
+// LP INITIALIZATION TESTS
+// ============================================================================
+
+/// Common SPL Token + ATA accounts for any instruction that CPIs into them.
+fn spl_program_accounts() -> Vec<(Pubkey, Account)> {
+    vec![
+        mollusk_svm_programs_token::token::keyed_account(),
+        mollusk_svm_programs_token::associated_token::keyed_account(),
+    ]
+}
+
+/// initialize_lp happy path: pool with one whitelisted asset, LP mint with
+/// mint_authority = LP PDA, freeze_authority = None.
+#[test]
+fn test_initialize_lp_happy_path() {
+    use rlp_client::generated::instructions::InitializeLpBuilder;
+
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+    let (_asset, _oracle, _mint, current_settings, current_permissions) =
+        add_test_asset(signer, settings, current_settings, permissions, current_permissions, 6, 100_00000000, AccessLevel::Public);
+
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .cooldown_duration(60)
+            .assets(vec![0])
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (permissions, current_permissions),
+        (settings, current_settings),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, None)),
+        (dead_shares_vault, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    let result = with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(&ix, &accounts, &[Check::success()])
+    });
+
+    let settings_account = result.resulting_accounts.iter().find(|(k, _)| *k == settings).unwrap().1.clone();
+    let settings_data = Settings::from_bytes(&settings_account.data).unwrap();
+    assert_eq!(settings_data.liquidity_pools, 1);
+}
+
+/// M04: initialize_lp must reject an LP mint whose freeze_authority is Some.
+#[test]
+fn test_m04_initialize_lp_rejects_lp_mint_with_freeze_authority() {
+    use rlp_client::generated::instructions::InitializeLpBuilder;
+
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+    let (_asset, _oracle, _mint, current_settings, current_permissions) =
+        add_test_asset(signer, settings, current_settings, permissions, current_permissions, 6, 100_00000000, AccessLevel::Public);
+
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .cooldown_duration(60)
+            .assets(vec![0])
+            .instruction()
+    );
+
+    // LP mint with a freeze authority — should reject.
+    let bogus_freeze = Pubkey::new_unique();
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (permissions, current_permissions),
+        (settings, current_settings),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, Some(bogus_freeze))),
+        (dead_shares_vault, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    // InvalidReceiptTokenFreezeAuthority is variant index 29.
+    with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(
+            &ix,
+            &accounts,
+            &[Check::err(rlp_error_code(29))],
+        )
+    });
+}
+
+/// E03: initialize_lp must reject cooldown_duration > MAX_COOLDOWN_DURATION.
+#[test]
+fn test_e03_initialize_lp_rejects_excessive_cooldown_duration() {
+    use rlp_client::generated::instructions::InitializeLpBuilder;
+
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+    let (_asset, _oracle, _mint, current_settings, current_permissions) =
+        add_test_asset(signer, settings, current_settings, permissions, current_permissions, 6, 100_00000000, AccessLevel::Public);
+
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .cooldown_duration(366 * 24 * 60 * 60) // > 365 days
+            .assets(vec![0])
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (permissions, current_permissions),
+        (settings, current_settings),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, None)),
+        (dead_shares_vault, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(
+            &ix,
+            &accounts,
+            &[Check::err(rlp_error_code(1))],
+        )
+    });
+}

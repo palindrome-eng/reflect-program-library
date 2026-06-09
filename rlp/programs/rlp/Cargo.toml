@@ -27,7 +27,8 @@ strum = "0.27"
 strum_macros = "0.27"
 
 [dev-dependencies]
-mollusk-svm = "0.0.15-solana-2.0"
+mollusk-svm = "0.4"
+mollusk-svm-programs-token = "0.4"
 rlp-client = { path = "../../clients/rust" }
 solana-sdk = "2.1"
 
