@@ -49,11 +49,12 @@ pub fn withdraw<'a>(
     let cooldown = &ctx.accounts.cooldown;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
+    let signer_lp_token_account = &ctx.accounts.signer_lp_token_account;
     let lp_token_mint = &ctx.accounts.lp_token_mint;
     let token_program = &ctx.accounts.token_program;
     let signer = &ctx.accounts.signer;
 
-    let lp_token_amount = cooldown_lp_token_account.amount;
+    let lp_token_amount = cooldown.locked_amount;
     let lp_token_supply = lp_token_mint.supply;
 
     let clock = Clock::get()?;
@@ -66,6 +67,11 @@ pub fn withdraw<'a>(
     require!(
         lp_token_amount > 0 && lp_token_supply > 0,
         RlpError::InvalidInput
+    );
+
+    require!(
+        cooldown_lp_token_account.amount >= lp_token_amount,
+        RlpError::NotEnoughFunds
     );
 
     let remaining_accounts = &ctx.remaining_accounts;
@@ -136,6 +142,22 @@ pub fn withdraw<'a>(
         &cooldown_id.to_le_bytes(),
         &[cooldown.bump]
     ];
+
+    let excess = cooldown_lp_token_account.amount.saturating_sub(lp_token_amount);
+    if excess > 0 {
+        transfer(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(),
+                Transfer {
+                    from: cooldown_lp_token_account.to_account_info(),
+                    to: signer_lp_token_account.to_account_info(),
+                    authority: cooldown.to_account_info()
+                },
+                &[cooldown_seeds]
+            ),
+            excess
+        )?;
+    }
 
     burn(
         CpiContext::new_with_signer(
@@ -221,6 +243,13 @@ pub struct Withdraw<'info> {
         associated_token::authority = cooldown,
     )]
     pub cooldown_lp_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        token::mint = lp_token_mint,
+        token::authority = signer,
+    )]
+    pub signer_lp_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,

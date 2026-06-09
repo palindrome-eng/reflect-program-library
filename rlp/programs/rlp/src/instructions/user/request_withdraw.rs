@@ -28,6 +28,8 @@ pub fn request_withdrawal(
         amount
     } = args;
 
+    require!(amount > 0, RlpError::InvalidInput);
+
     let settings = &ctx.accounts.settings;
     let permissions = &ctx.accounts.permissions;
 
@@ -46,6 +48,7 @@ pub fn request_withdrawal(
     cooldown.index = liquidity_pool.cooldowns;
     cooldown.liquidity_pool_id = liquidity_pool_id;
     cooldown.authority = signer.key();
+    cooldown.locked_amount = amount;
 
     cooldown.lock(liquidity_pool.cooldown_duration)?;
 
