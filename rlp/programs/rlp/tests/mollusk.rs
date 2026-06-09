@@ -2637,3 +2637,118 @@ fn test_m02_deposit_rejects_when_pool_reserve_frozen() {
         &[Check::err(rlp_error_code(48))],
     ));
 }
+
+// ============================================================================
+// REQUEST_WITHDRAWAL TESTS (audit-1, audit-39)
+// ============================================================================
+
+/// audit-1 (H02): `request_withdrawal` must reject `amount == 0` so cooldown
+/// tickets can't be pre-created and filled via direct SPL transfer post-expiry.
+#[test]
+fn test_h02_request_withdrawal_rejects_amount_zero() {
+    use rlp_client::generated::instructions::RequestWithdrawalBuilder;
+
+    let admin = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(admin, 6);
+    let user = Pubkey::new_unique();
+    let (event_authority, _) = derive_event_authority();
+
+    let signer_lp_account = derive_ata(&user, &p.lp_token_mint);
+    // cooldown PDA seeds: [COOLDOWN_SEED, pool_index(u8), pool_cooldowns(u64)]
+    let cooldown_pda = Pubkey::find_program_address(
+        &[
+            rlp::constants::COOLDOWN_SEED.as_bytes(),
+            &0u8.to_le_bytes(),  // pool index = 0 (only pool)
+            &0u64.to_le_bytes(), // cooldowns = 0 (first cooldown)
+        ],
+        &Pubkey::new_from_array(RLP_ID.to_bytes()),
+    ).0;
+    let cooldown_lp_token_account = derive_ata(&cooldown_pda, &p.lp_token_mint);
+
+    let ix = convert_instruction(
+        RequestWithdrawalBuilder::new()
+            .signer(user.into())
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .lp_token_mint(p.lp_token_mint.into())
+            .signer_lp_token_account(signer_lp_account.into())
+            .cooldown(cooldown_pda.into())
+            .cooldown_lp_token_account(cooldown_lp_token_account.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_id(0)
+            .amount(0) // <-- amount=0 must reject
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (user, signer_account()),
+        (p.settings, p.settings_acc.clone()),
+        (p.lp_pda, p.lp_pda_acc.clone()),
+        (p.lp_token_mint, p.lp_token_mint_acc.clone()),
+        (signer_lp_account, create_token_account(&p.lp_token_mint, &user, 0)),
+        (cooldown_pda, empty_account()),
+        (cooldown_lp_token_account, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(1))], // InvalidInput
+    ));
+}
+
+// ============================================================================
+// FORCE_REMOVE_ASSET TESTS (audit-M02)
+// ============================================================================
+
+/// M02: `force_remove_asset` must reject if the target asset's pool reserve
+/// ATA is NOT frozen (guards against using the instruction as a generic
+/// asset-removal tool).
+#[test]
+fn test_m02_force_remove_asset_rejects_unfrozen() {
+    use rlp_client::generated::instructions::ForceRemoveAssetBuilder;
+
+    let admin = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(admin, 6);
+    let (event_authority, _) = derive_event_authority();
+
+    let ix = convert_instruction(
+        ForceRemoveAssetBuilder::new()
+            .signer(admin.into())
+            .permissions(p.permissions.into())
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .asset(p.asset.into())
+            .asset_mint(p.asset_mint.into())
+            .pool_token_account(p.pool_asset_account.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_id(0)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (admin, signer_account()),
+        (p.permissions, p.permissions_acc.clone()),
+        (p.settings, p.settings_acc.clone()),
+        (p.lp_pda, p.lp_pda_acc.clone()),
+        (p.asset, p.asset_acc.clone()),
+        (p.asset_mint, p.asset_mint_acc.clone()),
+        (p.pool_asset_account, p.pool_asset_account_acc.clone()), // NOT frozen
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    // PoolAssetNotFrozen = variant 49.
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(49))],
+    ));
+}
