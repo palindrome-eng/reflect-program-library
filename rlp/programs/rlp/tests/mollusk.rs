@@ -1865,3 +1865,78 @@ fn test_m03_update_action_role_accepts_public_for_user_action() {
         mollusk.process_and_validate_instruction(&ix, &accounts, &[Check::success()])
     });
 }
+
+/// Creates an SPL token mint account with custom decimals. Used to test
+/// audit-M04 (asset decimals > PRECISION rejection).
+fn create_mock_mint_with_decimals(decimals: u8) -> Account {
+    let mut data = vec![0u8; 82];
+    data[0] = 1; // mint_authority option tag = Some
+    data[44] = decimals;
+    data[45] = 1; // is_initialized
+    data[46] = 0; // freeze_authority option tag = None
+    Account {
+        lamports: 1_000_000,
+        data,
+        owner: SPL_TOKEN_ID,
+        executable: false,
+        rent_epoch: 0,
+    }
+}
+
+/// M04: `add_asset` must reject mints whose `decimals` exceed `PRECISION`
+/// (18). Otherwise `OraclePrice::mul` would saturate the decimal adjustment
+/// to zero and overvalue the asset by 10^(decimals - 18).
+#[test]
+fn test_m04_add_asset_rejects_high_decimals() {
+    let signer = Pubkey::new_unique();
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (current_settings, current_permissions) = setup_initialized_rlp(signer);
+
+    let mint = Pubkey::new_unique();
+    let oracle = Pubkey::new_unique();
+    let (asset, _) = derive_asset_pda(&mint);
+    let publish_time: i64 = 0;
+
+    let ix = convert_instruction(
+        AddAssetBuilder::new()
+            .signer(signer.into())
+            .admin(permissions.into())
+            .settings(settings.into())
+            .asset(asset.into())
+            .asset_mint(mint.into())
+            .oracle(oracle.into())
+            .system_program(system_program::ID.into())
+            .access_level(AccessLevel::Public)
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .instruction()
+    );
+
+    let mut accounts = vec![
+        (signer, signer_account()),
+        (permissions, current_permissions),
+        (settings, current_settings),
+        (asset, empty_account()),
+        (mint, create_mock_mint_with_decimals(24)), // > PRECISION = 18
+        (oracle, Account {
+            lamports: 1_000_000,
+            data: create_mock_pyth_price_data(100_00000000, -8, publish_time),
+            owner: PYTH_PROGRAM_ID,
+            executable: false,
+            rent_epoch: 0,
+        }),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(event_cpi_accounts());
+
+    // RlpError::InvalidInput is variant index 1.
+    with_mollusk(|mollusk| {
+        mollusk.process_and_validate_instruction(
+            &ix,
+            &accounts,
+            &[Check::err(rlp_error_code(1))],
+        )
+    });
+}
