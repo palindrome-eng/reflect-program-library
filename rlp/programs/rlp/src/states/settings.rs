@@ -9,5 +9,6 @@ pub struct Settings {
     pub assets: u8,
     pub access_control: AccessControl,
     pub swap_fee_bps: u16,
+    pub supremo_count: u8,
 }
 
