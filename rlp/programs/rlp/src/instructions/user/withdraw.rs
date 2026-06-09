@@ -186,7 +186,7 @@ pub fn withdraw<'a>(
         )
     )?;
 
-    emit!(WithdrawEvent {
+    emit_cpi!(WithdrawEvent {
         from: signer.key(),
         liquidity_pool_id: liquidity_pool.index,
         amount_in: lp_token_amount,
@@ -196,6 +196,7 @@ pub fn withdraw<'a>(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(
     args: WithdrawArgs

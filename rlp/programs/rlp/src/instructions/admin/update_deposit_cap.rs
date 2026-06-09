@@ -31,6 +31,7 @@ pub fn update_deposit_cap(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(args: UpdateDepositCapArgs)]
 pub struct UpdateDepositCap<'info> {

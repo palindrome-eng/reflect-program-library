@@ -63,7 +63,7 @@ pub fn force_remove_asset(ctx: Context<ForceRemoveAsset>) -> Result<()> {
     liquidity_pool.assets[live - 1] = u8::MAX;
     liquidity_pool.asset_count -= 1;
 
-    emit!(ForceRemoveAssetEvent {
+    emit_cpi!(ForceRemoveAssetEvent {
         admin: ctx.accounts.signer.key(),
         liquidity_pool: liquidity_pool.key(),
         asset: asset.mint,
@@ -73,6 +73,7 @@ pub fn force_remove_asset(ctx: Context<ForceRemoveAsset>) -> Result<()> {
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(liquidity_pool_id: u8)]
 pub struct ForceRemoveAsset<'info> {

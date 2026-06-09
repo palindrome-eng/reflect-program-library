@@ -45,6 +45,7 @@ pub fn update_oracle(ctx: Context<UpdateOracle>) -> Result<()> {
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct UpdateOracle<'info> {
     #[account(mut)]

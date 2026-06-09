@@ -38,13 +38,14 @@ pub fn initialize_rlp(ctx: Context<InitializeRlp>, args: InitializeRlpArgs) -> R
         supremo_count: 1,
     });
 
-    emit!(InitializeRlpEvent {
+    emit_cpi!(InitializeRlpEvent {
         caller: signer.key()
     });
 
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct InitializeRlp<'info> {
     #[account(mut)]

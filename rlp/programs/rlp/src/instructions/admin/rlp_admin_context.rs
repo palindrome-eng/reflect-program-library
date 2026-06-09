@@ -2,6 +2,7 @@ use crate::states::*;
 use crate::constants::*;
 use anchor_lang::prelude::*;
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct RlpAdminMain<'info> {
     #[account(mut)]

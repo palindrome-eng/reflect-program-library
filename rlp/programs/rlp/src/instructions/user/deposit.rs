@@ -111,6 +111,7 @@ pub fn deposit<'a>(ctx: Context<'_, '_, 'a, 'a, Deposit<'a>>, args: DepositArgs)
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(args: DepositArgs)]
 pub struct Deposit<'info> {

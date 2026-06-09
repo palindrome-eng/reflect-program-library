@@ -142,7 +142,7 @@ pub fn slash(ctx: Context<Slash>, args: SlashArgs) -> Result<()> {
         amount,
     )?;
 
-    emit!(SlashEvent {
+    emit_cpi!(SlashEvent {
         admin: ctx.accounts.signer.key(),
         liquidity_pool: liquidity_pool.key(),
         protected_vault,
@@ -154,6 +154,7 @@ pub fn slash(ctx: Context<Slash>, args: SlashArgs) -> Result<()> {
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(args: SlashArgs)]
 pub struct Slash<'info> {
