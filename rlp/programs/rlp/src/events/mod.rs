@@ -35,6 +35,14 @@ pub struct DepositRewardEvent {
 }
 
 #[event]
+pub struct ForceRemoveAssetEvent {
+    pub admin: Pubkey,
+    pub liquidity_pool: Pubkey,
+    pub asset: Pubkey,
+    pub asset_index: u8,
+}
+
+#[event]
 pub struct AddAssetEvent {
     pub admin: Pubkey,
     pub asset: Pubkey,

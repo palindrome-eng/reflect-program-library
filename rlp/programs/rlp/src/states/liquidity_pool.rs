@@ -2,6 +2,7 @@ use crate::constants::*;
 use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address;
+use anchor_spl::token::spl_token::state::AccountState;
 use anchor_spl::token::{mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer};
 use spl_math::precise_number::PreciseNumber;
 
@@ -88,6 +89,11 @@ impl LiquidityPool {
             require!(
                 token_account.owner == liquidity_pool.key(),
                 crate::errors::RlpError::InvalidInput
+            );
+
+            require!(
+                token_account.state != AccountState::Frozen,
+                crate::errors::RlpError::PoolAssetFrozen
             );
 
             require!(
