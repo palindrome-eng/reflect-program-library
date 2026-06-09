@@ -55,6 +55,9 @@ pub const PRECISION: u32 = 18;
 pub const MAX_SLASH_BPS: u64 = 1_000;
 
 #[constant]
+pub const MAX_COOLDOWN_DURATION: u64 = 365 * 24 * 60 * 60;
+
+#[constant]
 pub const BPS_DENOMINATOR: u64 = 10_000;
 
 #[constant]
