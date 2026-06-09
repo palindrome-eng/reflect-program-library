@@ -2057,7 +2057,7 @@ fn add_test_asset(
     decimals: u8,
     price: i64,
     access_level: AccessLevel,
-) -> (Pubkey, Pubkey, Pubkey, Account, Account) {
+) -> (Pubkey, Pubkey, Pubkey, Account, Account, Account) {
     let (event_authority, _) = derive_event_authority();
     let mint = Pubkey::new_unique();
     let oracle = Pubkey::new_unique();
@@ -2101,7 +2101,8 @@ fn add_test_asset(
 
     let updated_permissions = result.resulting_accounts.iter().find(|(k, _)| *k == permissions).unwrap().1.clone();
     let updated_settings = result.resulting_accounts.iter().find(|(k, _)| *k == settings).unwrap().1.clone();
-    (asset, oracle, mint, updated_settings, updated_permissions)
+    let updated_asset = result.resulting_accounts.iter().find(|(k, _)| *k == asset).unwrap().1.clone();
+    (asset, oracle, mint, updated_settings, updated_permissions, updated_asset)
 }
 
 
@@ -2128,7 +2129,7 @@ fn test_initialize_lp_happy_path() {
     let (permissions, _) = derive_permissions_pda(signer);
     let (event_authority, _) = derive_event_authority();
     let (current_settings, current_permissions) = setup_initialized_rlp(signer);
-    let (_asset, _oracle, _mint, current_settings, current_permissions) =
+    let (_asset, _oracle, _mint, current_settings, current_permissions, _asset_acc) =
         add_test_asset(signer, settings, current_settings, permissions, current_permissions, 6, 100_00000000, AccessLevel::Public);
 
     let (lp_pda, _) = derive_lp_pda(0);
@@ -2184,7 +2185,7 @@ fn test_m04_initialize_lp_rejects_lp_mint_with_freeze_authority() {
     let (permissions, _) = derive_permissions_pda(signer);
     let (event_authority, _) = derive_event_authority();
     let (current_settings, current_permissions) = setup_initialized_rlp(signer);
-    let (_asset, _oracle, _mint, current_settings, current_permissions) =
+    let (_asset, _oracle, _mint, current_settings, current_permissions, _asset_acc) =
         add_test_asset(signer, settings, current_settings, permissions, current_permissions, 6, 100_00000000, AccessLevel::Public);
 
     let (lp_pda, _) = derive_lp_pda(0);
@@ -2243,7 +2244,7 @@ fn test_e03_initialize_lp_rejects_excessive_cooldown_duration() {
     let (permissions, _) = derive_permissions_pda(signer);
     let (event_authority, _) = derive_event_authority();
     let (current_settings, current_permissions) = setup_initialized_rlp(signer);
-    let (_asset, _oracle, _mint, current_settings, current_permissions) =
+    let (_asset, _oracle, _mint, current_settings, current_permissions, _asset_acc) =
         add_test_asset(signer, settings, current_settings, permissions, current_permissions, 6, 100_00000000, AccessLevel::Public);
 
     let (lp_pda, _) = derive_lp_pda(0);
@@ -2287,4 +2288,352 @@ fn test_e03_initialize_lp_rejects_excessive_cooldown_duration() {
             &[Check::err(rlp_error_code(1))],
         )
     });
+}
+
+// ============================================================================
+// SETUP HELPERS — multi-step pool initialization
+// ============================================================================
+
+/// Bag of state returned by `setup_pool_with_one_asset`. Carries the current
+/// account states so subsequent instruction calls can chain off them.
+struct PoolFixture {
+    signer: Pubkey,
+    settings: Pubkey,
+    permissions: Pubkey,
+    asset: Pubkey,
+    oracle: Pubkey,
+    asset_mint: Pubkey,
+    lp_pda: Pubkey,
+    lp_token_mint: Pubkey,
+    dead_shares_vault: Pubkey,
+    pool_asset_account: Pubkey,
+    settings_acc: Account,
+    permissions_acc: Account,
+    asset_acc: Account,
+    asset_mint_acc: Account,
+    lp_pda_acc: Account,
+    lp_token_mint_acc: Account,
+    dead_shares_vault_acc: Account,
+    pool_asset_account_acc: Account,
+}
+
+/// Full setup: init RLP, add one Public asset, initialize_lp, initialize_pool_reserve.
+/// Returns the fixture with the live account states.
+fn setup_pool_with_one_asset(signer: Pubkey, asset_decimals: u8) -> PoolFixture {
+    use rlp_client::generated::instructions::{InitializeLpBuilder, InitializePoolReserveBuilder};
+
+    let (settings, _) = derive_settings_pda();
+    let (permissions, _) = derive_permissions_pda(signer);
+    let (event_authority, _) = derive_event_authority();
+    let (settings_acc, permissions_acc) = setup_initialized_rlp(signer);
+    let (asset, oracle, asset_mint, settings_acc, permissions_acc, asset_acc) =
+        add_test_asset(signer, settings, settings_acc, permissions, permissions_acc, asset_decimals, 100_00000000, AccessLevel::Public);
+
+    // initialize_lp
+    let (lp_pda, _) = derive_lp_pda(0);
+    let lp_token_mint = Pubkey::new_unique();
+    let dead_shares_vault = derive_ata(&lp_pda, &lp_token_mint);
+
+    let init_lp_ix = convert_instruction(
+        InitializeLpBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .lp_token_mint(lp_token_mint.into())
+            .dead_shares_vault(dead_shares_vault.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .cooldown_duration(60)
+            .assets(vec![0])
+            .instruction()
+    );
+
+    let mut init_lp_accounts = vec![
+        (signer, signer_account()),
+        (permissions, permissions_acc),
+        (settings, settings_acc),
+        (lp_pda, empty_account()),
+        (lp_token_mint, create_mint_account(Some(lp_pda), 9, None)),
+        (dead_shares_vault, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    init_lp_accounts.extend(spl_program_accounts());
+    init_lp_accounts.extend(event_cpi_accounts());
+
+    let r = with_mollusk(|m| m.process_and_validate_instruction(&init_lp_ix, &init_lp_accounts, &[Check::success()]));
+
+    let get = |key: Pubkey| r.resulting_accounts.iter().find(|(k, _)| *k == key).unwrap().1.clone();
+    let settings_acc = get(settings);
+    let permissions_acc = get(permissions);
+    let lp_pda_acc = get(lp_pda);
+    let lp_token_mint_acc = get(lp_token_mint);
+    let dead_shares_vault_acc = get(dead_shares_vault);
+
+    // initialize_pool_reserve
+    let pool_asset_account = derive_ata(&lp_pda, &asset_mint);
+    let init_reserve_ix = convert_instruction(
+        InitializePoolReserveBuilder::new()
+            .signer(signer.into())
+            .permissions(permissions.into())
+            .settings(settings.into())
+            .liquidity_pool(lp_pda.into())
+            .asset(asset.into())
+            .asset_mint(asset_mint.into())
+            .pool_asset_account(pool_asset_account.into())
+            .system_program(system_program::ID.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .liquidity_pool_id(0)
+            .instruction()
+    );
+
+    let mut init_reserve_accounts = vec![
+        (signer, signer_account()),
+        (permissions, permissions_acc.clone()),
+        (settings, settings_acc.clone()),
+        (lp_pda, lp_pda_acc.clone()),
+        (asset, asset_acc),
+        (asset_mint, create_mock_mint_with_decimals(asset_decimals)),
+        (pool_asset_account, empty_account()),
+        (system_program::ID, system_program_account()),
+    ];
+    init_reserve_accounts.extend(spl_program_accounts());
+
+    let r2 = with_mollusk(|m| m.process_and_validate_instruction(&init_reserve_ix, &init_reserve_accounts, &[Check::success()]));
+    let get2 = |key: Pubkey| r2.resulting_accounts.iter().find(|(k, _)| *k == key).unwrap().1.clone();
+
+    let mut fixture_settings_acc = get2(settings);
+    let mut fixture_permissions_acc = get2(permissions);
+
+    // Open Deposit and Withdraw to PUBLIC so test users don't need a
+    // dedicated permission account. Mirrors a typical production rollout
+    // where the team adds PUBLIC after initial setup.
+    for action in [Action::Deposit, Action::Withdraw, Action::Swap] {
+        let upd_ix = convert_instruction(
+            rlp_client::generated::instructions::UpdateActionRoleBuilder::new()
+                .admin(signer.into())
+                .settings(settings.into())
+                .admin_permissions(permissions.into())
+                .system_program(system_program::ID.into())
+                .action(action)
+                .role(Role::PUBLIC)
+                .update(Update::Add)
+                .event_authority(event_authority.into())
+                .program(RLP_ID)
+                .instruction()
+        );
+
+        let mut upd_accounts = vec![
+            (signer, signer_account()),
+            (settings, fixture_settings_acc.clone()),
+            (permissions, fixture_permissions_acc.clone()),
+            (system_program::ID, system_program_account()),
+        ];
+        upd_accounts.extend(event_cpi_accounts());
+
+        let upd_r = with_mollusk(|m| m.process_and_validate_instruction(&upd_ix, &upd_accounts, &[Check::success()]));
+        let g = |key: Pubkey| upd_r.resulting_accounts.iter().find(|(k, _)| *k == key).unwrap().1.clone();
+        fixture_settings_acc = g(settings);
+        fixture_permissions_acc = g(permissions);
+    }
+
+    PoolFixture {
+        signer,
+        settings,
+        permissions,
+        asset,
+        oracle,
+        asset_mint,
+        lp_pda,
+        lp_token_mint,
+        dead_shares_vault,
+        pool_asset_account,
+        settings_acc: fixture_settings_acc,
+        permissions_acc: fixture_permissions_acc,
+        asset_acc: get2(asset),
+        asset_mint_acc: get2(asset_mint),
+        lp_pda_acc: get2(lp_pda),
+        lp_token_mint_acc,
+        dead_shares_vault_acc,
+        pool_asset_account_acc: get2(pool_asset_account),
+    }
+}
+
+/// initialize_pool_reserve happy path — exercised inside `setup_pool_with_one_asset`,
+/// but assert independently here that the resulting pool reserve ATA is a valid
+/// initialized TokenAccount with the right mint and authority.
+#[test]
+fn test_initialize_pool_reserve_creates_reserve_ata() {
+    let signer = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(signer, 6);
+    // Reserve ATA exists with mint=asset_mint, owner=lp_pda, balance=0.
+    let data = &p.pool_asset_account_acc.data;
+    assert_eq!(data.len(), 165, "SPL TokenAccount layout = 165 bytes");
+    let mint_bytes: [u8; 32] = data[0..32].try_into().unwrap();
+    let owner_bytes: [u8; 32] = data[32..64].try_into().unwrap();
+    let amount = u64::from_le_bytes(data[64..72].try_into().unwrap());
+    assert_eq!(mint_bytes, p.asset_mint.to_bytes());
+    assert_eq!(owner_bytes, p.lp_pda.to_bytes());
+    assert_eq!(amount, 0);
+}
+
+// ============================================================================
+// DEPOSIT TESTS
+// ============================================================================
+
+/// Helper to derive the user's lp ATA.
+fn derive_user_lp_ata(user: &Pubkey, lp_mint: &Pubkey) -> Pubkey { derive_ata(user, lp_mint) }
+
+/// SPL Token mint account with explicit current supply (for tests where we
+/// need to seed the LP mint to a non-zero state, e.g., to mock a pool that
+/// already has prior deposits).
+fn create_mint_account_with_supply(mint_authority: Option<Pubkey>, decimals: u8, freeze_authority: Option<Pubkey>, supply: u64) -> Account {
+    let mut acc = create_mint_account(mint_authority, decimals, freeze_authority);
+    acc.data[36..44].copy_from_slice(&supply.to_le_bytes());
+    acc
+}
+
+/// Issuing a deposit requires the user to already have a token account
+/// holding the asset, plus the canonical LP ATA for the receipt token.
+fn deposit_accounts(
+    p: &PoolFixture,
+    user: Pubkey,
+    user_balance: u64,
+) -> (Pubkey, Pubkey, Vec<(Pubkey, Account)>) {
+    let user_asset_account = derive_ata(&user, &p.asset_mint);
+    let user_lp_account = derive_user_lp_ata(&user, &p.lp_token_mint);
+
+    let oracle_acc = Account {
+        lamports: 1_000_000,
+        data: create_mock_pyth_price_data(100_00000000, -8, 0),
+        owner: PYTH_PROGRAM_ID,
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    let mut accounts = vec![
+        (user, signer_account()),
+        (p.settings, p.settings_acc.clone()),
+        (p.lp_pda, p.lp_pda_acc.clone()),
+        (p.lp_token_mint, p.lp_token_mint_acc.clone()),
+        (user_lp_account, create_token_account(&p.lp_token_mint, &user, 0)),
+        (p.asset, p.asset_acc.clone()),
+        (p.asset_mint, p.asset_mint_acc.clone()),
+        (user_asset_account, create_token_account(&p.asset_mint, &user, user_balance)),
+        (p.pool_asset_account, p.pool_asset_account_acc.clone()),
+        (p.oracle, oracle_acc),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    (user_asset_account, user_lp_account, accounts)
+}
+
+/// `deposit` must reject amount = 0 (audit-23 / structural require).
+#[test]
+fn test_deposit_rejects_amount_zero() {
+    use rlp_client::generated::instructions::DepositBuilder;
+
+    let admin = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(admin, 6);
+    let user = Pubkey::new_unique();
+    let (user_asset_account, user_lp_account, accounts) = deposit_accounts(&p, user, 1_000_000);
+    let (event_authority, _) = derive_event_authority();
+
+    let ix = convert_instruction(
+        DepositBuilder::new()
+            .signer(user.into())
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .lp_token(p.lp_token_mint.into())
+            .user_lp_account(user_lp_account.into())
+            .asset(p.asset.into())
+            .asset_mint(p.asset_mint.into())
+            .user_asset_account(user_asset_account.into())
+            .pool_asset_account(p.pool_asset_account.into())
+            .oracle(p.oracle.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_index(0)
+            .amount(0)
+            .min_lp_tokens(0)
+            .instruction()
+    );
+
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(1))], // InvalidInput
+    ));
+}
+
+/// Per-asset (token_account, asset_pda, oracle, mint) remaining-accounts
+/// quadruple that `calculate_total_pool_value` expects.
+fn pool_value_remaining_accounts(p: &PoolFixture) -> Vec<solana_sdk::instruction::AccountMeta> {
+    vec![
+        AccountMeta { pubkey: p.pool_asset_account, is_signer: false, is_writable: false },
+        AccountMeta { pubkey: p.asset, is_signer: false, is_writable: false },
+        AccountMeta { pubkey: p.oracle, is_signer: false, is_writable: false },
+        AccountMeta { pubkey: p.asset_mint, is_signer: false, is_writable: false },
+    ]
+}
+
+/// M02: `deposit` must reject when any pool reserve is frozen.
+#[test]
+fn test_m02_deposit_rejects_when_pool_reserve_frozen() {
+    use rlp_client::generated::instructions::DepositBuilder;
+
+    let admin = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(admin, 6);
+    let user = Pubkey::new_unique();
+    let (user_asset_account, user_lp_account, mut accounts) = deposit_accounts(&p, user, 1_000_000);
+
+    // Replace the pool reserve account with a frozen variant.
+    for (k, v) in accounts.iter_mut() {
+        if *k == p.pool_asset_account {
+            *v = create_frozen_token_account(&p.asset_mint, &p.lp_pda, 0);
+        }
+    }
+
+    let (event_authority, _) = derive_event_authority();
+    let mut ix = convert_instruction(
+        DepositBuilder::new()
+            .signer(user.into())
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .lp_token(p.lp_token_mint.into())
+            .user_lp_account(user_lp_account.into())
+            .asset(p.asset.into())
+            .asset_mint(p.asset_mint.into())
+            .user_asset_account(user_asset_account.into())
+            .pool_asset_account(p.pool_asset_account.into())
+            .oracle(p.oracle.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .associated_token_program(SPL_ASSOCIATED_TOKEN_ID.into())
+            .system_program(system_program::ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_index(0)
+            .amount(1_000)
+            .min_lp_tokens(0)
+            .instruction()
+    );
+
+    // Append remaining-accounts (token, asset, oracle, mint) for the pool's single asset.
+    ix.accounts.extend(pool_value_remaining_accounts(&p));
+
+    // PoolAssetFrozen is variant index 48.
+    with_mollusk(|m| m.process_and_validate_instruction(
+        &ix,
+        &accounts,
+        &[Check::err(rlp_error_code(48))],
+    ));
 }
