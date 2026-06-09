@@ -29,6 +29,13 @@ pub mod rlp {
         instructions::initialize_lp(ctx, args)
     }
 
+    pub fn initialize_pool_reserve(
+        ctx: Context<InitializePoolReserve>,
+        _liquidity_pool_id: u8,
+    ) -> Result<()> {
+        instructions::initialize_pool_reserve(ctx)
+    }
+
     pub fn add_asset(
         ctx: Context<AddAsset>,
         args: AddAssetArgs
