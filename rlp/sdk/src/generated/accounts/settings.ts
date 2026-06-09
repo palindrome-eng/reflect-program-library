@@ -58,6 +58,7 @@ export type Settings = {
   assets: number;
   accessControl: AccessControl;
   swapFeeBps: number;
+  supremoCount: number;
 };
 
 export type SettingsArgs = {
@@ -66,6 +67,7 @@ export type SettingsArgs = {
   assets: number;
   accessControl: AccessControlArgs;
   swapFeeBps: number;
+  supremoCount: number;
 };
 
 /** Gets the encoder for {@link SettingsArgs} account data. */
@@ -78,6 +80,7 @@ export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
       ["assets", getU8Encoder()],
       ["accessControl", getAccessControlEncoder()],
       ["swapFeeBps", getU16Encoder()],
+      ["supremoCount", getU8Encoder()],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR }),
   );
@@ -92,6 +95,7 @@ export function getSettingsDecoder(): FixedSizeDecoder<Settings> {
     ["assets", getU8Decoder()],
     ["accessControl", getAccessControlDecoder()],
     ["swapFeeBps", getU16Decoder()],
+    ["supremoCount", getU8Decoder()],
   ]);
 }
 
@@ -154,5 +158,5 @@ export async function fetchAllMaybeSettings(
 }
 
 export function getSettingsSize(): number {
-  return 378;
+  return 379;
 }

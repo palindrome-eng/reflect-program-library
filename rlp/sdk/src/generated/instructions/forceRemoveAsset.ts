@@ -16,6 +16,8 @@ import {
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU8Decoder,
+  getU8Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -35,34 +37,30 @@ import {
 import { RLP_PROGRAM_ADDRESS } from "../programs";
 import {
   expectAddress,
+  expectSome,
   getAccountMetaFactory,
   type ResolvedAccount,
 } from "../shared";
-import {
-  getAccessLevelDecoder,
-  getAccessLevelEncoder,
-  type AccessLevel,
-  type AccessLevelArgs,
-} from "../types";
 
-export const ADD_ASSET_DISCRIMINATOR = new Uint8Array([
-  81, 53, 134, 142, 243, 73, 42, 179,
+export const FORCE_REMOVE_ASSET_DISCRIMINATOR = new Uint8Array([
+  26, 47, 174, 160, 163, 115, 100, 180,
 ]);
 
-export function getAddAssetDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(ADD_ASSET_DISCRIMINATOR);
+export function getForceRemoveAssetDiscriminatorBytes() {
+  return fixEncoderSize(getBytesEncoder(), 8).encode(
+    FORCE_REMOVE_ASSET_DISCRIMINATOR,
+  );
 }
 
-export type AddAssetInstruction<
+export type ForceRemoveAssetInstruction<
   TProgram extends string = typeof RLP_PROGRAM_ADDRESS,
   TAccountSigner extends string | AccountMeta<string> = string,
-  TAccountAdmin extends string | AccountMeta<string> = string,
+  TAccountPermissions extends string | AccountMeta<string> = string,
   TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountLiquidityPool extends string | AccountMeta<string> = string,
   TAccountAsset extends string | AccountMeta<string> = string,
   TAccountAssetMint extends string | AccountMeta<string> = string,
-  TAccountOracle extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends string | AccountMeta<string> =
-    "11111111111111111111111111111111",
+  TAccountPoolTokenAccount extends string | AccountMeta<string> = string,
   TAccountEventAuthority extends string | AccountMeta<string> = string,
   TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -74,24 +72,24 @@ export type AddAssetInstruction<
         ? WritableSignerAccount<TAccountSigner> &
             AccountSignerMeta<TAccountSigner>
         : TAccountSigner,
-      TAccountAdmin extends string
-        ? WritableAccount<TAccountAdmin>
-        : TAccountAdmin,
+      TAccountPermissions extends string
+        ? ReadonlyAccount<TAccountPermissions>
+        : TAccountPermissions,
       TAccountSettings extends string
-        ? WritableAccount<TAccountSettings>
+        ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
+      TAccountLiquidityPool extends string
+        ? WritableAccount<TAccountLiquidityPool>
+        : TAccountLiquidityPool,
       TAccountAsset extends string
-        ? WritableAccount<TAccountAsset>
+        ? ReadonlyAccount<TAccountAsset>
         : TAccountAsset,
       TAccountAssetMint extends string
-        ? WritableAccount<TAccountAssetMint>
+        ? ReadonlyAccount<TAccountAssetMint>
         : TAccountAssetMint,
-      TAccountOracle extends string
-        ? WritableAccount<TAccountOracle>
-        : TAccountOracle,
-      TAccountSystemProgram extends string
-        ? ReadonlyAccount<TAccountSystemProgram>
-        : TAccountSystemProgram,
+      TAccountPoolTokenAccount extends string
+        ? ReadonlyAccount<TAccountPoolTokenAccount>
+        : TAccountPoolTokenAccount,
       TAccountEventAuthority extends string
         ? ReadonlyAccount<TAccountEventAuthority>
         : TAccountEventAuthority,
@@ -102,97 +100,98 @@ export type AddAssetInstruction<
     ]
   >;
 
-export type AddAssetInstructionData = {
+export type ForceRemoveAssetInstructionData = {
   discriminator: ReadonlyUint8Array;
-  accessLevel: AccessLevel;
+  liquidityPoolId: number;
 };
 
-export type AddAssetInstructionDataArgs = { accessLevel: AccessLevelArgs };
+export type ForceRemoveAssetInstructionDataArgs = { liquidityPoolId: number };
 
-export function getAddAssetInstructionDataEncoder(): FixedSizeEncoder<AddAssetInstructionDataArgs> {
+export function getForceRemoveAssetInstructionDataEncoder(): FixedSizeEncoder<ForceRemoveAssetInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["accessLevel", getAccessLevelEncoder()],
+      ["liquidityPoolId", getU8Encoder()],
     ]),
-    (value) => ({ ...value, discriminator: ADD_ASSET_DISCRIMINATOR }),
+    (value) => ({ ...value, discriminator: FORCE_REMOVE_ASSET_DISCRIMINATOR }),
   );
 }
 
-export function getAddAssetInstructionDataDecoder(): FixedSizeDecoder<AddAssetInstructionData> {
+export function getForceRemoveAssetInstructionDataDecoder(): FixedSizeDecoder<ForceRemoveAssetInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["accessLevel", getAccessLevelDecoder()],
+    ["liquidityPoolId", getU8Decoder()],
   ]);
 }
 
-export function getAddAssetInstructionDataCodec(): FixedSizeCodec<
-  AddAssetInstructionDataArgs,
-  AddAssetInstructionData
+export function getForceRemoveAssetInstructionDataCodec(): FixedSizeCodec<
+  ForceRemoveAssetInstructionDataArgs,
+  ForceRemoveAssetInstructionData
 > {
   return combineCodec(
-    getAddAssetInstructionDataEncoder(),
-    getAddAssetInstructionDataDecoder(),
+    getForceRemoveAssetInstructionDataEncoder(),
+    getForceRemoveAssetInstructionDataDecoder(),
   );
 }
 
-export type AddAssetAsyncInput<
+export type ForceRemoveAssetAsyncInput<
   TAccountSigner extends string = string,
-  TAccountAdmin extends string = string,
+  TAccountPermissions extends string = string,
   TAccountSettings extends string = string,
+  TAccountLiquidityPool extends string = string,
   TAccountAsset extends string = string,
   TAccountAssetMint extends string = string,
-  TAccountOracle extends string = string,
-  TAccountSystemProgram extends string = string,
+  TAccountPoolTokenAccount extends string = string,
   TAccountEventAuthority extends string = string,
   TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
-  admin?: Address<TAccountAdmin>;
+  permissions?: Address<TAccountPermissions>;
   settings?: Address<TAccountSettings>;
-  asset?: Address<TAccountAsset>;
+  liquidityPool?: Address<TAccountLiquidityPool>;
+  asset: Address<TAccountAsset>;
   assetMint: Address<TAccountAssetMint>;
-  oracle: Address<TAccountOracle>;
-  systemProgram?: Address<TAccountSystemProgram>;
+  /** The pool's reserve ATA for the asset being removed. Must be frozen. */
+  poolTokenAccount: Address<TAccountPoolTokenAccount>;
   eventAuthority?: Address<TAccountEventAuthority>;
   program: Address<TAccountProgram>;
-  accessLevel: AddAssetInstructionDataArgs["accessLevel"];
+  liquidityPoolId: ForceRemoveAssetInstructionDataArgs["liquidityPoolId"];
 };
 
-export async function getAddAssetInstructionAsync<
+export async function getForceRemoveAssetInstructionAsync<
   TAccountSigner extends string,
-  TAccountAdmin extends string,
+  TAccountPermissions extends string,
   TAccountSettings extends string,
+  TAccountLiquidityPool extends string,
   TAccountAsset extends string,
   TAccountAssetMint extends string,
-  TAccountOracle extends string,
-  TAccountSystemProgram extends string,
+  TAccountPoolTokenAccount extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
-  input: AddAssetAsyncInput<
+  input: ForceRemoveAssetAsyncInput<
     TAccountSigner,
-    TAccountAdmin,
+    TAccountPermissions,
     TAccountSettings,
+    TAccountLiquidityPool,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountOracle,
-    TAccountSystemProgram,
+    TAccountPoolTokenAccount,
     TAccountEventAuthority,
     TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
-  AddAssetInstruction<
+  ForceRemoveAssetInstruction<
     TProgramAddress,
     TAccountSigner,
-    TAccountAdmin,
+    TAccountPermissions,
     TAccountSettings,
+    TAccountLiquidityPool,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountOracle,
-    TAccountSystemProgram,
+    TAccountPoolTokenAccount,
     TAccountEventAuthority,
     TAccountProgram
   >
@@ -203,12 +202,15 @@ export async function getAddAssetInstructionAsync<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    admin: { value: input.admin ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
-    asset: { value: input.asset ?? null, isWritable: true },
-    assetMint: { value: input.assetMint ?? null, isWritable: true },
-    oracle: { value: input.oracle ?? null, isWritable: true },
-    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    permissions: { value: input.permissions ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: false },
+    liquidityPool: { value: input.liquidityPool ?? null, isWritable: true },
+    asset: { value: input.asset ?? null, isWritable: false },
+    assetMint: { value: input.assetMint ?? null, isWritable: false },
+    poolTokenAccount: {
+      value: input.poolTokenAccount ?? null,
+      isWritable: false,
+    },
     eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
     program: { value: input.program ?? null, isWritable: false },
   };
@@ -221,8 +223,8 @@ export async function getAddAssetInstructionAsync<
   const args = { ...input };
 
   // Resolve default values.
-  if (!accounts.admin.value) {
-    accounts.admin.value = await getProgramDerivedAddress({
+  if (!accounts.permissions.value) {
+    accounts.permissions.value = await getProgramDerivedAddress({
       programAddress,
       seeds: [
         getBytesEncoder().encode(
@@ -244,18 +246,18 @@ export async function getAddAssetInstructionAsync<
       ],
     });
   }
-  if (!accounts.asset.value) {
-    accounts.asset.value = await getProgramDerivedAddress({
+  if (!accounts.liquidityPool.value) {
+    accounts.liquidityPool.value = await getProgramDerivedAddress({
       programAddress,
       seeds: [
-        getBytesEncoder().encode(new Uint8Array([97, 115, 115, 101, 116])),
-        getAddressEncoder().encode(expectAddress(accounts.assetMint.value)),
+        getBytesEncoder().encode(
+          new Uint8Array([
+            108, 105, 113, 117, 105, 100, 105, 116, 121, 95, 112, 111, 111, 108,
+          ]),
+        ),
+        getU8Encoder().encode(expectSome(args.liquidityPoolId)),
       ],
     });
-  }
-  if (!accounts.systemProgram.value) {
-    accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.eventAuthority.value) {
     accounts.eventAuthority.value = await getProgramDerivedAddress({
@@ -275,89 +277,90 @@ export async function getAddAssetInstructionAsync<
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.signer),
-      getAccountMeta(accounts.admin),
+      getAccountMeta(accounts.permissions),
       getAccountMeta(accounts.settings),
+      getAccountMeta(accounts.liquidityPool),
       getAccountMeta(accounts.asset),
       getAccountMeta(accounts.assetMint),
-      getAccountMeta(accounts.oracle),
-      getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.poolTokenAccount),
       getAccountMeta(accounts.eventAuthority),
       getAccountMeta(accounts.program),
     ],
-    data: getAddAssetInstructionDataEncoder().encode(
-      args as AddAssetInstructionDataArgs,
+    data: getForceRemoveAssetInstructionDataEncoder().encode(
+      args as ForceRemoveAssetInstructionDataArgs,
     ),
     programAddress,
-  } as AddAssetInstruction<
+  } as ForceRemoveAssetInstruction<
     TProgramAddress,
     TAccountSigner,
-    TAccountAdmin,
+    TAccountPermissions,
     TAccountSettings,
+    TAccountLiquidityPool,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountOracle,
-    TAccountSystemProgram,
+    TAccountPoolTokenAccount,
     TAccountEventAuthority,
     TAccountProgram
   >);
 }
 
-export type AddAssetInput<
+export type ForceRemoveAssetInput<
   TAccountSigner extends string = string,
-  TAccountAdmin extends string = string,
+  TAccountPermissions extends string = string,
   TAccountSettings extends string = string,
+  TAccountLiquidityPool extends string = string,
   TAccountAsset extends string = string,
   TAccountAssetMint extends string = string,
-  TAccountOracle extends string = string,
-  TAccountSystemProgram extends string = string,
+  TAccountPoolTokenAccount extends string = string,
   TAccountEventAuthority extends string = string,
   TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
-  admin: Address<TAccountAdmin>;
+  permissions: Address<TAccountPermissions>;
   settings: Address<TAccountSettings>;
+  liquidityPool: Address<TAccountLiquidityPool>;
   asset: Address<TAccountAsset>;
   assetMint: Address<TAccountAssetMint>;
-  oracle: Address<TAccountOracle>;
-  systemProgram?: Address<TAccountSystemProgram>;
+  /** The pool's reserve ATA for the asset being removed. Must be frozen. */
+  poolTokenAccount: Address<TAccountPoolTokenAccount>;
   eventAuthority: Address<TAccountEventAuthority>;
   program: Address<TAccountProgram>;
-  accessLevel: AddAssetInstructionDataArgs["accessLevel"];
+  liquidityPoolId: ForceRemoveAssetInstructionDataArgs["liquidityPoolId"];
 };
 
-export function getAddAssetInstruction<
+export function getForceRemoveAssetInstruction<
   TAccountSigner extends string,
-  TAccountAdmin extends string,
+  TAccountPermissions extends string,
   TAccountSettings extends string,
+  TAccountLiquidityPool extends string,
   TAccountAsset extends string,
   TAccountAssetMint extends string,
-  TAccountOracle extends string,
-  TAccountSystemProgram extends string,
+  TAccountPoolTokenAccount extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
-  input: AddAssetInput<
+  input: ForceRemoveAssetInput<
     TAccountSigner,
-    TAccountAdmin,
+    TAccountPermissions,
     TAccountSettings,
+    TAccountLiquidityPool,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountOracle,
-    TAccountSystemProgram,
+    TAccountPoolTokenAccount,
     TAccountEventAuthority,
     TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
-): AddAssetInstruction<
+): ForceRemoveAssetInstruction<
   TProgramAddress,
   TAccountSigner,
-  TAccountAdmin,
+  TAccountPermissions,
   TAccountSettings,
+  TAccountLiquidityPool,
   TAccountAsset,
   TAccountAssetMint,
-  TAccountOracle,
-  TAccountSystemProgram,
+  TAccountPoolTokenAccount,
   TAccountEventAuthority,
   TAccountProgram
 > {
@@ -367,12 +370,15 @@ export function getAddAssetInstruction<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    admin: { value: input.admin ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
-    asset: { value: input.asset ?? null, isWritable: true },
-    assetMint: { value: input.assetMint ?? null, isWritable: true },
-    oracle: { value: input.oracle ?? null, isWritable: true },
-    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    permissions: { value: input.permissions ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: false },
+    liquidityPool: { value: input.liquidityPool ?? null, isWritable: true },
+    asset: { value: input.asset ?? null, isWritable: false },
+    assetMint: { value: input.assetMint ?? null, isWritable: false },
+    poolTokenAccount: {
+      value: input.poolTokenAccount ?? null,
+      isWritable: false,
+    },
     eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
     program: { value: input.program ?? null, isWritable: false },
   };
@@ -384,70 +390,65 @@ export function getAddAssetInstruction<
   // Original args.
   const args = { ...input };
 
-  // Resolve default values.
-  if (!accounts.systemProgram.value) {
-    accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
-  }
-
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.signer),
-      getAccountMeta(accounts.admin),
+      getAccountMeta(accounts.permissions),
       getAccountMeta(accounts.settings),
+      getAccountMeta(accounts.liquidityPool),
       getAccountMeta(accounts.asset),
       getAccountMeta(accounts.assetMint),
-      getAccountMeta(accounts.oracle),
-      getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.poolTokenAccount),
       getAccountMeta(accounts.eventAuthority),
       getAccountMeta(accounts.program),
     ],
-    data: getAddAssetInstructionDataEncoder().encode(
-      args as AddAssetInstructionDataArgs,
+    data: getForceRemoveAssetInstructionDataEncoder().encode(
+      args as ForceRemoveAssetInstructionDataArgs,
     ),
     programAddress,
-  } as AddAssetInstruction<
+  } as ForceRemoveAssetInstruction<
     TProgramAddress,
     TAccountSigner,
-    TAccountAdmin,
+    TAccountPermissions,
     TAccountSettings,
+    TAccountLiquidityPool,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountOracle,
-    TAccountSystemProgram,
+    TAccountPoolTokenAccount,
     TAccountEventAuthority,
     TAccountProgram
   >);
 }
 
-export type ParsedAddAssetInstruction<
+export type ParsedForceRemoveAssetInstruction<
   TProgram extends string = typeof RLP_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
     signer: TAccountMetas[0];
-    admin: TAccountMetas[1];
+    permissions: TAccountMetas[1];
     settings: TAccountMetas[2];
-    asset: TAccountMetas[3];
-    assetMint: TAccountMetas[4];
-    oracle: TAccountMetas[5];
-    systemProgram: TAccountMetas[6];
+    liquidityPool: TAccountMetas[3];
+    asset: TAccountMetas[4];
+    assetMint: TAccountMetas[5];
+    /** The pool's reserve ATA for the asset being removed. Must be frozen. */
+    poolTokenAccount: TAccountMetas[6];
     eventAuthority: TAccountMetas[7];
     program: TAccountMetas[8];
   };
-  data: AddAssetInstructionData;
+  data: ForceRemoveAssetInstructionData;
 };
 
-export function parseAddAssetInstruction<
+export function parseForceRemoveAssetInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedAddAssetInstruction<TProgram, TAccountMetas> {
+): ParsedForceRemoveAssetInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 9) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
@@ -462,15 +463,15 @@ export function parseAddAssetInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       signer: getNextAccount(),
-      admin: getNextAccount(),
+      permissions: getNextAccount(),
       settings: getNextAccount(),
+      liquidityPool: getNextAccount(),
       asset: getNextAccount(),
       assetMint: getNextAccount(),
-      oracle: getNextAccount(),
-      systemProgram: getNextAccount(),
+      poolTokenAccount: getNextAccount(),
       eventAuthority: getNextAccount(),
       program: getNextAccount(),
     },
-    data: getAddAssetInstructionDataDecoder().decode(instruction.data),
+    data: getForceRemoveAssetInstructionDataDecoder().decode(instruction.data),
   };
 }

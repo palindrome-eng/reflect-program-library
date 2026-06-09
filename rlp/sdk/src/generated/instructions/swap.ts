@@ -73,6 +73,8 @@ export type SwapInstruction<
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
     "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -127,6 +129,12 @@ export type SwapInstruction<
       TAccountAssociatedTokenProgram extends string
         ? ReadonlyAccount<TAccountAssociatedTokenProgram>
         : TAccountAssociatedTokenProgram,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -188,6 +196,8 @@ export type SwapAsyncInput<
   TAccountTokenToSignerAccount extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin?: Address<TAccountAdmin>;
@@ -205,6 +215,8 @@ export type SwapAsyncInput<
   tokenToSignerAccount: Address<TAccountTokenToSignerAccount>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   amountIn: SwapInstructionDataArgs["amountIn"];
   minOut: SwapInstructionDataArgs["minOut"];
 };
@@ -226,6 +238,8 @@ export async function getSwapInstructionAsync<
   TAccountTokenToSignerAccount extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: SwapAsyncInput<
@@ -244,7 +258,9 @@ export async function getSwapInstructionAsync<
     TAccountTokenFromSignerAccount,
     TAccountTokenToSignerAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -265,7 +281,9 @@ export async function getSwapInstructionAsync<
     TAccountTokenFromSignerAccount,
     TAccountTokenToSignerAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -301,6 +319,8 @@ export async function getSwapInstructionAsync<
       value: input.associatedTokenProgram ?? null,
       isWritable: false,
     },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -394,6 +414,19 @@ export async function getSwapInstructionAsync<
     accounts.associatedTokenProgram.value =
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -414,6 +447,8 @@ export async function getSwapInstructionAsync<
       getAccountMeta(accounts.tokenToSignerAccount),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getSwapInstructionDataEncoder().encode(
       args as SwapInstructionDataArgs,
@@ -436,7 +471,9 @@ export async function getSwapInstructionAsync<
     TAccountTokenFromSignerAccount,
     TAccountTokenToSignerAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -457,6 +494,8 @@ export type SwapInput<
   TAccountTokenToSignerAccount extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin?: Address<TAccountAdmin>;
@@ -474,6 +513,8 @@ export type SwapInput<
   tokenToSignerAccount: Address<TAccountTokenToSignerAccount>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   amountIn: SwapInstructionDataArgs["amountIn"];
   minOut: SwapInstructionDataArgs["minOut"];
 };
@@ -495,6 +536,8 @@ export function getSwapInstruction<
   TAccountTokenToSignerAccount extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: SwapInput<
@@ -513,7 +556,9 @@ export function getSwapInstruction<
     TAccountTokenFromSignerAccount,
     TAccountTokenToSignerAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): SwapInstruction<
@@ -533,7 +578,9 @@ export function getSwapInstruction<
   TAccountTokenFromSignerAccount,
   TAccountTokenToSignerAccount,
   TAccountTokenProgram,
-  TAccountAssociatedTokenProgram
+  TAccountAssociatedTokenProgram,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -568,6 +615,8 @@ export function getSwapInstruction<
       value: input.associatedTokenProgram ?? null,
       isWritable: false,
     },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -606,6 +655,8 @@ export function getSwapInstruction<
       getAccountMeta(accounts.tokenToSignerAccount),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getSwapInstructionDataEncoder().encode(
       args as SwapInstructionDataArgs,
@@ -628,7 +679,9 @@ export function getSwapInstruction<
     TAccountTokenFromSignerAccount,
     TAccountTokenToSignerAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -654,6 +707,8 @@ export type ParsedSwapInstruction<
     tokenToSignerAccount: TAccountMetas[13];
     tokenProgram: TAccountMetas[14];
     associatedTokenProgram: TAccountMetas[15];
+    eventAuthority: TAccountMetas[16];
+    program: TAccountMetas[17];
   };
   data: SwapInstructionData;
 };
@@ -666,7 +721,7 @@ export function parseSwapInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedSwapInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 16) {
+  if (instruction.accounts.length < 18) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -701,6 +756,8 @@ export function parseSwapInstruction<
       tokenToSignerAccount: getNextAccount(),
       tokenProgram: getNextAccount(),
       associatedTokenProgram: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getSwapInstructionDataDecoder().decode(instruction.data),
   };

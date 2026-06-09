@@ -26,12 +26,12 @@ import {
   transformEncoder,
   type Account,
   type Address,
+  type Codec,
+  type Decoder,
   type EncodedAccount,
+  type Encoder,
   type FetchAccountConfig,
   type FetchAccountsConfig,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
@@ -73,7 +73,7 @@ export type AssetArgs = {
 };
 
 /** Gets the encoder for {@link AssetArgs} account data. */
-export function getAssetEncoder(): FixedSizeEncoder<AssetArgs> {
+export function getAssetEncoder(): Encoder<AssetArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
@@ -88,7 +88,7 @@ export function getAssetEncoder(): FixedSizeEncoder<AssetArgs> {
 }
 
 /** Gets the decoder for {@link Asset} account data. */
-export function getAssetDecoder(): FixedSizeDecoder<Asset> {
+export function getAssetDecoder(): Decoder<Asset> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["bump", getU8Decoder()],
@@ -100,7 +100,7 @@ export function getAssetDecoder(): FixedSizeDecoder<Asset> {
 }
 
 /** Gets the codec for {@link Asset} account data. */
-export function getAssetCodec(): FixedSizeCodec<AssetArgs, Asset> {
+export function getAssetCodec(): Codec<AssetArgs, Asset> {
   return combineCodec(getAssetEncoder(), getAssetDecoder());
 }
 
@@ -155,8 +155,4 @@ export async function fetchAllMaybeAsset(
 ): Promise<MaybeAccount<Asset>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) => decodeAsset(maybeAccount));
-}
-
-export function getAssetSize(): number {
-  return 76;
 }

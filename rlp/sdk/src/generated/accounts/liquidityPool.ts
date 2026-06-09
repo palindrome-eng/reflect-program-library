@@ -63,6 +63,13 @@ export type LiquidityPool = {
   depositCap: Option<bigint>;
   assetCount: number;
   assets: ReadonlyUint8Array;
+  /**
+   * ProxyState account this pool's junior tranche covers.
+   * When set, `slash_for_nav_coverage` is enabled and pulls from this pool's
+   * reserve of the proxy's stablecoin_mint into the proxy's vault, capped at
+   * the proxy's current mark-to-market loss (principal + commission - vault_value).
+   */
+  protectedVault: Option<Address>;
 };
 
 export type LiquidityPoolArgs = {
@@ -74,6 +81,13 @@ export type LiquidityPoolArgs = {
   depositCap: OptionOrNullable<number | bigint>;
   assetCount: number;
   assets: ReadonlyUint8Array;
+  /**
+   * ProxyState account this pool's junior tranche covers.
+   * When set, `slash_for_nav_coverage` is enabled and pulls from this pool's
+   * reserve of the proxy's stablecoin_mint into the proxy's vault, capped at
+   * the proxy's current mark-to-market loss (principal + commission - vault_value).
+   */
+  protectedVault: OptionOrNullable<Address>;
 };
 
 /** Gets the encoder for {@link LiquidityPoolArgs} account data. */
@@ -89,6 +103,7 @@ export function getLiquidityPoolEncoder(): Encoder<LiquidityPoolArgs> {
       ["depositCap", getOptionEncoder(getU64Encoder())],
       ["assetCount", getU8Encoder()],
       ["assets", fixEncoderSize(getBytesEncoder(), 4)],
+      ["protectedVault", getOptionEncoder(getAddressEncoder())],
     ]),
     (value) => ({ ...value, discriminator: LIQUIDITY_POOL_DISCRIMINATOR }),
   );
@@ -106,6 +121,7 @@ export function getLiquidityPoolDecoder(): Decoder<LiquidityPool> {
     ["depositCap", getOptionDecoder(getU64Decoder())],
     ["assetCount", getU8Decoder()],
     ["assets", fixDecoderSize(getBytesDecoder(), 4)],
+    ["protectedVault", getOptionDecoder(getAddressDecoder())],
   ]);
 }
 

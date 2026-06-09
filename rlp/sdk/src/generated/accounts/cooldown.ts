@@ -54,6 +54,7 @@ export type Cooldown = {
   authority: Address;
   liquidityPoolId: number;
   unlockTs: bigint;
+  lockedAmount: bigint;
 };
 
 export type CooldownArgs = {
@@ -62,6 +63,7 @@ export type CooldownArgs = {
   authority: Address;
   liquidityPoolId: number;
   unlockTs: number | bigint;
+  lockedAmount: number | bigint;
 };
 
 /** Gets the encoder for {@link CooldownArgs} account data. */
@@ -74,6 +76,7 @@ export function getCooldownEncoder(): FixedSizeEncoder<CooldownArgs> {
       ["authority", getAddressEncoder()],
       ["liquidityPoolId", getU8Encoder()],
       ["unlockTs", getU64Encoder()],
+      ["lockedAmount", getU64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: COOLDOWN_DISCRIMINATOR }),
   );
@@ -88,6 +91,7 @@ export function getCooldownDecoder(): FixedSizeDecoder<Cooldown> {
     ["authority", getAddressDecoder()],
     ["liquidityPoolId", getU8Decoder()],
     ["unlockTs", getU64Decoder()],
+    ["lockedAmount", getU64Decoder()],
   ]);
 }
 
@@ -150,5 +154,5 @@ export async function fetchAllMaybeCooldown(
 }
 
 export function getCooldownSize(): number {
-  return 58;
+  return 66;
 }

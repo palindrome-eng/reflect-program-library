@@ -33,6 +33,7 @@ export enum Action {
   UpdateRole,
   UpdateAction,
   UpdateOracle,
+  RemovePoolAsset,
 }
 
 export type ActionArgs = Action;

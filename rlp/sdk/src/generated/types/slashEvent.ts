@@ -23,23 +23,29 @@ import {
 export type SlashEvent = {
   admin: Address;
   liquidityPool: Address;
-  amount: bigint;
-  mint: Address;
+  protectedVault: Address;
+  stablecoinMint: Address;
+  lossUsdc: bigint;
+  amountTokens: bigint;
 };
 
 export type SlashEventArgs = {
   admin: Address;
   liquidityPool: Address;
-  amount: number | bigint;
-  mint: Address;
+  protectedVault: Address;
+  stablecoinMint: Address;
+  lossUsdc: number | bigint;
+  amountTokens: number | bigint;
 };
 
 export function getSlashEventEncoder(): FixedSizeEncoder<SlashEventArgs> {
   return getStructEncoder([
     ["admin", getAddressEncoder()],
     ["liquidityPool", getAddressEncoder()],
-    ["amount", getU64Encoder()],
-    ["mint", getAddressEncoder()],
+    ["protectedVault", getAddressEncoder()],
+    ["stablecoinMint", getAddressEncoder()],
+    ["lossUsdc", getU64Encoder()],
+    ["amountTokens", getU64Encoder()],
   ]);
 }
 
@@ -47,8 +53,10 @@ export function getSlashEventDecoder(): FixedSizeDecoder<SlashEvent> {
   return getStructDecoder([
     ["admin", getAddressDecoder()],
     ["liquidityPool", getAddressDecoder()],
-    ["amount", getU64Decoder()],
-    ["mint", getAddressDecoder()],
+    ["protectedVault", getAddressDecoder()],
+    ["stablecoinMint", getAddressDecoder()],
+    ["lossUsdc", getU64Decoder()],
+    ["amountTokens", getU64Decoder()],
   ]);
 }
 

@@ -56,6 +56,8 @@ export type UpdateOracleInstruction<
   TAccountSettings extends string | AccountMeta<string> = string,
   TAccountAsset extends string | AccountMeta<string> = string,
   TAccountOracle extends string | AccountMeta<string> = string,
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -77,6 +79,12 @@ export type UpdateOracleInstruction<
       TAccountOracle extends string
         ? ReadonlyAccount<TAccountOracle>
         : TAccountOracle,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -114,12 +122,16 @@ export type UpdateOracleAsyncInput<
   TAccountSettings extends string = string,
   TAccountAsset extends string = string,
   TAccountOracle extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin?: Address<TAccountAdmin>;
   settings?: Address<TAccountSettings>;
   asset: Address<TAccountAsset>;
   oracle: Address<TAccountOracle>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
 };
 
 export async function getUpdateOracleInstructionAsync<
@@ -128,6 +140,8 @@ export async function getUpdateOracleInstructionAsync<
   TAccountSettings extends string,
   TAccountAsset extends string,
   TAccountOracle extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: UpdateOracleAsyncInput<
@@ -135,7 +149,9 @@ export async function getUpdateOracleInstructionAsync<
     TAccountAdmin,
     TAccountSettings,
     TAccountAsset,
-    TAccountOracle
+    TAccountOracle,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -145,7 +161,9 @@ export async function getUpdateOracleInstructionAsync<
     TAccountAdmin,
     TAccountSettings,
     TAccountAsset,
-    TAccountOracle
+    TAccountOracle,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -158,6 +176,8 @@ export async function getUpdateOracleInstructionAsync<
     settings: { value: input.settings ?? null, isWritable: false },
     asset: { value: input.asset ?? null, isWritable: true },
     oracle: { value: input.oracle ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -188,6 +208,19 @@ export async function getUpdateOracleInstructionAsync<
       ],
     });
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -197,6 +230,8 @@ export async function getUpdateOracleInstructionAsync<
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.asset),
       getAccountMeta(accounts.oracle),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getUpdateOracleInstructionDataEncoder().encode({}),
     programAddress,
@@ -206,7 +241,9 @@ export async function getUpdateOracleInstructionAsync<
     TAccountAdmin,
     TAccountSettings,
     TAccountAsset,
-    TAccountOracle
+    TAccountOracle,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -216,12 +253,16 @@ export type UpdateOracleInput<
   TAccountSettings extends string = string,
   TAccountAsset extends string = string,
   TAccountOracle extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin: Address<TAccountAdmin>;
   settings: Address<TAccountSettings>;
   asset: Address<TAccountAsset>;
   oracle: Address<TAccountOracle>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
 };
 
 export function getUpdateOracleInstruction<
@@ -230,6 +271,8 @@ export function getUpdateOracleInstruction<
   TAccountSettings extends string,
   TAccountAsset extends string,
   TAccountOracle extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: UpdateOracleInput<
@@ -237,7 +280,9 @@ export function getUpdateOracleInstruction<
     TAccountAdmin,
     TAccountSettings,
     TAccountAsset,
-    TAccountOracle
+    TAccountOracle,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): UpdateOracleInstruction<
@@ -246,7 +291,9 @@ export function getUpdateOracleInstruction<
   TAccountAdmin,
   TAccountSettings,
   TAccountAsset,
-  TAccountOracle
+  TAccountOracle,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -258,6 +305,8 @@ export function getUpdateOracleInstruction<
     settings: { value: input.settings ?? null, isWritable: false },
     asset: { value: input.asset ?? null, isWritable: true },
     oracle: { value: input.oracle ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -272,6 +321,8 @@ export function getUpdateOracleInstruction<
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.asset),
       getAccountMeta(accounts.oracle),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getUpdateOracleInstructionDataEncoder().encode({}),
     programAddress,
@@ -281,7 +332,9 @@ export function getUpdateOracleInstruction<
     TAccountAdmin,
     TAccountSettings,
     TAccountAsset,
-    TAccountOracle
+    TAccountOracle,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -296,6 +349,8 @@ export type ParsedUpdateOracleInstruction<
     settings: TAccountMetas[2];
     asset: TAccountMetas[3];
     oracle: TAccountMetas[4];
+    eventAuthority: TAccountMetas[5];
+    program: TAccountMetas[6];
   };
   data: UpdateOracleInstructionData;
 };
@@ -308,7 +363,7 @@ export function parseUpdateOracleInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedUpdateOracleInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 7) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -326,6 +381,8 @@ export function parseUpdateOracleInstruction<
       settings: getNextAccount(),
       asset: getNextAccount(),
       oracle: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getUpdateOracleInstructionDataDecoder().decode(instruction.data),
   };

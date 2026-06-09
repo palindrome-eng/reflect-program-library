@@ -16,8 +16,6 @@ import {
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
-  getU64Decoder,
-  getU64Encoder,
   getU8Decoder,
   getU8Encoder,
   transformEncoder,
@@ -39,39 +37,36 @@ import {
 import { RLP_PROGRAM_ADDRESS } from "../programs";
 import {
   expectAddress,
+  expectSome,
   getAccountMetaFactory,
   type ResolvedAccount,
 } from "../shared";
 
-export const DEPOSIT_DISCRIMINATOR = new Uint8Array([
-  242, 35, 198, 137, 82, 225, 242, 182,
+export const INITIALIZE_POOL_RESERVE_DISCRIMINATOR = new Uint8Array([
+  151, 225, 119, 195, 196, 190, 98, 18,
 ]);
 
-export function getDepositDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(DEPOSIT_DISCRIMINATOR);
+export function getInitializePoolReserveDiscriminatorBytes() {
+  return fixEncoderSize(getBytesEncoder(), 8).encode(
+    INITIALIZE_POOL_RESERVE_DISCRIMINATOR,
+  );
 }
 
-export type DepositInstruction<
+export type InitializePoolReserveInstruction<
   TProgram extends string = typeof RLP_PROGRAM_ADDRESS,
   TAccountSigner extends string | AccountMeta<string> = string,
-  TAccountSettings extends string | AccountMeta<string> = string,
   TAccountPermissions extends string | AccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
   TAccountLiquidityPool extends string | AccountMeta<string> = string,
-  TAccountLpToken extends string | AccountMeta<string> = string,
-  TAccountUserLpAccount extends string | AccountMeta<string> = string,
   TAccountAsset extends string | AccountMeta<string> = string,
   TAccountAssetMint extends string | AccountMeta<string> = string,
-  TAccountUserAssetAccount extends string | AccountMeta<string> = string,
   TAccountPoolAssetAccount extends string | AccountMeta<string> = string,
-  TAccountOracle extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
     "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-  TAccountSystemProgram extends string | AccountMeta<string> =
-    "11111111111111111111111111111111",
-  TAccountEventAuthority extends string | AccountMeta<string> = string,
-  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -81,195 +76,140 @@ export type DepositInstruction<
         ? WritableSignerAccount<TAccountSigner> &
             AccountSignerMeta<TAccountSigner>
         : TAccountSigner,
-      TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
-        : TAccountSettings,
       TAccountPermissions extends string
         ? ReadonlyAccount<TAccountPermissions>
         : TAccountPermissions,
+      TAccountSettings extends string
+        ? ReadonlyAccount<TAccountSettings>
+        : TAccountSettings,
       TAccountLiquidityPool extends string
         ? ReadonlyAccount<TAccountLiquidityPool>
         : TAccountLiquidityPool,
-      TAccountLpToken extends string
-        ? WritableAccount<TAccountLpToken>
-        : TAccountLpToken,
-      TAccountUserLpAccount extends string
-        ? WritableAccount<TAccountUserLpAccount>
-        : TAccountUserLpAccount,
       TAccountAsset extends string
         ? ReadonlyAccount<TAccountAsset>
         : TAccountAsset,
       TAccountAssetMint extends string
-        ? WritableAccount<TAccountAssetMint>
+        ? ReadonlyAccount<TAccountAssetMint>
         : TAccountAssetMint,
-      TAccountUserAssetAccount extends string
-        ? WritableAccount<TAccountUserAssetAccount>
-        : TAccountUserAssetAccount,
       TAccountPoolAssetAccount extends string
         ? WritableAccount<TAccountPoolAssetAccount>
         : TAccountPoolAssetAccount,
-      TAccountOracle extends string
-        ? ReadonlyAccount<TAccountOracle>
-        : TAccountOracle,
+      TAccountSystemProgram extends string
+        ? ReadonlyAccount<TAccountSystemProgram>
+        : TAccountSystemProgram,
       TAccountTokenProgram extends string
         ? ReadonlyAccount<TAccountTokenProgram>
         : TAccountTokenProgram,
       TAccountAssociatedTokenProgram extends string
         ? ReadonlyAccount<TAccountAssociatedTokenProgram>
         : TAccountAssociatedTokenProgram,
-      TAccountSystemProgram extends string
-        ? ReadonlyAccount<TAccountSystemProgram>
-        : TAccountSystemProgram,
-      TAccountEventAuthority extends string
-        ? ReadonlyAccount<TAccountEventAuthority>
-        : TAccountEventAuthority,
-      TAccountProgram extends string
-        ? ReadonlyAccount<TAccountProgram>
-        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
 
-export type DepositInstructionData = {
+export type InitializePoolReserveInstructionData = {
   discriminator: ReadonlyUint8Array;
-  liquidityPoolIndex: number;
-  amount: bigint;
-  minLpTokens: bigint;
+  liquidityPoolId: number;
 };
 
-export type DepositInstructionDataArgs = {
-  liquidityPoolIndex: number;
-  amount: number | bigint;
-  minLpTokens: number | bigint;
+export type InitializePoolReserveInstructionDataArgs = {
+  liquidityPoolId: number;
 };
 
-export function getDepositInstructionDataEncoder(): FixedSizeEncoder<DepositInstructionDataArgs> {
+export function getInitializePoolReserveInstructionDataEncoder(): FixedSizeEncoder<InitializePoolReserveInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["liquidityPoolIndex", getU8Encoder()],
-      ["amount", getU64Encoder()],
-      ["minLpTokens", getU64Encoder()],
+      ["liquidityPoolId", getU8Encoder()],
     ]),
-    (value) => ({ ...value, discriminator: DEPOSIT_DISCRIMINATOR }),
+    (value) => ({
+      ...value,
+      discriminator: INITIALIZE_POOL_RESERVE_DISCRIMINATOR,
+    }),
   );
 }
 
-export function getDepositInstructionDataDecoder(): FixedSizeDecoder<DepositInstructionData> {
+export function getInitializePoolReserveInstructionDataDecoder(): FixedSizeDecoder<InitializePoolReserveInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["liquidityPoolIndex", getU8Decoder()],
-    ["amount", getU64Decoder()],
-    ["minLpTokens", getU64Decoder()],
+    ["liquidityPoolId", getU8Decoder()],
   ]);
 }
 
-export function getDepositInstructionDataCodec(): FixedSizeCodec<
-  DepositInstructionDataArgs,
-  DepositInstructionData
+export function getInitializePoolReserveInstructionDataCodec(): FixedSizeCodec<
+  InitializePoolReserveInstructionDataArgs,
+  InitializePoolReserveInstructionData
 > {
   return combineCodec(
-    getDepositInstructionDataEncoder(),
-    getDepositInstructionDataDecoder(),
+    getInitializePoolReserveInstructionDataEncoder(),
+    getInitializePoolReserveInstructionDataDecoder(),
   );
 }
 
-export type DepositAsyncInput<
+export type InitializePoolReserveAsyncInput<
   TAccountSigner extends string = string,
-  TAccountSettings extends string = string,
   TAccountPermissions extends string = string,
+  TAccountSettings extends string = string,
   TAccountLiquidityPool extends string = string,
-  TAccountLpToken extends string = string,
-  TAccountUserLpAccount extends string = string,
   TAccountAsset extends string = string,
   TAccountAssetMint extends string = string,
-  TAccountUserAssetAccount extends string = string,
   TAccountPoolAssetAccount extends string = string,
-  TAccountOracle extends string = string,
+  TAccountSystemProgram extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
-  TAccountSystemProgram extends string = string,
-  TAccountEventAuthority extends string = string,
-  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
-  settings?: Address<TAccountSettings>;
   permissions?: Address<TAccountPermissions>;
-  liquidityPool: Address<TAccountLiquidityPool>;
-  lpToken: Address<TAccountLpToken>;
-  userLpAccount?: Address<TAccountUserLpAccount>;
-  asset?: Address<TAccountAsset>;
+  settings?: Address<TAccountSettings>;
+  liquidityPool?: Address<TAccountLiquidityPool>;
+  asset: Address<TAccountAsset>;
   assetMint: Address<TAccountAssetMint>;
-  userAssetAccount: Address<TAccountUserAssetAccount>;
   poolAssetAccount?: Address<TAccountPoolAssetAccount>;
-  oracle: Address<TAccountOracle>;
+  systemProgram?: Address<TAccountSystemProgram>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
-  systemProgram?: Address<TAccountSystemProgram>;
-  eventAuthority?: Address<TAccountEventAuthority>;
-  program: Address<TAccountProgram>;
-  liquidityPoolIndex: DepositInstructionDataArgs["liquidityPoolIndex"];
-  amount: DepositInstructionDataArgs["amount"];
-  minLpTokens: DepositInstructionDataArgs["minLpTokens"];
+  liquidityPoolId: InitializePoolReserveInstructionDataArgs["liquidityPoolId"];
 };
 
-export async function getDepositInstructionAsync<
+export async function getInitializePoolReserveInstructionAsync<
   TAccountSigner extends string,
-  TAccountSettings extends string,
   TAccountPermissions extends string,
+  TAccountSettings extends string,
   TAccountLiquidityPool extends string,
-  TAccountLpToken extends string,
-  TAccountUserLpAccount extends string,
   TAccountAsset extends string,
   TAccountAssetMint extends string,
-  TAccountUserAssetAccount extends string,
   TAccountPoolAssetAccount extends string,
-  TAccountOracle extends string,
+  TAccountSystemProgram extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
-  TAccountSystemProgram extends string,
-  TAccountEventAuthority extends string,
-  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
-  input: DepositAsyncInput<
+  input: InitializePoolReserveAsyncInput<
     TAccountSigner,
-    TAccountSettings,
     TAccountPermissions,
+    TAccountSettings,
     TAccountLiquidityPool,
-    TAccountLpToken,
-    TAccountUserLpAccount,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountUserAssetAccount,
     TAccountPoolAssetAccount,
-    TAccountOracle,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
-    TAccountEventAuthority,
-    TAccountProgram
+    TAccountTokenProgram,
+    TAccountAssociatedTokenProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
-  DepositInstruction<
+  InitializePoolReserveInstruction<
     TProgramAddress,
     TAccountSigner,
-    TAccountSettings,
     TAccountPermissions,
+    TAccountSettings,
     TAccountLiquidityPool,
-    TAccountLpToken,
-    TAccountUserLpAccount,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountUserAssetAccount,
     TAccountPoolAssetAccount,
-    TAccountOracle,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
-    TAccountEventAuthority,
-    TAccountProgram
+    TAccountTokenProgram,
+    TAccountAssociatedTokenProgram
   >
 > {
   // Program address.
@@ -278,30 +218,21 @@ export async function getDepositInstructionAsync<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: false },
     permissions: { value: input.permissions ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: false },
-    lpToken: { value: input.lpToken ?? null, isWritable: true },
-    userLpAccount: { value: input.userLpAccount ?? null, isWritable: true },
     asset: { value: input.asset ?? null, isWritable: false },
-    assetMint: { value: input.assetMint ?? null, isWritable: true },
-    userAssetAccount: {
-      value: input.userAssetAccount ?? null,
-      isWritable: true,
-    },
+    assetMint: { value: input.assetMint ?? null, isWritable: false },
     poolAssetAccount: {
       value: input.poolAssetAccount ?? null,
       isWritable: true,
     },
-    oracle: { value: input.oracle ?? null, isWritable: false },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     associatedTokenProgram: {
       value: input.associatedTokenProgram ?? null,
       isWritable: false,
     },
-    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
-    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -312,16 +243,6 @@ export async function getDepositInstructionAsync<
   const args = { ...input };
 
   // Resolve default values.
-  if (!accounts.settings.value) {
-    accounts.settings.value = await getProgramDerivedAddress({
-      programAddress,
-      seeds: [
-        getBytesEncoder().encode(
-          new Uint8Array([115, 101, 116, 116, 105, 110, 103, 115]),
-        ),
-      ],
-    });
-  }
   if (!accounts.permissions.value) {
     accounts.permissions.value = await getProgramDerivedAddress({
       programAddress,
@@ -335,29 +256,26 @@ export async function getDepositInstructionAsync<
       ],
     });
   }
-  if (!accounts.userLpAccount.value) {
-    accounts.userLpAccount.value = await getProgramDerivedAddress({
-      programAddress:
-        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">,
+  if (!accounts.settings.value) {
+    accounts.settings.value = await getProgramDerivedAddress({
+      programAddress,
       seeds: [
-        getAddressEncoder().encode(expectAddress(accounts.signer.value)),
         getBytesEncoder().encode(
-          new Uint8Array([
-            6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235,
-            121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140, 245, 133,
-            126, 255, 0, 169,
-          ]),
+          new Uint8Array([115, 101, 116, 116, 105, 110, 103, 115]),
         ),
-        getAddressEncoder().encode(expectAddress(accounts.lpToken.value)),
       ],
     });
   }
-  if (!accounts.asset.value) {
-    accounts.asset.value = await getProgramDerivedAddress({
+  if (!accounts.liquidityPool.value) {
+    accounts.liquidityPool.value = await getProgramDerivedAddress({
       programAddress,
       seeds: [
-        getBytesEncoder().encode(new Uint8Array([97, 115, 115, 101, 116])),
-        getAddressEncoder().encode(expectAddress(accounts.assetMint.value)),
+        getBytesEncoder().encode(
+          new Uint8Array([
+            108, 105, 113, 117, 105, 100, 105, 116, 121, 95, 112, 111, 111, 108,
+          ]),
+        ),
+        getU8Encoder().encode(expectSome(args.liquidityPoolId)),
       ],
     });
   }
@@ -378,6 +296,10 @@ export async function getDepositInstructionAsync<
       ],
     });
   }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
@@ -386,164 +308,103 @@ export async function getDepositInstructionAsync<
     accounts.associatedTokenProgram.value =
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
   }
-  if (!accounts.systemProgram.value) {
-    accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
-  }
-  if (!accounts.eventAuthority.value) {
-    accounts.eventAuthority.value = await getProgramDerivedAddress({
-      programAddress,
-      seeds: [
-        getBytesEncoder().encode(
-          new Uint8Array([
-            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
-            105, 116, 121,
-          ]),
-        ),
-      ],
-    });
-  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.signer),
-      getAccountMeta(accounts.settings),
       getAccountMeta(accounts.permissions),
+      getAccountMeta(accounts.settings),
       getAccountMeta(accounts.liquidityPool),
-      getAccountMeta(accounts.lpToken),
-      getAccountMeta(accounts.userLpAccount),
       getAccountMeta(accounts.asset),
       getAccountMeta(accounts.assetMint),
-      getAccountMeta(accounts.userAssetAccount),
       getAccountMeta(accounts.poolAssetAccount),
-      getAccountMeta(accounts.oracle),
+      getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
-      getAccountMeta(accounts.systemProgram),
-      getAccountMeta(accounts.eventAuthority),
-      getAccountMeta(accounts.program),
     ],
-    data: getDepositInstructionDataEncoder().encode(
-      args as DepositInstructionDataArgs,
+    data: getInitializePoolReserveInstructionDataEncoder().encode(
+      args as InitializePoolReserveInstructionDataArgs,
     ),
     programAddress,
-  } as DepositInstruction<
+  } as InitializePoolReserveInstruction<
     TProgramAddress,
     TAccountSigner,
-    TAccountSettings,
     TAccountPermissions,
+    TAccountSettings,
     TAccountLiquidityPool,
-    TAccountLpToken,
-    TAccountUserLpAccount,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountUserAssetAccount,
     TAccountPoolAssetAccount,
-    TAccountOracle,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
-    TAccountEventAuthority,
-    TAccountProgram
+    TAccountTokenProgram,
+    TAccountAssociatedTokenProgram
   >);
 }
 
-export type DepositInput<
+export type InitializePoolReserveInput<
   TAccountSigner extends string = string,
-  TAccountSettings extends string = string,
   TAccountPermissions extends string = string,
+  TAccountSettings extends string = string,
   TAccountLiquidityPool extends string = string,
-  TAccountLpToken extends string = string,
-  TAccountUserLpAccount extends string = string,
   TAccountAsset extends string = string,
   TAccountAssetMint extends string = string,
-  TAccountUserAssetAccount extends string = string,
   TAccountPoolAssetAccount extends string = string,
-  TAccountOracle extends string = string,
+  TAccountSystemProgram extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
-  TAccountSystemProgram extends string = string,
-  TAccountEventAuthority extends string = string,
-  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
+  permissions: Address<TAccountPermissions>;
   settings: Address<TAccountSettings>;
-  permissions?: Address<TAccountPermissions>;
   liquidityPool: Address<TAccountLiquidityPool>;
-  lpToken: Address<TAccountLpToken>;
-  userLpAccount: Address<TAccountUserLpAccount>;
   asset: Address<TAccountAsset>;
   assetMint: Address<TAccountAssetMint>;
-  userAssetAccount: Address<TAccountUserAssetAccount>;
   poolAssetAccount: Address<TAccountPoolAssetAccount>;
-  oracle: Address<TAccountOracle>;
+  systemProgram?: Address<TAccountSystemProgram>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
-  systemProgram?: Address<TAccountSystemProgram>;
-  eventAuthority: Address<TAccountEventAuthority>;
-  program: Address<TAccountProgram>;
-  liquidityPoolIndex: DepositInstructionDataArgs["liquidityPoolIndex"];
-  amount: DepositInstructionDataArgs["amount"];
-  minLpTokens: DepositInstructionDataArgs["minLpTokens"];
+  liquidityPoolId: InitializePoolReserveInstructionDataArgs["liquidityPoolId"];
 };
 
-export function getDepositInstruction<
+export function getInitializePoolReserveInstruction<
   TAccountSigner extends string,
-  TAccountSettings extends string,
   TAccountPermissions extends string,
+  TAccountSettings extends string,
   TAccountLiquidityPool extends string,
-  TAccountLpToken extends string,
-  TAccountUserLpAccount extends string,
   TAccountAsset extends string,
   TAccountAssetMint extends string,
-  TAccountUserAssetAccount extends string,
   TAccountPoolAssetAccount extends string,
-  TAccountOracle extends string,
+  TAccountSystemProgram extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
-  TAccountSystemProgram extends string,
-  TAccountEventAuthority extends string,
-  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
-  input: DepositInput<
+  input: InitializePoolReserveInput<
     TAccountSigner,
-    TAccountSettings,
     TAccountPermissions,
+    TAccountSettings,
     TAccountLiquidityPool,
-    TAccountLpToken,
-    TAccountUserLpAccount,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountUserAssetAccount,
     TAccountPoolAssetAccount,
-    TAccountOracle,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
-    TAccountEventAuthority,
-    TAccountProgram
+    TAccountTokenProgram,
+    TAccountAssociatedTokenProgram
   >,
   config?: { programAddress?: TProgramAddress },
-): DepositInstruction<
+): InitializePoolReserveInstruction<
   TProgramAddress,
   TAccountSigner,
-  TAccountSettings,
   TAccountPermissions,
+  TAccountSettings,
   TAccountLiquidityPool,
-  TAccountLpToken,
-  TAccountUserLpAccount,
   TAccountAsset,
   TAccountAssetMint,
-  TAccountUserAssetAccount,
   TAccountPoolAssetAccount,
-  TAccountOracle,
-  TAccountTokenProgram,
-  TAccountAssociatedTokenProgram,
   TAccountSystemProgram,
-  TAccountEventAuthority,
-  TAccountProgram
+  TAccountTokenProgram,
+  TAccountAssociatedTokenProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -551,30 +412,21 @@ export function getDepositInstruction<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: false },
     permissions: { value: input.permissions ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: false },
-    lpToken: { value: input.lpToken ?? null, isWritable: true },
-    userLpAccount: { value: input.userLpAccount ?? null, isWritable: true },
     asset: { value: input.asset ?? null, isWritable: false },
-    assetMint: { value: input.assetMint ?? null, isWritable: true },
-    userAssetAccount: {
-      value: input.userAssetAccount ?? null,
-      isWritable: true,
-    },
+    assetMint: { value: input.assetMint ?? null, isWritable: false },
     poolAssetAccount: {
       value: input.poolAssetAccount ?? null,
       isWritable: true,
     },
-    oracle: { value: input.oracle ?? null, isWritable: false },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     associatedTokenProgram: {
       value: input.associatedTokenProgram ?? null,
       isWritable: false,
     },
-    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
-    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -585,6 +437,10 @@ export function getDepositInstruction<
   const args = { ...input };
 
   // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
@@ -593,91 +449,69 @@ export function getDepositInstruction<
     accounts.associatedTokenProgram.value =
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
   }
-  if (!accounts.systemProgram.value) {
-    accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
-  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.signer),
-      getAccountMeta(accounts.settings),
       getAccountMeta(accounts.permissions),
+      getAccountMeta(accounts.settings),
       getAccountMeta(accounts.liquidityPool),
-      getAccountMeta(accounts.lpToken),
-      getAccountMeta(accounts.userLpAccount),
       getAccountMeta(accounts.asset),
       getAccountMeta(accounts.assetMint),
-      getAccountMeta(accounts.userAssetAccount),
       getAccountMeta(accounts.poolAssetAccount),
-      getAccountMeta(accounts.oracle),
+      getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
-      getAccountMeta(accounts.systemProgram),
-      getAccountMeta(accounts.eventAuthority),
-      getAccountMeta(accounts.program),
     ],
-    data: getDepositInstructionDataEncoder().encode(
-      args as DepositInstructionDataArgs,
+    data: getInitializePoolReserveInstructionDataEncoder().encode(
+      args as InitializePoolReserveInstructionDataArgs,
     ),
     programAddress,
-  } as DepositInstruction<
+  } as InitializePoolReserveInstruction<
     TProgramAddress,
     TAccountSigner,
-    TAccountSettings,
     TAccountPermissions,
+    TAccountSettings,
     TAccountLiquidityPool,
-    TAccountLpToken,
-    TAccountUserLpAccount,
     TAccountAsset,
     TAccountAssetMint,
-    TAccountUserAssetAccount,
     TAccountPoolAssetAccount,
-    TAccountOracle,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
-    TAccountEventAuthority,
-    TAccountProgram
+    TAccountTokenProgram,
+    TAccountAssociatedTokenProgram
   >);
 }
 
-export type ParsedDepositInstruction<
+export type ParsedInitializePoolReserveInstruction<
   TProgram extends string = typeof RLP_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
     signer: TAccountMetas[0];
-    settings: TAccountMetas[1];
-    permissions?: TAccountMetas[2] | undefined;
+    permissions: TAccountMetas[1];
+    settings: TAccountMetas[2];
     liquidityPool: TAccountMetas[3];
-    lpToken: TAccountMetas[4];
-    userLpAccount: TAccountMetas[5];
-    asset: TAccountMetas[6];
-    assetMint: TAccountMetas[7];
-    userAssetAccount: TAccountMetas[8];
-    poolAssetAccount: TAccountMetas[9];
-    oracle: TAccountMetas[10];
-    tokenProgram: TAccountMetas[11];
-    associatedTokenProgram: TAccountMetas[12];
-    systemProgram: TAccountMetas[13];
-    eventAuthority: TAccountMetas[14];
-    program: TAccountMetas[15];
+    asset: TAccountMetas[4];
+    assetMint: TAccountMetas[5];
+    poolAssetAccount: TAccountMetas[6];
+    systemProgram: TAccountMetas[7];
+    tokenProgram: TAccountMetas[8];
+    associatedTokenProgram: TAccountMetas[9];
   };
-  data: DepositInstructionData;
+  data: InitializePoolReserveInstructionData;
 };
 
-export function parseDepositInstruction<
+export function parseInitializePoolReserveInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedDepositInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 16) {
+): ParsedInitializePoolReserveInstruction<TProgram, TAccountMetas> {
+  if (instruction.accounts.length < 10) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -687,32 +521,22 @@ export function parseDepositInstruction<
     accountIndex += 1;
     return accountMeta;
   };
-  const getNextOptionalAccount = () => {
-    const accountMeta = getNextAccount();
-    return accountMeta.address === RLP_PROGRAM_ADDRESS
-      ? undefined
-      : accountMeta;
-  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       signer: getNextAccount(),
+      permissions: getNextAccount(),
       settings: getNextAccount(),
-      permissions: getNextOptionalAccount(),
       liquidityPool: getNextAccount(),
-      lpToken: getNextAccount(),
-      userLpAccount: getNextAccount(),
       asset: getNextAccount(),
       assetMint: getNextAccount(),
-      userAssetAccount: getNextAccount(),
       poolAssetAccount: getNextAccount(),
-      oracle: getNextAccount(),
+      systemProgram: getNextAccount(),
       tokenProgram: getNextAccount(),
       associatedTokenProgram: getNextAccount(),
-      systemProgram: getNextAccount(),
-      eventAuthority: getNextAccount(),
-      program: getNextAccount(),
     },
-    data: getDepositInstructionDataDecoder().decode(instruction.data),
+    data: getInitializePoolReserveInstructionDataDecoder().decode(
+      instruction.data,
+    ),
   };
 }

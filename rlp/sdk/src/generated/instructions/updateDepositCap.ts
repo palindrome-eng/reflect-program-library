@@ -61,6 +61,8 @@ export type UpdateDepositCapInstruction<
   TAccountAdmin extends string | AccountMeta<string> = string,
   TAccountSettings extends string | AccountMeta<string> = string,
   TAccountLiquidityPool extends string | AccountMeta<string> = string,
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -79,6 +81,12 @@ export type UpdateDepositCapInstruction<
       TAccountLiquidityPool extends string
         ? WritableAccount<TAccountLiquidityPool>
         : TAccountLiquidityPool,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -128,11 +136,15 @@ export type UpdateDepositCapAsyncInput<
   TAccountAdmin extends string = string,
   TAccountSettings extends string = string,
   TAccountLiquidityPool extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin?: Address<TAccountAdmin>;
   settings?: Address<TAccountSettings>;
   liquidityPool: Address<TAccountLiquidityPool>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   lockupId: UpdateDepositCapInstructionDataArgs["lockupId"];
   newCap: UpdateDepositCapInstructionDataArgs["newCap"];
 };
@@ -142,13 +154,17 @@ export async function getUpdateDepositCapInstructionAsync<
   TAccountAdmin extends string,
   TAccountSettings extends string,
   TAccountLiquidityPool extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: UpdateDepositCapAsyncInput<
     TAccountSigner,
     TAccountAdmin,
     TAccountSettings,
-    TAccountLiquidityPool
+    TAccountLiquidityPool,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -157,7 +173,9 @@ export async function getUpdateDepositCapInstructionAsync<
     TAccountSigner,
     TAccountAdmin,
     TAccountSettings,
-    TAccountLiquidityPool
+    TAccountLiquidityPool,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -169,6 +187,8 @@ export async function getUpdateDepositCapInstructionAsync<
     admin: { value: input.admin ?? null, isWritable: true },
     settings: { value: input.settings ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: true },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -202,6 +222,19 @@ export async function getUpdateDepositCapInstructionAsync<
       ],
     });
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -210,6 +243,8 @@ export async function getUpdateDepositCapInstructionAsync<
       getAccountMeta(accounts.admin),
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.liquidityPool),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getUpdateDepositCapInstructionDataEncoder().encode(
       args as UpdateDepositCapInstructionDataArgs,
@@ -220,7 +255,9 @@ export async function getUpdateDepositCapInstructionAsync<
     TAccountSigner,
     TAccountAdmin,
     TAccountSettings,
-    TAccountLiquidityPool
+    TAccountLiquidityPool,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -229,11 +266,15 @@ export type UpdateDepositCapInput<
   TAccountAdmin extends string = string,
   TAccountSettings extends string = string,
   TAccountLiquidityPool extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin: Address<TAccountAdmin>;
   settings: Address<TAccountSettings>;
   liquidityPool: Address<TAccountLiquidityPool>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   lockupId: UpdateDepositCapInstructionDataArgs["lockupId"];
   newCap: UpdateDepositCapInstructionDataArgs["newCap"];
 };
@@ -243,13 +284,17 @@ export function getUpdateDepositCapInstruction<
   TAccountAdmin extends string,
   TAccountSettings extends string,
   TAccountLiquidityPool extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: UpdateDepositCapInput<
     TAccountSigner,
     TAccountAdmin,
     TAccountSettings,
-    TAccountLiquidityPool
+    TAccountLiquidityPool,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): UpdateDepositCapInstruction<
@@ -257,7 +302,9 @@ export function getUpdateDepositCapInstruction<
   TAccountSigner,
   TAccountAdmin,
   TAccountSettings,
-  TAccountLiquidityPool
+  TAccountLiquidityPool,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -268,6 +315,8 @@ export function getUpdateDepositCapInstruction<
     admin: { value: input.admin ?? null, isWritable: true },
     settings: { value: input.settings ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: true },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -284,6 +333,8 @@ export function getUpdateDepositCapInstruction<
       getAccountMeta(accounts.admin),
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.liquidityPool),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getUpdateDepositCapInstructionDataEncoder().encode(
       args as UpdateDepositCapInstructionDataArgs,
@@ -294,7 +345,9 @@ export function getUpdateDepositCapInstruction<
     TAccountSigner,
     TAccountAdmin,
     TAccountSettings,
-    TAccountLiquidityPool
+    TAccountLiquidityPool,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -308,6 +361,8 @@ export type ParsedUpdateDepositCapInstruction<
     admin: TAccountMetas[1];
     settings: TAccountMetas[2];
     liquidityPool: TAccountMetas[3];
+    eventAuthority: TAccountMetas[4];
+    program: TAccountMetas[5];
   };
   data: UpdateDepositCapInstructionData;
 };
@@ -320,7 +375,7 @@ export function parseUpdateDepositCapInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedUpdateDepositCapInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -337,6 +392,8 @@ export function parseUpdateDepositCapInstruction<
       admin: getNextAccount(),
       settings: getNextAccount(),
       liquidityPool: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getUpdateDepositCapInstructionDataDecoder().decode(instruction.data),
   };

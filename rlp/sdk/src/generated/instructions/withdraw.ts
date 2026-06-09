@@ -59,11 +59,14 @@ export type WithdrawInstruction<
   TAccountLiquidityPool extends string | AccountMeta<string> = string,
   TAccountLpTokenMint extends string | AccountMeta<string> = string,
   TAccountCooldownLpTokenAccount extends string | AccountMeta<string> = string,
+  TAccountSignerLpTokenAccount extends string | AccountMeta<string> = string,
   TAccountCooldown extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -88,6 +91,9 @@ export type WithdrawInstruction<
       TAccountCooldownLpTokenAccount extends string
         ? WritableAccount<TAccountCooldownLpTokenAccount>
         : TAccountCooldownLpTokenAccount,
+      TAccountSignerLpTokenAccount extends string
+        ? WritableAccount<TAccountSignerLpTokenAccount>
+        : TAccountSignerLpTokenAccount,
       TAccountCooldown extends string
         ? WritableAccount<TAccountCooldown>
         : TAccountCooldown,
@@ -97,6 +103,12 @@ export type WithdrawInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -148,9 +160,12 @@ export type WithdrawAsyncInput<
   TAccountLiquidityPool extends string = string,
   TAccountLpTokenMint extends string = string,
   TAccountCooldownLpTokenAccount extends string = string,
+  TAccountSignerLpTokenAccount extends string = string,
   TAccountCooldown extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   settings?: Address<TAccountSettings>;
@@ -158,9 +173,12 @@ export type WithdrawAsyncInput<
   liquidityPool: Address<TAccountLiquidityPool>;
   lpTokenMint: Address<TAccountLpTokenMint>;
   cooldownLpTokenAccount?: Address<TAccountCooldownLpTokenAccount>;
+  signerLpTokenAccount: Address<TAccountSignerLpTokenAccount>;
   cooldown: Address<TAccountCooldown>;
   tokenProgram?: Address<TAccountTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   liquidityPoolId: WithdrawInstructionDataArgs["liquidityPoolId"];
   cooldownId: WithdrawInstructionDataArgs["cooldownId"];
 };
@@ -172,9 +190,12 @@ export async function getWithdrawInstructionAsync<
   TAccountLiquidityPool extends string,
   TAccountLpTokenMint extends string,
   TAccountCooldownLpTokenAccount extends string,
+  TAccountSignerLpTokenAccount extends string,
   TAccountCooldown extends string,
   TAccountTokenProgram extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: WithdrawAsyncInput<
@@ -184,9 +205,12 @@ export async function getWithdrawInstructionAsync<
     TAccountLiquidityPool,
     TAccountLpTokenMint,
     TAccountCooldownLpTokenAccount,
+    TAccountSignerLpTokenAccount,
     TAccountCooldown,
     TAccountTokenProgram,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -198,9 +222,12 @@ export async function getWithdrawInstructionAsync<
     TAccountLiquidityPool,
     TAccountLpTokenMint,
     TAccountCooldownLpTokenAccount,
+    TAccountSignerLpTokenAccount,
     TAccountCooldown,
     TAccountTokenProgram,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -217,9 +244,15 @@ export async function getWithdrawInstructionAsync<
       value: input.cooldownLpTokenAccount ?? null,
       isWritable: true,
     },
+    signerLpTokenAccount: {
+      value: input.signerLpTokenAccount ?? null,
+      isWritable: true,
+    },
     cooldown: { value: input.cooldown ?? null, isWritable: true },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -278,6 +311,19 @@ export async function getWithdrawInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -288,9 +334,12 @@ export async function getWithdrawInstructionAsync<
       getAccountMeta(accounts.liquidityPool),
       getAccountMeta(accounts.lpTokenMint),
       getAccountMeta(accounts.cooldownLpTokenAccount),
+      getAccountMeta(accounts.signerLpTokenAccount),
       getAccountMeta(accounts.cooldown),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getWithdrawInstructionDataEncoder().encode(
       args as WithdrawInstructionDataArgs,
@@ -304,9 +353,12 @@ export async function getWithdrawInstructionAsync<
     TAccountLiquidityPool,
     TAccountLpTokenMint,
     TAccountCooldownLpTokenAccount,
+    TAccountSignerLpTokenAccount,
     TAccountCooldown,
     TAccountTokenProgram,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -317,9 +369,12 @@ export type WithdrawInput<
   TAccountLiquidityPool extends string = string,
   TAccountLpTokenMint extends string = string,
   TAccountCooldownLpTokenAccount extends string = string,
+  TAccountSignerLpTokenAccount extends string = string,
   TAccountCooldown extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   settings: Address<TAccountSettings>;
@@ -327,9 +382,12 @@ export type WithdrawInput<
   liquidityPool: Address<TAccountLiquidityPool>;
   lpTokenMint: Address<TAccountLpTokenMint>;
   cooldownLpTokenAccount: Address<TAccountCooldownLpTokenAccount>;
+  signerLpTokenAccount: Address<TAccountSignerLpTokenAccount>;
   cooldown: Address<TAccountCooldown>;
   tokenProgram?: Address<TAccountTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   liquidityPoolId: WithdrawInstructionDataArgs["liquidityPoolId"];
   cooldownId: WithdrawInstructionDataArgs["cooldownId"];
 };
@@ -341,9 +399,12 @@ export function getWithdrawInstruction<
   TAccountLiquidityPool extends string,
   TAccountLpTokenMint extends string,
   TAccountCooldownLpTokenAccount extends string,
+  TAccountSignerLpTokenAccount extends string,
   TAccountCooldown extends string,
   TAccountTokenProgram extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: WithdrawInput<
@@ -353,9 +414,12 @@ export function getWithdrawInstruction<
     TAccountLiquidityPool,
     TAccountLpTokenMint,
     TAccountCooldownLpTokenAccount,
+    TAccountSignerLpTokenAccount,
     TAccountCooldown,
     TAccountTokenProgram,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): WithdrawInstruction<
@@ -366,9 +430,12 @@ export function getWithdrawInstruction<
   TAccountLiquidityPool,
   TAccountLpTokenMint,
   TAccountCooldownLpTokenAccount,
+  TAccountSignerLpTokenAccount,
   TAccountCooldown,
   TAccountTokenProgram,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -384,9 +451,15 @@ export function getWithdrawInstruction<
       value: input.cooldownLpTokenAccount ?? null,
       isWritable: true,
     },
+    signerLpTokenAccount: {
+      value: input.signerLpTokenAccount ?? null,
+      isWritable: true,
+    },
     cooldown: { value: input.cooldown ?? null, isWritable: true },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -415,9 +488,12 @@ export function getWithdrawInstruction<
       getAccountMeta(accounts.liquidityPool),
       getAccountMeta(accounts.lpTokenMint),
       getAccountMeta(accounts.cooldownLpTokenAccount),
+      getAccountMeta(accounts.signerLpTokenAccount),
       getAccountMeta(accounts.cooldown),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getWithdrawInstructionDataEncoder().encode(
       args as WithdrawInstructionDataArgs,
@@ -431,9 +507,12 @@ export function getWithdrawInstruction<
     TAccountLiquidityPool,
     TAccountLpTokenMint,
     TAccountCooldownLpTokenAccount,
+    TAccountSignerLpTokenAccount,
     TAccountCooldown,
     TAccountTokenProgram,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -449,9 +528,12 @@ export type ParsedWithdrawInstruction<
     liquidityPool: TAccountMetas[3];
     lpTokenMint: TAccountMetas[4];
     cooldownLpTokenAccount: TAccountMetas[5];
-    cooldown: TAccountMetas[6];
-    tokenProgram: TAccountMetas[7];
-    systemProgram?: TAccountMetas[8] | undefined;
+    signerLpTokenAccount: TAccountMetas[6];
+    cooldown: TAccountMetas[7];
+    tokenProgram: TAccountMetas[8];
+    systemProgram?: TAccountMetas[9] | undefined;
+    eventAuthority: TAccountMetas[10];
+    program: TAccountMetas[11];
   };
   data: WithdrawInstructionData;
 };
@@ -464,7 +546,7 @@ export function parseWithdrawInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedWithdrawInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 9) {
+  if (instruction.accounts.length < 12) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -489,9 +571,12 @@ export function parseWithdrawInstruction<
       liquidityPool: getNextAccount(),
       lpTokenMint: getNextAccount(),
       cooldownLpTokenAccount: getNextAccount(),
+      signerLpTokenAccount: getNextAccount(),
       cooldown: getNextAccount(),
       tokenProgram: getNextAccount(),
       systemProgram: getNextOptionalAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getWithdrawInstructionDataDecoder().decode(instruction.data),
   };

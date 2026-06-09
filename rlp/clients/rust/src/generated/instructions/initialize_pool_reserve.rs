@@ -8,11 +8,11 @@
 use borsh::BorshSerialize;
 use borsh::BorshDeserialize;
 
-pub const SLASH_DISCRIMINATOR: [u8; 8] = [204, 141, 18, 161, 8, 177, 92, 142];
+pub const INITIALIZE_POOL_RESERVE_DISCRIMINATOR: [u8; 8] = [151, 225, 119, 195, 196, 190, 98, 18];
 
 /// Accounts.
 #[derive(Debug)]
-pub struct Slash {
+pub struct InitializePoolReserve {
       
               
           pub signer: solana_pubkey::Pubkey,
@@ -30,49 +30,29 @@ pub struct Slash {
           pub asset: solana_pubkey::Pubkey,
           
               
-          pub stablecoin_mint: solana_pubkey::Pubkey,
-                /// Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
-/// Source of the transfer.
-
-    
-              
-          pub liquidity_pool_token_account: solana_pubkey::Pubkey,
-                /// The proxy program's ProxyState account. Validated against
-/// `liquidity_pool.protected_vault` and read for principal/commission.
-/// length check). Not deserialized via Anchor because the proxy program
-/// is pinocchio-based and has no Anchor discriminator.
-
-    
-              
-          pub proxy_state: solana_pubkey::Pubkey,
-                /// The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
-/// Destination of the transfer.
-
-    
-              
-          pub protected_vault_token_account: solana_pubkey::Pubkey,
+          pub asset_mint: solana_pubkey::Pubkey,
           
               
-          pub oracle: solana_pubkey::Pubkey,
+          pub pool_asset_account: solana_pubkey::Pubkey,
+          
+              
+          pub system_program: solana_pubkey::Pubkey,
           
               
           pub token_program: solana_pubkey::Pubkey,
           
               
-          pub event_authority: solana_pubkey::Pubkey,
-          
-              
-          pub program: solana_pubkey::Pubkey,
+          pub associated_token_program: solana_pubkey::Pubkey,
       }
 
-impl Slash {
-  pub fn instruction(&self, args: SlashInstructionArgs) -> solana_instruction::Instruction {
+impl InitializePoolReserve {
+  pub fn instruction(&self, args: InitializePoolReserveInstructionArgs) -> solana_instruction::Instruction {
     self.instruction_with_remaining_accounts(args, &[])
   }
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
-  pub fn instruction_with_remaining_accounts(&self, args: SlashInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(13+ remaining_accounts.len());
+  pub fn instruction_with_remaining_accounts(&self, args: InitializePoolReserveInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
+    let mut accounts = Vec::with_capacity(10+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
@@ -94,23 +74,15 @@ impl Slash {
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.stablecoin_mint,
+            self.asset_mint,
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
-            self.liquidity_pool_token_account,
+            self.pool_asset_account,
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.proxy_state,
-            false
-          ));
-                                          accounts.push(solana_instruction::AccountMeta::new(
-            self.protected_vault_token_account,
-            false
-          ));
-                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.oracle,
+            self.system_program,
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -118,15 +90,11 @@ impl Slash {
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.event_authority,
-            false
-          ));
-                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.program,
+            self.associated_token_program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
-    let mut data = SlashInstructionData::new().try_to_vec().unwrap();
+    let mut data = InitializePoolReserveInstructionData::new().try_to_vec().unwrap();
           let mut args = args.try_to_vec().unwrap();
       data.append(&mut args);
     
@@ -140,15 +108,15 @@ impl Slash {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
- pub struct SlashInstructionData {
+ pub struct InitializePoolReserveInstructionData {
             discriminator: [u8; 8],
-                  }
+            }
 
-impl SlashInstructionData {
+impl InitializePoolReserveInstructionData {
   pub fn new() -> Self {
     Self {
-                        discriminator: [204, 141, 18, 161, 8, 177, 92, 142],
-                                              }
+                        discriminator: [151, 225, 119, 195, 196, 190, 98, 18],
+                                }
   }
 
     pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
@@ -156,7 +124,7 @@ impl SlashInstructionData {
   }
   }
 
-impl Default for SlashInstructionData {
+impl Default for InitializePoolReserveInstructionData {
   fn default() -> Self {
     Self::new()
   }
@@ -164,19 +132,18 @@ impl Default for SlashInstructionData {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
- pub struct SlashInstructionArgs {
+ pub struct InitializePoolReserveInstructionArgs {
                   pub liquidity_pool_id: u8,
-                pub amount: u64,
       }
 
-impl SlashInstructionArgs {
+impl InitializePoolReserveInstructionArgs {
   pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
     borsh::to_vec(self)
   }
 }
 
 
-/// Instruction builder for `Slash`.
+/// Instruction builder for `InitializePoolReserve`.
 ///
 /// ### Accounts:
 ///
@@ -185,35 +152,28 @@ impl SlashInstructionArgs {
           ///   2. `[]` settings
           ///   3. `[]` liquidity_pool
           ///   4. `[]` asset
-          ///   5. `[]` stablecoin_mint
-                ///   6. `[writable]` liquidity_pool_token_account
-          ///   7. `[]` proxy_state
-                ///   8. `[writable]` protected_vault_token_account
-          ///   9. `[]` oracle
-                ///   10. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
-          ///   11. `[]` event_authority
-          ///   12. `[]` program
+          ///   5. `[]` asset_mint
+                ///   6. `[writable]` pool_asset_account
+                ///   7. `[optional]` system_program (default to `11111111111111111111111111111111`)
+                ///   8. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
+                ///   9. `[optional]` associated_token_program (default to `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`)
 #[derive(Clone, Debug, Default)]
-pub struct SlashBuilder {
+pub struct InitializePoolReserveBuilder {
             signer: Option<solana_pubkey::Pubkey>,
                 permissions: Option<solana_pubkey::Pubkey>,
                 settings: Option<solana_pubkey::Pubkey>,
                 liquidity_pool: Option<solana_pubkey::Pubkey>,
                 asset: Option<solana_pubkey::Pubkey>,
-                stablecoin_mint: Option<solana_pubkey::Pubkey>,
-                liquidity_pool_token_account: Option<solana_pubkey::Pubkey>,
-                proxy_state: Option<solana_pubkey::Pubkey>,
-                protected_vault_token_account: Option<solana_pubkey::Pubkey>,
-                oracle: Option<solana_pubkey::Pubkey>,
+                asset_mint: Option<solana_pubkey::Pubkey>,
+                pool_asset_account: Option<solana_pubkey::Pubkey>,
+                system_program: Option<solana_pubkey::Pubkey>,
                 token_program: Option<solana_pubkey::Pubkey>,
-                event_authority: Option<solana_pubkey::Pubkey>,
-                program: Option<solana_pubkey::Pubkey>,
+                associated_token_program: Option<solana_pubkey::Pubkey>,
                         liquidity_pool_id: Option<u8>,
-                amount: Option<u64>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
-impl SlashBuilder {
+impl InitializePoolReserveBuilder {
   pub fn new() -> Self {
     Self::default()
   }
@@ -243,36 +203,19 @@ impl SlashBuilder {
                     self
     }
             #[inline(always)]
-    pub fn stablecoin_mint(&mut self, stablecoin_mint: solana_pubkey::Pubkey) -> &mut Self {
-                        self.stablecoin_mint = Some(stablecoin_mint);
-                    self
-    }
-            /// Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
-/// Source of the transfer.
-#[inline(always)]
-    pub fn liquidity_pool_token_account(&mut self, liquidity_pool_token_account: solana_pubkey::Pubkey) -> &mut Self {
-                        self.liquidity_pool_token_account = Some(liquidity_pool_token_account);
-                    self
-    }
-            /// The proxy program's ProxyState account. Validated against
-/// `liquidity_pool.protected_vault` and read for principal/commission.
-/// length check). Not deserialized via Anchor because the proxy program
-/// is pinocchio-based and has no Anchor discriminator.
-#[inline(always)]
-    pub fn proxy_state(&mut self, proxy_state: solana_pubkey::Pubkey) -> &mut Self {
-                        self.proxy_state = Some(proxy_state);
-                    self
-    }
-            /// The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
-/// Destination of the transfer.
-#[inline(always)]
-    pub fn protected_vault_token_account(&mut self, protected_vault_token_account: solana_pubkey::Pubkey) -> &mut Self {
-                        self.protected_vault_token_account = Some(protected_vault_token_account);
+    pub fn asset_mint(&mut self, asset_mint: solana_pubkey::Pubkey) -> &mut Self {
+                        self.asset_mint = Some(asset_mint);
                     self
     }
             #[inline(always)]
-    pub fn oracle(&mut self, oracle: solana_pubkey::Pubkey) -> &mut Self {
-                        self.oracle = Some(oracle);
+    pub fn pool_asset_account(&mut self, pool_asset_account: solana_pubkey::Pubkey) -> &mut Self {
+                        self.pool_asset_account = Some(pool_asset_account);
+                    self
+    }
+            /// `[optional account, default to '11111111111111111111111111111111']`
+#[inline(always)]
+    pub fn system_program(&mut self, system_program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.system_program = Some(system_program);
                     self
     }
             /// `[optional account, default to 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA']`
@@ -281,24 +224,15 @@ impl SlashBuilder {
                         self.token_program = Some(token_program);
                     self
     }
-            #[inline(always)]
-    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
-                        self.event_authority = Some(event_authority);
-                    self
-    }
-            #[inline(always)]
-    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
-                        self.program = Some(program);
+            /// `[optional account, default to 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL']`
+#[inline(always)]
+    pub fn associated_token_program(&mut self, associated_token_program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.associated_token_program = Some(associated_token_program);
                     self
     }
                     #[inline(always)]
       pub fn liquidity_pool_id(&mut self, liquidity_pool_id: u8) -> &mut Self {
         self.liquidity_pool_id = Some(liquidity_pool_id);
-        self
-      }
-                #[inline(always)]
-      pub fn amount(&mut self, amount: u64) -> &mut Self {
-        self.amount = Some(amount);
         self
       }
         /// Add an additional account to the instruction.
@@ -315,32 +249,28 @@ impl SlashBuilder {
   }
   #[allow(clippy::clone_on_copy)]
   pub fn instruction(&self) -> solana_instruction::Instruction {
-    let accounts = Slash {
+    let accounts = InitializePoolReserve {
                               signer: self.signer.expect("signer is not set"),
                                         permissions: self.permissions.expect("permissions is not set"),
                                         settings: self.settings.expect("settings is not set"),
                                         liquidity_pool: self.liquidity_pool.expect("liquidity_pool is not set"),
                                         asset: self.asset.expect("asset is not set"),
-                                        stablecoin_mint: self.stablecoin_mint.expect("stablecoin_mint is not set"),
-                                        liquidity_pool_token_account: self.liquidity_pool_token_account.expect("liquidity_pool_token_account is not set"),
-                                        proxy_state: self.proxy_state.expect("proxy_state is not set"),
-                                        protected_vault_token_account: self.protected_vault_token_account.expect("protected_vault_token_account is not set"),
-                                        oracle: self.oracle.expect("oracle is not set"),
+                                        asset_mint: self.asset_mint.expect("asset_mint is not set"),
+                                        pool_asset_account: self.pool_asset_account.expect("pool_asset_account is not set"),
+                                        system_program: self.system_program.unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
                                         token_program: self.token_program.unwrap_or(solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")),
-                                        event_authority: self.event_authority.expect("event_authority is not set"),
-                                        program: self.program.expect("program is not set"),
+                                        associated_token_program: self.associated_token_program.unwrap_or(solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")),
                       };
-          let args = SlashInstructionArgs {
+          let args = InitializePoolReserveInstructionArgs {
                                                               liquidity_pool_id: self.liquidity_pool_id.clone().expect("liquidity_pool_id is not set"),
-                                                                  amount: self.amount.clone().expect("amount is not set"),
                                     };
     
     accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
   }
 }
 
-  /// `slash` CPI accounts.
-  pub struct SlashCpiAccounts<'a, 'b> {
+  /// `initialize_pool_reserve` CPI accounts.
+  pub struct InitializePoolReserveCpiAccounts<'a, 'b> {
           
                     
               pub signer: &'b solana_account_info::AccountInfo<'a>,
@@ -358,43 +288,23 @@ impl SlashBuilder {
               pub asset: &'b solana_account_info::AccountInfo<'a>,
                 
                     
-              pub stablecoin_mint: &'b solana_account_info::AccountInfo<'a>,
-                        /// Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
-/// Source of the transfer.
-
-      
-                    
-              pub liquidity_pool_token_account: &'b solana_account_info::AccountInfo<'a>,
-                        /// The proxy program's ProxyState account. Validated against
-/// `liquidity_pool.protected_vault` and read for principal/commission.
-/// length check). Not deserialized via Anchor because the proxy program
-/// is pinocchio-based and has no Anchor discriminator.
-
-      
-                    
-              pub proxy_state: &'b solana_account_info::AccountInfo<'a>,
-                        /// The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
-/// Destination of the transfer.
-
-      
-                    
-              pub protected_vault_token_account: &'b solana_account_info::AccountInfo<'a>,
+              pub asset_mint: &'b solana_account_info::AccountInfo<'a>,
                 
                     
-              pub oracle: &'b solana_account_info::AccountInfo<'a>,
+              pub pool_asset_account: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub system_program: &'b solana_account_info::AccountInfo<'a>,
                 
                     
               pub token_program: &'b solana_account_info::AccountInfo<'a>,
                 
                     
-              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
-                
-                    
-              pub program: &'b solana_account_info::AccountInfo<'a>,
+              pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
             }
 
-/// `slash` CPI instruction.
-pub struct SlashCpi<'a, 'b> {
+/// `initialize_pool_reserve` CPI instruction.
+pub struct InitializePoolReserveCpi<'a, 'b> {
   /// The program to invoke.
   pub __program: &'b solana_account_info::AccountInfo<'a>,
       
@@ -414,48 +324,28 @@ pub struct SlashCpi<'a, 'b> {
           pub asset: &'b solana_account_info::AccountInfo<'a>,
           
               
-          pub stablecoin_mint: &'b solana_account_info::AccountInfo<'a>,
-                /// Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
-/// Source of the transfer.
-
-    
-              
-          pub liquidity_pool_token_account: &'b solana_account_info::AccountInfo<'a>,
-                /// The proxy program's ProxyState account. Validated against
-/// `liquidity_pool.protected_vault` and read for principal/commission.
-/// length check). Not deserialized via Anchor because the proxy program
-/// is pinocchio-based and has no Anchor discriminator.
-
-    
-              
-          pub proxy_state: &'b solana_account_info::AccountInfo<'a>,
-                /// The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
-/// Destination of the transfer.
-
-    
-              
-          pub protected_vault_token_account: &'b solana_account_info::AccountInfo<'a>,
+          pub asset_mint: &'b solana_account_info::AccountInfo<'a>,
           
               
-          pub oracle: &'b solana_account_info::AccountInfo<'a>,
+          pub pool_asset_account: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub system_program: &'b solana_account_info::AccountInfo<'a>,
           
               
           pub token_program: &'b solana_account_info::AccountInfo<'a>,
           
               
-          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
-          
-              
-          pub program: &'b solana_account_info::AccountInfo<'a>,
+          pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
-    pub __args: SlashInstructionArgs,
+    pub __args: InitializePoolReserveInstructionArgs,
   }
 
-impl<'a, 'b> SlashCpi<'a, 'b> {
+impl<'a, 'b> InitializePoolReserveCpi<'a, 'b> {
   pub fn new(
     program: &'b solana_account_info::AccountInfo<'a>,
-          accounts: SlashCpiAccounts<'a, 'b>,
-              args: SlashInstructionArgs,
+          accounts: InitializePoolReserveCpiAccounts<'a, 'b>,
+              args: InitializePoolReserveInstructionArgs,
       ) -> Self {
     Self {
       __program: program,
@@ -464,14 +354,11 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
               settings: accounts.settings,
               liquidity_pool: accounts.liquidity_pool,
               asset: accounts.asset,
-              stablecoin_mint: accounts.stablecoin_mint,
-              liquidity_pool_token_account: accounts.liquidity_pool_token_account,
-              proxy_state: accounts.proxy_state,
-              protected_vault_token_account: accounts.protected_vault_token_account,
-              oracle: accounts.oracle,
+              asset_mint: accounts.asset_mint,
+              pool_asset_account: accounts.pool_asset_account,
+              system_program: accounts.system_program,
               token_program: accounts.token_program,
-              event_authority: accounts.event_authority,
-              program: accounts.program,
+              associated_token_program: accounts.associated_token_program,
                     __args: args,
           }
   }
@@ -495,7 +382,7 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(13+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(10+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.signer.key,
             true
@@ -517,23 +404,15 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.stablecoin_mint.key,
+            *self.asset_mint.key,
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
-            *self.liquidity_pool_token_account.key,
+            *self.pool_asset_account.key,
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.proxy_state.key,
-            false
-          ));
-                                          accounts.push(solana_instruction::AccountMeta::new(
-            *self.protected_vault_token_account.key,
-            false
-          ));
-                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.oracle.key,
+            *self.system_program.key,
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -541,11 +420,7 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.event_authority.key,
-            false
-          ));
-                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.program.key,
+            *self.associated_token_program.key,
             false
           ));
                       remaining_accounts.iter().for_each(|remaining_account| {
@@ -555,7 +430,7 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
           is_writable: remaining_account.2,
       })
     });
-    let mut data = SlashInstructionData::new().try_to_vec().unwrap();
+    let mut data = InitializePoolReserveInstructionData::new().try_to_vec().unwrap();
           let mut args = self.__args.try_to_vec().unwrap();
       data.append(&mut args);
     
@@ -564,21 +439,18 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(14 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(11 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.signer.clone());
                         account_infos.push(self.permissions.clone());
                         account_infos.push(self.settings.clone());
                         account_infos.push(self.liquidity_pool.clone());
                         account_infos.push(self.asset.clone());
-                        account_infos.push(self.stablecoin_mint.clone());
-                        account_infos.push(self.liquidity_pool_token_account.clone());
-                        account_infos.push(self.proxy_state.clone());
-                        account_infos.push(self.protected_vault_token_account.clone());
-                        account_infos.push(self.oracle.clone());
+                        account_infos.push(self.asset_mint.clone());
+                        account_infos.push(self.pool_asset_account.clone());
+                        account_infos.push(self.system_program.clone());
                         account_infos.push(self.token_program.clone());
-                        account_infos.push(self.event_authority.clone());
-                        account_infos.push(self.program.clone());
+                        account_infos.push(self.associated_token_program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -589,7 +461,7 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
   }
 }
 
-/// Instruction builder for `Slash` via CPI.
+/// Instruction builder for `InitializePoolReserve` via CPI.
 ///
 /// ### Accounts:
 ///
@@ -598,38 +470,31 @@ impl<'a, 'b> SlashCpi<'a, 'b> {
           ///   2. `[]` settings
           ///   3. `[]` liquidity_pool
           ///   4. `[]` asset
-          ///   5. `[]` stablecoin_mint
-                ///   6. `[writable]` liquidity_pool_token_account
-          ///   7. `[]` proxy_state
-                ///   8. `[writable]` protected_vault_token_account
-          ///   9. `[]` oracle
-          ///   10. `[]` token_program
-          ///   11. `[]` event_authority
-          ///   12. `[]` program
+          ///   5. `[]` asset_mint
+                ///   6. `[writable]` pool_asset_account
+          ///   7. `[]` system_program
+          ///   8. `[]` token_program
+          ///   9. `[]` associated_token_program
 #[derive(Clone, Debug)]
-pub struct SlashCpiBuilder<'a, 'b> {
-  instruction: Box<SlashCpiBuilderInstruction<'a, 'b>>,
+pub struct InitializePoolReserveCpiBuilder<'a, 'b> {
+  instruction: Box<InitializePoolReserveCpiBuilderInstruction<'a, 'b>>,
 }
 
-impl<'a, 'b> SlashCpiBuilder<'a, 'b> {
+impl<'a, 'b> InitializePoolReserveCpiBuilder<'a, 'b> {
   pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
-    let instruction = Box::new(SlashCpiBuilderInstruction {
+    let instruction = Box::new(InitializePoolReserveCpiBuilderInstruction {
       __program: program,
               signer: None,
               permissions: None,
               settings: None,
               liquidity_pool: None,
               asset: None,
-              stablecoin_mint: None,
-              liquidity_pool_token_account: None,
-              proxy_state: None,
-              protected_vault_token_account: None,
-              oracle: None,
+              asset_mint: None,
+              pool_asset_account: None,
+              system_program: None,
               token_program: None,
-              event_authority: None,
-              program: None,
+              associated_token_program: None,
                                             liquidity_pool_id: None,
-                                amount: None,
                     __remaining_accounts: Vec::new(),
     });
     Self { instruction }
@@ -660,36 +525,18 @@ impl<'a, 'b> SlashCpiBuilder<'a, 'b> {
                     self
     }
       #[inline(always)]
-    pub fn stablecoin_mint(&mut self, stablecoin_mint: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-                        self.instruction.stablecoin_mint = Some(stablecoin_mint);
-                    self
-    }
-      /// Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
-/// Source of the transfer.
-#[inline(always)]
-    pub fn liquidity_pool_token_account(&mut self, liquidity_pool_token_account: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-                        self.instruction.liquidity_pool_token_account = Some(liquidity_pool_token_account);
-                    self
-    }
-      /// The proxy program's ProxyState account. Validated against
-/// `liquidity_pool.protected_vault` and read for principal/commission.
-/// length check). Not deserialized via Anchor because the proxy program
-/// is pinocchio-based and has no Anchor discriminator.
-#[inline(always)]
-    pub fn proxy_state(&mut self, proxy_state: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-                        self.instruction.proxy_state = Some(proxy_state);
-                    self
-    }
-      /// The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
-/// Destination of the transfer.
-#[inline(always)]
-    pub fn protected_vault_token_account(&mut self, protected_vault_token_account: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-                        self.instruction.protected_vault_token_account = Some(protected_vault_token_account);
+    pub fn asset_mint(&mut self, asset_mint: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.asset_mint = Some(asset_mint);
                     self
     }
       #[inline(always)]
-    pub fn oracle(&mut self, oracle: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-                        self.instruction.oracle = Some(oracle);
+    pub fn pool_asset_account(&mut self, pool_asset_account: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.pool_asset_account = Some(pool_asset_account);
+                    self
+    }
+      #[inline(always)]
+    pub fn system_program(&mut self, system_program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.system_program = Some(system_program);
                     self
     }
       #[inline(always)]
@@ -698,23 +545,13 @@ impl<'a, 'b> SlashCpiBuilder<'a, 'b> {
                     self
     }
       #[inline(always)]
-    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-                        self.instruction.event_authority = Some(event_authority);
-                    self
-    }
-      #[inline(always)]
-    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-                        self.instruction.program = Some(program);
+    pub fn associated_token_program(&mut self, associated_token_program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.associated_token_program = Some(associated_token_program);
                     self
     }
                     #[inline(always)]
       pub fn liquidity_pool_id(&mut self, liquidity_pool_id: u8) -> &mut Self {
         self.instruction.liquidity_pool_id = Some(liquidity_pool_id);
-        self
-      }
-                #[inline(always)]
-      pub fn amount(&mut self, amount: u64) -> &mut Self {
-        self.instruction.amount = Some(amount);
         self
       }
         /// Add an additional account to the instruction.
@@ -739,11 +576,10 @@ impl<'a, 'b> SlashCpiBuilder<'a, 'b> {
   #[allow(clippy::clone_on_copy)]
   #[allow(clippy::vec_init_then_push)]
   pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
-          let args = SlashInstructionArgs {
+          let args = InitializePoolReserveInstructionArgs {
                                                               liquidity_pool_id: self.instruction.liquidity_pool_id.clone().expect("liquidity_pool_id is not set"),
-                                                                  amount: self.instruction.amount.clone().expect("amount is not set"),
                                     };
-        let instruction = SlashCpi {
+        let instruction = InitializePoolReserveCpi {
         __program: self.instruction.__program,
                   
           signer: self.instruction.signer.expect("signer is not set"),
@@ -756,21 +592,15 @@ impl<'a, 'b> SlashCpiBuilder<'a, 'b> {
                   
           asset: self.instruction.asset.expect("asset is not set"),
                   
-          stablecoin_mint: self.instruction.stablecoin_mint.expect("stablecoin_mint is not set"),
+          asset_mint: self.instruction.asset_mint.expect("asset_mint is not set"),
                   
-          liquidity_pool_token_account: self.instruction.liquidity_pool_token_account.expect("liquidity_pool_token_account is not set"),
+          pool_asset_account: self.instruction.pool_asset_account.expect("pool_asset_account is not set"),
                   
-          proxy_state: self.instruction.proxy_state.expect("proxy_state is not set"),
-                  
-          protected_vault_token_account: self.instruction.protected_vault_token_account.expect("protected_vault_token_account is not set"),
-                  
-          oracle: self.instruction.oracle.expect("oracle is not set"),
+          system_program: self.instruction.system_program.expect("system_program is not set"),
                   
           token_program: self.instruction.token_program.expect("token_program is not set"),
                   
-          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
-                  
-          program: self.instruction.program.expect("program is not set"),
+          associated_token_program: self.instruction.associated_token_program.expect("associated_token_program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -778,23 +608,19 @@ impl<'a, 'b> SlashCpiBuilder<'a, 'b> {
 }
 
 #[derive(Clone, Debug)]
-struct SlashCpiBuilderInstruction<'a, 'b> {
+struct InitializePoolReserveCpiBuilderInstruction<'a, 'b> {
   __program: &'b solana_account_info::AccountInfo<'a>,
             signer: Option<&'b solana_account_info::AccountInfo<'a>>,
                 permissions: Option<&'b solana_account_info::AccountInfo<'a>>,
                 settings: Option<&'b solana_account_info::AccountInfo<'a>>,
                 liquidity_pool: Option<&'b solana_account_info::AccountInfo<'a>>,
                 asset: Option<&'b solana_account_info::AccountInfo<'a>>,
-                stablecoin_mint: Option<&'b solana_account_info::AccountInfo<'a>>,
-                liquidity_pool_token_account: Option<&'b solana_account_info::AccountInfo<'a>>,
-                proxy_state: Option<&'b solana_account_info::AccountInfo<'a>>,
-                protected_vault_token_account: Option<&'b solana_account_info::AccountInfo<'a>>,
-                oracle: Option<&'b solana_account_info::AccountInfo<'a>>,
+                asset_mint: Option<&'b solana_account_info::AccountInfo<'a>>,
+                pool_asset_account: Option<&'b solana_account_info::AccountInfo<'a>>,
+                system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                 token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
-                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
-                program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                associated_token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         liquidity_pool_id: Option<u8>,
-                amount: Option<u64>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
   __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

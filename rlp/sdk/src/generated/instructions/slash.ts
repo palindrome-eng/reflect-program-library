@@ -57,13 +57,18 @@ export type SlashInstruction<
   TAccountPermissions extends string | AccountMeta<string> = string,
   TAccountSettings extends string | AccountMeta<string> = string,
   TAccountLiquidityPool extends string | AccountMeta<string> = string,
-  TAccountMint extends string | AccountMeta<string> = string,
   TAccountAsset extends string | AccountMeta<string> = string,
+  TAccountStablecoinMint extends string | AccountMeta<string> = string,
   TAccountLiquidityPoolTokenAccount extends string | AccountMeta<string> =
     string,
-  TAccountDestination extends string | AccountMeta<string> = string,
+  TAccountProxyState extends string | AccountMeta<string> = string,
+  TAccountProtectedVaultTokenAccount extends string | AccountMeta<string> =
+    string,
+  TAccountOracle extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -74,29 +79,41 @@ export type SlashInstruction<
             AccountSignerMeta<TAccountSigner>
         : TAccountSigner,
       TAccountPermissions extends string
-        ? WritableAccount<TAccountPermissions>
+        ? ReadonlyAccount<TAccountPermissions>
         : TAccountPermissions,
       TAccountSettings extends string
-        ? WritableAccount<TAccountSettings>
+        ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
       TAccountLiquidityPool extends string
         ? ReadonlyAccount<TAccountLiquidityPool>
         : TAccountLiquidityPool,
-      TAccountMint extends string
-        ? WritableAccount<TAccountMint>
-        : TAccountMint,
       TAccountAsset extends string
-        ? WritableAccount<TAccountAsset>
+        ? ReadonlyAccount<TAccountAsset>
         : TAccountAsset,
+      TAccountStablecoinMint extends string
+        ? ReadonlyAccount<TAccountStablecoinMint>
+        : TAccountStablecoinMint,
       TAccountLiquidityPoolTokenAccount extends string
         ? WritableAccount<TAccountLiquidityPoolTokenAccount>
         : TAccountLiquidityPoolTokenAccount,
-      TAccountDestination extends string
-        ? ReadonlyAccount<TAccountDestination>
-        : TAccountDestination,
+      TAccountProxyState extends string
+        ? ReadonlyAccount<TAccountProxyState>
+        : TAccountProxyState,
+      TAccountProtectedVaultTokenAccount extends string
+        ? WritableAccount<TAccountProtectedVaultTokenAccount>
+        : TAccountProtectedVaultTokenAccount,
+      TAccountOracle extends string
+        ? ReadonlyAccount<TAccountOracle>
+        : TAccountOracle,
       TAccountTokenProgram extends string
         ? ReadonlyAccount<TAccountTokenProgram>
         : TAccountTokenProgram,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -104,14 +121,22 @@ export type SlashInstruction<
 export type SlashInstructionData = {
   discriminator: ReadonlyUint8Array;
   liquidityPoolId: number;
+  /**
+   * Requested amount of the protected vault's stablecoin_mint tokens to
+   * transfer from this pool's reserve into the proxy's vault. The
+   * instruction caps this at the proxy's current mark-to-market loss.
+   */
   amount: bigint;
-  assetId: number;
 };
 
 export type SlashInstructionDataArgs = {
   liquidityPoolId: number;
+  /**
+   * Requested amount of the protected vault's stablecoin_mint tokens to
+   * transfer from this pool's reserve into the proxy's vault. The
+   * instruction caps this at the proxy's current mark-to-market loss.
+   */
   amount: number | bigint;
-  assetId: number;
 };
 
 export function getSlashInstructionDataEncoder(): FixedSizeEncoder<SlashInstructionDataArgs> {
@@ -120,7 +145,6 @@ export function getSlashInstructionDataEncoder(): FixedSizeEncoder<SlashInstruct
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["liquidityPoolId", getU8Encoder()],
       ["amount", getU64Encoder()],
-      ["assetId", getU8Encoder()],
     ]),
     (value) => ({ ...value, discriminator: SLASH_DISCRIMINATOR }),
   );
@@ -131,7 +155,6 @@ export function getSlashInstructionDataDecoder(): FixedSizeDecoder<SlashInstruct
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["liquidityPoolId", getU8Decoder()],
     ["amount", getU64Decoder()],
-    ["assetId", getU8Decoder()],
   ]);
 }
 
@@ -150,24 +173,45 @@ export type SlashAsyncInput<
   TAccountPermissions extends string = string,
   TAccountSettings extends string = string,
   TAccountLiquidityPool extends string = string,
-  TAccountMint extends string = string,
   TAccountAsset extends string = string,
+  TAccountStablecoinMint extends string = string,
   TAccountLiquidityPoolTokenAccount extends string = string,
-  TAccountDestination extends string = string,
+  TAccountProxyState extends string = string,
+  TAccountProtectedVaultTokenAccount extends string = string,
+  TAccountOracle extends string = string,
   TAccountTokenProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   permissions?: Address<TAccountPermissions>;
   settings?: Address<TAccountSettings>;
   liquidityPool: Address<TAccountLiquidityPool>;
-  mint: Address<TAccountMint>;
   asset: Address<TAccountAsset>;
+  stablecoinMint: Address<TAccountStablecoinMint>;
+  /**
+   * Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
+   * Source of the transfer.
+   */
   liquidityPoolTokenAccount: Address<TAccountLiquidityPoolTokenAccount>;
-  destination: Address<TAccountDestination>;
+  /**
+   * The proxy program's ProxyState account. Validated against
+   * `liquidity_pool.protected_vault` and read for principal/commission.
+   * length check). Not deserialized via Anchor because the proxy program
+   * is pinocchio-based and has no Anchor discriminator.
+   */
+  proxyState: Address<TAccountProxyState>;
+  /**
+   * The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
+   * Destination of the transfer.
+   */
+  protectedVaultTokenAccount: Address<TAccountProtectedVaultTokenAccount>;
+  oracle: Address<TAccountOracle>;
   tokenProgram?: Address<TAccountTokenProgram>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   liquidityPoolId: SlashInstructionDataArgs["liquidityPoolId"];
   amount: SlashInstructionDataArgs["amount"];
-  assetId: SlashInstructionDataArgs["assetId"];
 };
 
 export async function getSlashInstructionAsync<
@@ -175,11 +219,15 @@ export async function getSlashInstructionAsync<
   TAccountPermissions extends string,
   TAccountSettings extends string,
   TAccountLiquidityPool extends string,
-  TAccountMint extends string,
   TAccountAsset extends string,
+  TAccountStablecoinMint extends string,
   TAccountLiquidityPoolTokenAccount extends string,
-  TAccountDestination extends string,
+  TAccountProxyState extends string,
+  TAccountProtectedVaultTokenAccount extends string,
+  TAccountOracle extends string,
   TAccountTokenProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: SlashAsyncInput<
@@ -187,11 +235,15 @@ export async function getSlashInstructionAsync<
     TAccountPermissions,
     TAccountSettings,
     TAccountLiquidityPool,
-    TAccountMint,
     TAccountAsset,
+    TAccountStablecoinMint,
     TAccountLiquidityPoolTokenAccount,
-    TAccountDestination,
-    TAccountTokenProgram
+    TAccountProxyState,
+    TAccountProtectedVaultTokenAccount,
+    TAccountOracle,
+    TAccountTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -201,11 +253,15 @@ export async function getSlashInstructionAsync<
     TAccountPermissions,
     TAccountSettings,
     TAccountLiquidityPool,
-    TAccountMint,
     TAccountAsset,
+    TAccountStablecoinMint,
     TAccountLiquidityPoolTokenAccount,
-    TAccountDestination,
-    TAccountTokenProgram
+    TAccountProxyState,
+    TAccountProtectedVaultTokenAccount,
+    TAccountOracle,
+    TAccountTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -214,17 +270,24 @@ export async function getSlashInstructionAsync<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    permissions: { value: input.permissions ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
+    permissions: { value: input.permissions ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: false },
-    mint: { value: input.mint ?? null, isWritable: true },
-    asset: { value: input.asset ?? null, isWritable: true },
+    asset: { value: input.asset ?? null, isWritable: false },
+    stablecoinMint: { value: input.stablecoinMint ?? null, isWritable: false },
     liquidityPoolTokenAccount: {
       value: input.liquidityPoolTokenAccount ?? null,
       isWritable: true,
     },
-    destination: { value: input.destination ?? null, isWritable: false },
+    proxyState: { value: input.proxyState ?? null, isWritable: false },
+    protectedVaultTokenAccount: {
+      value: input.protectedVaultTokenAccount ?? null,
+      isWritable: true,
+    },
+    oracle: { value: input.oracle ?? null, isWritable: false },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -262,6 +325,19 @@ export async function getSlashInstructionAsync<
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -270,11 +346,15 @@ export async function getSlashInstructionAsync<
       getAccountMeta(accounts.permissions),
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.liquidityPool),
-      getAccountMeta(accounts.mint),
       getAccountMeta(accounts.asset),
+      getAccountMeta(accounts.stablecoinMint),
       getAccountMeta(accounts.liquidityPoolTokenAccount),
-      getAccountMeta(accounts.destination),
+      getAccountMeta(accounts.proxyState),
+      getAccountMeta(accounts.protectedVaultTokenAccount),
+      getAccountMeta(accounts.oracle),
       getAccountMeta(accounts.tokenProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getSlashInstructionDataEncoder().encode(
       args as SlashInstructionDataArgs,
@@ -286,11 +366,15 @@ export async function getSlashInstructionAsync<
     TAccountPermissions,
     TAccountSettings,
     TAccountLiquidityPool,
-    TAccountMint,
     TAccountAsset,
+    TAccountStablecoinMint,
     TAccountLiquidityPoolTokenAccount,
-    TAccountDestination,
-    TAccountTokenProgram
+    TAccountProxyState,
+    TAccountProtectedVaultTokenAccount,
+    TAccountOracle,
+    TAccountTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -299,24 +383,45 @@ export type SlashInput<
   TAccountPermissions extends string = string,
   TAccountSettings extends string = string,
   TAccountLiquidityPool extends string = string,
-  TAccountMint extends string = string,
   TAccountAsset extends string = string,
+  TAccountStablecoinMint extends string = string,
   TAccountLiquidityPoolTokenAccount extends string = string,
-  TAccountDestination extends string = string,
+  TAccountProxyState extends string = string,
+  TAccountProtectedVaultTokenAccount extends string = string,
+  TAccountOracle extends string = string,
   TAccountTokenProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   permissions: Address<TAccountPermissions>;
   settings: Address<TAccountSettings>;
   liquidityPool: Address<TAccountLiquidityPool>;
-  mint: Address<TAccountMint>;
   asset: Address<TAccountAsset>;
+  stablecoinMint: Address<TAccountStablecoinMint>;
+  /**
+   * Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
+   * Source of the transfer.
+   */
   liquidityPoolTokenAccount: Address<TAccountLiquidityPoolTokenAccount>;
-  destination: Address<TAccountDestination>;
+  /**
+   * The proxy program's ProxyState account. Validated against
+   * `liquidity_pool.protected_vault` and read for principal/commission.
+   * length check). Not deserialized via Anchor because the proxy program
+   * is pinocchio-based and has no Anchor discriminator.
+   */
+  proxyState: Address<TAccountProxyState>;
+  /**
+   * The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
+   * Destination of the transfer.
+   */
+  protectedVaultTokenAccount: Address<TAccountProtectedVaultTokenAccount>;
+  oracle: Address<TAccountOracle>;
   tokenProgram?: Address<TAccountTokenProgram>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   liquidityPoolId: SlashInstructionDataArgs["liquidityPoolId"];
   amount: SlashInstructionDataArgs["amount"];
-  assetId: SlashInstructionDataArgs["assetId"];
 };
 
 export function getSlashInstruction<
@@ -324,11 +429,15 @@ export function getSlashInstruction<
   TAccountPermissions extends string,
   TAccountSettings extends string,
   TAccountLiquidityPool extends string,
-  TAccountMint extends string,
   TAccountAsset extends string,
+  TAccountStablecoinMint extends string,
   TAccountLiquidityPoolTokenAccount extends string,
-  TAccountDestination extends string,
+  TAccountProxyState extends string,
+  TAccountProtectedVaultTokenAccount extends string,
+  TAccountOracle extends string,
   TAccountTokenProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: SlashInput<
@@ -336,11 +445,15 @@ export function getSlashInstruction<
     TAccountPermissions,
     TAccountSettings,
     TAccountLiquidityPool,
-    TAccountMint,
     TAccountAsset,
+    TAccountStablecoinMint,
     TAccountLiquidityPoolTokenAccount,
-    TAccountDestination,
-    TAccountTokenProgram
+    TAccountProxyState,
+    TAccountProtectedVaultTokenAccount,
+    TAccountOracle,
+    TAccountTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): SlashInstruction<
@@ -349,11 +462,15 @@ export function getSlashInstruction<
   TAccountPermissions,
   TAccountSettings,
   TAccountLiquidityPool,
-  TAccountMint,
   TAccountAsset,
+  TAccountStablecoinMint,
   TAccountLiquidityPoolTokenAccount,
-  TAccountDestination,
-  TAccountTokenProgram
+  TAccountProxyState,
+  TAccountProtectedVaultTokenAccount,
+  TAccountOracle,
+  TAccountTokenProgram,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -361,17 +478,24 @@ export function getSlashInstruction<
   // Original accounts.
   const originalAccounts = {
     signer: { value: input.signer ?? null, isWritable: true },
-    permissions: { value: input.permissions ?? null, isWritable: true },
-    settings: { value: input.settings ?? null, isWritable: true },
+    permissions: { value: input.permissions ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: false },
     liquidityPool: { value: input.liquidityPool ?? null, isWritable: false },
-    mint: { value: input.mint ?? null, isWritable: true },
-    asset: { value: input.asset ?? null, isWritable: true },
+    asset: { value: input.asset ?? null, isWritable: false },
+    stablecoinMint: { value: input.stablecoinMint ?? null, isWritable: false },
     liquidityPoolTokenAccount: {
       value: input.liquidityPoolTokenAccount ?? null,
       isWritable: true,
     },
-    destination: { value: input.destination ?? null, isWritable: false },
+    proxyState: { value: input.proxyState ?? null, isWritable: false },
+    protectedVaultTokenAccount: {
+      value: input.protectedVaultTokenAccount ?? null,
+      isWritable: true,
+    },
+    oracle: { value: input.oracle ?? null, isWritable: false },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -394,11 +518,15 @@ export function getSlashInstruction<
       getAccountMeta(accounts.permissions),
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.liquidityPool),
-      getAccountMeta(accounts.mint),
       getAccountMeta(accounts.asset),
+      getAccountMeta(accounts.stablecoinMint),
       getAccountMeta(accounts.liquidityPoolTokenAccount),
-      getAccountMeta(accounts.destination),
+      getAccountMeta(accounts.proxyState),
+      getAccountMeta(accounts.protectedVaultTokenAccount),
+      getAccountMeta(accounts.oracle),
       getAccountMeta(accounts.tokenProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getSlashInstructionDataEncoder().encode(
       args as SlashInstructionDataArgs,
@@ -410,11 +538,15 @@ export function getSlashInstruction<
     TAccountPermissions,
     TAccountSettings,
     TAccountLiquidityPool,
-    TAccountMint,
     TAccountAsset,
+    TAccountStablecoinMint,
     TAccountLiquidityPoolTokenAccount,
-    TAccountDestination,
-    TAccountTokenProgram
+    TAccountProxyState,
+    TAccountProtectedVaultTokenAccount,
+    TAccountOracle,
+    TAccountTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -428,11 +560,29 @@ export type ParsedSlashInstruction<
     permissions: TAccountMetas[1];
     settings: TAccountMetas[2];
     liquidityPool: TAccountMetas[3];
-    mint: TAccountMetas[4];
-    asset: TAccountMetas[5];
+    asset: TAccountMetas[4];
+    stablecoinMint: TAccountMetas[5];
+    /**
+     * Pool's reserve of the proxy's stablecoin_mint (typically USDC+).
+     * Source of the transfer.
+     */
     liquidityPoolTokenAccount: TAccountMetas[6];
-    destination: TAccountMetas[7];
-    tokenProgram: TAccountMetas[8];
+    /**
+     * The proxy program's ProxyState account. Validated against
+     * `liquidity_pool.protected_vault` and read for principal/commission.
+     * length check). Not deserialized via Anchor because the proxy program
+     * is pinocchio-based and has no Anchor discriminator.
+     */
+    proxyState: TAccountMetas[7];
+    /**
+     * The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).
+     * Destination of the transfer.
+     */
+    protectedVaultTokenAccount: TAccountMetas[8];
+    oracle: TAccountMetas[9];
+    tokenProgram: TAccountMetas[10];
+    eventAuthority: TAccountMetas[11];
+    program: TAccountMetas[12];
   };
   data: SlashInstructionData;
 };
@@ -445,7 +595,7 @@ export function parseSlashInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedSlashInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 9) {
+  if (instruction.accounts.length < 13) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -462,11 +612,15 @@ export function parseSlashInstruction<
       permissions: getNextAccount(),
       settings: getNextAccount(),
       liquidityPool: getNextAccount(),
-      mint: getNextAccount(),
       asset: getNextAccount(),
+      stablecoinMint: getNextAccount(),
       liquidityPoolTokenAccount: getNextAccount(),
-      destination: getNextAccount(),
+      proxyState: getNextAccount(),
+      protectedVaultTokenAccount: getNextAccount(),
+      oracle: getNextAccount(),
       tokenProgram: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getSlashInstructionDataDecoder().decode(instruction.data),
   };

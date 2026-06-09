@@ -28,7 +28,6 @@ pub access_level: AccessLevel,
 pub const ASSET_DISCRIMINATOR: [u8; 8] = [234, 180, 241, 252, 139, 224, 160, 8];
 
 impl Asset {
-      pub const LEN: usize = 76;
   
   
   

@@ -11,13 +11,14 @@ use borsh::BorshDeserialize;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct WithdrawEvent {
+pub struct ForceRemoveAssetEvent {
 #[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
-pub from: Pubkey,
-pub liquidity_pool_id: u8,
-pub amount_in: u64,
-pub amount_out: u64,
-pub usd_value: u128,
+pub admin: Pubkey,
+#[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
+pub liquidity_pool: Pubkey,
+#[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
+pub asset: Pubkey,
+pub asset_index: u8,
 }
 
 

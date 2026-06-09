@@ -16,9 +16,12 @@ pub struct SlashEvent {
 pub admin: Pubkey,
 #[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
 pub liquidity_pool: Pubkey,
-pub amount: u64,
 #[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
-pub mint: Pubkey,
+pub protected_vault: Pubkey,
+#[cfg_attr(feature = "serde", serde(with = "serde_with::As::<serde_with::DisplayFromStr>"))]
+pub stablecoin_mint: Pubkey,
+pub loss_usdc: u64,
+pub amount_tokens: u64,
 }
 
 

@@ -108,10 +108,24 @@ export const RLP_ERROR__SAME_ADMIN = 0x179c; // 6044
 export const RLP_ERROR__ALREADY_FROZEN = 0x179d; // 6045
 /** AlreadyUnfrozen: AlreadyUnfrozen */
 export const RLP_ERROR__ALREADY_UNFROZEN = 0x179e; // 6046
-/** SlashAmountExceedsLimit: SlashAmountExceedsLimit */
-export const RLP_ERROR__SLASH_AMOUNT_EXCEEDS_LIMIT = 0x179f; // 6047
 /** OracleDataTooStale: OracleDataTooStale */
-export const RLP_ERROR__ORACLE_DATA_TOO_STALE = 0x17a0; // 6048
+export const RLP_ERROR__ORACLE_DATA_TOO_STALE = 0x179f; // 6047
+/** PoolAssetFrozen: PoolAssetFrozen */
+export const RLP_ERROR__POOL_ASSET_FROZEN = 0x17a0; // 6048
+/** PoolAssetNotFrozen: PoolAssetNotFrozen */
+export const RLP_ERROR__POOL_ASSET_NOT_FROZEN = 0x17a1; // 6049
+/** CannotRemoveLastAsset: CannotRemoveLastAsset */
+export const RLP_ERROR__CANNOT_REMOVE_LAST_ASSET = 0x17a2; // 6050
+/** PoolHasNoProtectedVault: PoolHasNoProtectedVault */
+export const RLP_ERROR__POOL_HAS_NO_PROTECTED_VAULT = 0x17a3; // 6051
+/** ProtectedVaultMismatch: ProtectedVaultMismatch */
+export const RLP_ERROR__PROTECTED_VAULT_MISMATCH = 0x17a4; // 6052
+/** NoNavLossToCover: NoNavLossToCover */
+export const RLP_ERROR__NO_NAV_LOSS_TO_COVER = 0x17a5; // 6053
+/** NavCoverageExceedsLoss: NavCoverageExceedsLoss */
+export const RLP_ERROR__NAV_COVERAGE_EXCEEDS_LOSS = 0x17a6; // 6054
+/** ProtectedVaultMintMismatch: ProtectedVaultMintMismatch */
+export const RLP_ERROR__PROTECTED_VAULT_MINT_MISMATCH = 0x17a7; // 6055
 
 export type RlpError =
   | typeof RLP_ERROR__ACTION_FROZEN
@@ -122,6 +136,7 @@ export type RlpError =
   | typeof RLP_ERROR__ALREADY_UNFROZEN
   | typeof RLP_ERROR__ASSET_NOT_WHITELISTED
   | typeof RLP_ERROR__BOOST_NOT_APPLIED
+  | typeof RLP_ERROR__CANNOT_REMOVE_LAST_ASSET
   | typeof RLP_ERROR__COLD_WALLET_NOT_SLASHED
   | typeof RLP_ERROR__COOLDOWN_IN_FORCE
   | typeof RLP_ERROR__DEPOSIT_CAP_OVERFLOW
@@ -146,18 +161,24 @@ export type RlpError =
   | typeof RLP_ERROR__LOCKUP_IN_FORCE
   | typeof RLP_ERROR__MATH_OVERFLOW
   | typeof RLP_ERROR__MINIMUM_SUPERADMINS_REQUIRED
+  | typeof RLP_ERROR__NAV_COVERAGE_EXCEEDS_LOSS
   | typeof RLP_ERROR__NO_ENTRIES_LEFT
+  | typeof RLP_ERROR__NO_NAV_LOSS_TO_COVER
   | typeof RLP_ERROR__NOT_ENOUGH_FUNDS
   | typeof RLP_ERROR__NOT_ENOUGH_FUNDS_TO_SLASH
   | typeof RLP_ERROR__NOT_ENOUGH_RECEIPT_TOKENS
   | typeof RLP_ERROR__ORACLE_DATA_TOO_STALE
   | typeof RLP_ERROR__PERMISSIONS_TOO_LOW
+  | typeof RLP_ERROR__POOL_ASSET_FROZEN
+  | typeof RLP_ERROR__POOL_ASSET_NOT_FROZEN
+  | typeof RLP_ERROR__POOL_HAS_NO_PROTECTED_VAULT
   | typeof RLP_ERROR__POOL_IMBALANCE
   | typeof RLP_ERROR__PRICE_ERROR
+  | typeof RLP_ERROR__PROTECTED_VAULT_MINT_MISMATCH
+  | typeof RLP_ERROR__PROTECTED_VAULT_MISMATCH
   | typeof RLP_ERROR__ROLE_NOT_UNDER_ACTION
   | typeof RLP_ERROR__SAME_ADMIN
   | typeof RLP_ERROR__SHARE_CONFIG_OVERFLOW
-  | typeof RLP_ERROR__SLASH_AMOUNT_EXCEEDS_LIMIT
   | typeof RLP_ERROR__SLASH_AMOUNT_MISMATCH
   | typeof RLP_ERROR__SLIPPAGE_EXCEEDED
   | typeof RLP_ERROR__TRANSFER_SIGNATURE_REQUIRED
@@ -175,6 +196,7 @@ if (process.env.NODE_ENV !== "production") {
     [RLP_ERROR__ALREADY_UNFROZEN]: `AlreadyUnfrozen`,
     [RLP_ERROR__ASSET_NOT_WHITELISTED]: `AssetNotWhitelisted`,
     [RLP_ERROR__BOOST_NOT_APPLIED]: `BoostNotApplied`,
+    [RLP_ERROR__CANNOT_REMOVE_LAST_ASSET]: `CannotRemoveLastAsset`,
     [RLP_ERROR__COLD_WALLET_NOT_SLASHED]: `ColdWalletNotSlashed`,
     [RLP_ERROR__COOLDOWN_IN_FORCE]: `CooldownInForce`,
     [RLP_ERROR__DEPOSIT_CAP_OVERFLOW]: `DepositCapOverflow`,
@@ -199,18 +221,24 @@ if (process.env.NODE_ENV !== "production") {
     [RLP_ERROR__LOCKUP_IN_FORCE]: `LockupInForce`,
     [RLP_ERROR__MATH_OVERFLOW]: `MathOverflow`,
     [RLP_ERROR__MINIMUM_SUPERADMINS_REQUIRED]: `MinimumSuperadminsRequired`,
+    [RLP_ERROR__NAV_COVERAGE_EXCEEDS_LOSS]: `NavCoverageExceedsLoss`,
     [RLP_ERROR__NO_ENTRIES_LEFT]: `NoEntriesLeft`,
+    [RLP_ERROR__NO_NAV_LOSS_TO_COVER]: `NoNavLossToCover`,
     [RLP_ERROR__NOT_ENOUGH_FUNDS]: `NotEnoughFunds`,
     [RLP_ERROR__NOT_ENOUGH_FUNDS_TO_SLASH]: `NotEnoughFundsToSlash`,
     [RLP_ERROR__NOT_ENOUGH_RECEIPT_TOKENS]: `NotEnoughReceiptTokens`,
     [RLP_ERROR__ORACLE_DATA_TOO_STALE]: `OracleDataTooStale`,
     [RLP_ERROR__PERMISSIONS_TOO_LOW]: `PermissionsTooLow`,
+    [RLP_ERROR__POOL_ASSET_FROZEN]: `PoolAssetFrozen`,
+    [RLP_ERROR__POOL_ASSET_NOT_FROZEN]: `PoolAssetNotFrozen`,
+    [RLP_ERROR__POOL_HAS_NO_PROTECTED_VAULT]: `PoolHasNoProtectedVault`,
     [RLP_ERROR__POOL_IMBALANCE]: `PoolImbalance`,
     [RLP_ERROR__PRICE_ERROR]: `PriceError`,
+    [RLP_ERROR__PROTECTED_VAULT_MINT_MISMATCH]: `ProtectedVaultMintMismatch`,
+    [RLP_ERROR__PROTECTED_VAULT_MISMATCH]: `ProtectedVaultMismatch`,
     [RLP_ERROR__ROLE_NOT_UNDER_ACTION]: `RoleNotUnderAction`,
     [RLP_ERROR__SAME_ADMIN]: `SameAdmin`,
     [RLP_ERROR__SHARE_CONFIG_OVERFLOW]: `ShareConfigOverflow`,
-    [RLP_ERROR__SLASH_AMOUNT_EXCEEDS_LIMIT]: `SlashAmountExceedsLimit`,
     [RLP_ERROR__SLASH_AMOUNT_MISMATCH]: `SlashAmountMismatch`,
     [RLP_ERROR__SLIPPAGE_EXCEEDED]: `SlippageExceeded`,
     [RLP_ERROR__TRANSFER_SIGNATURE_REQUIRED]: `TransferSignatureRequired`,
