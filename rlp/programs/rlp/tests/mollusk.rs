@@ -3352,3 +3352,119 @@ fn test_withdraw_happy_path() {
     let user_asset_balance = u64::from_le_bytes(user_asset_after.data[64..72].try_into().unwrap());
     assert!(user_asset_balance > 0, "user received asset back from withdraw");
 }
+
+/// audit-1 (H02): if extra LP tokens are direct-transferred into the cooldown
+/// ATA between request_withdrawal and withdraw, withdraw must burn only the
+/// recorded `locked_amount` and refund the excess to the signer's LP token
+/// account before closing. This blocks the cooldown bypass attack.
+#[test]
+fn test_h02_withdraw_refunds_excess_in_cooldown_ata() {
+    use rlp_client::generated::instructions::WithdrawBuilder;
+
+    let admin = Pubkey::new_unique();
+    let p = setup_pool_with_one_asset(admin, 6);
+    let user = Pubkey::new_unique();
+
+    // Deposit so the user has LP tokens.
+    let user_balance: u64 = 1_000_000_000;
+    let deposit_amount: u64 = 500_000_000;
+    let deposit_result = do_deposit(&p, user, user_balance, deposit_amount);
+
+    let user_lp_account = derive_user_lp_ata(&user, &p.lp_token_mint);
+    let user_lp_after_deposit = deposit_result.resulting_accounts.iter()
+        .find(|(k, _)| *k == user_lp_account).unwrap().1.clone();
+    let user_lp_balance = u64::from_le_bytes(user_lp_after_deposit.data[64..72].try_into().unwrap());
+
+    // Request withdrawal of HALF the LP tokens. locked_amount = half.
+    let request_amount = user_lp_balance / 2;
+    let req_result = do_request_withdrawal(&p, user, user_lp_balance, request_amount, &deposit_result.resulting_accounts);
+
+    let cooldown_pda = Pubkey::find_program_address(
+        &[
+            rlp::constants::COOLDOWN_SEED.as_bytes(),
+            &0u8.to_le_bytes(),
+            &0u64.to_le_bytes(),
+        ],
+        &Pubkey::new_from_array(RLP_ID.to_bytes()),
+    ).0;
+    let cooldown_lp_ata = derive_ata(&cooldown_pda, &p.lp_token_mint);
+    let user_asset_ata = derive_ata(&user, &p.asset_mint);
+
+    // ATTACK: Inject extra LP tokens into the cooldown ATA. With the old
+    // (pre-fix) withdraw logic this would let the attacker withdraw against
+    // the inflated balance. With audit-1 fix, only `locked_amount` is burned
+    // and the rest is refunded.
+    let mut cooldown_lp_after = req_result.resulting_accounts.iter()
+        .find(|(k, _)| *k == cooldown_lp_ata).unwrap().1.clone();
+    let injected: u64 = 200_000_000;
+    let total_in_cooldown = request_amount + injected;
+    cooldown_lp_after.data[64..72].copy_from_slice(&total_in_cooldown.to_le_bytes());
+
+    // The user's lp account currently holds (user_lp_balance - request_amount) after request.
+    // The injection has to come from somewhere — for the test it's fine to leave the
+    // user's lp account untouched; the program only cares about cooldown_lp_token_account
+    // and signer_lp_token_account balances.
+
+    let (event_authority, _) = derive_event_authority();
+    let ix = convert_instruction(
+        WithdrawBuilder::new()
+            .signer(user.into())
+            .settings(p.settings.into())
+            .liquidity_pool(p.lp_pda.into())
+            .lp_token_mint(p.lp_token_mint.into())
+            .cooldown_lp_token_account(cooldown_lp_ata.into())
+            .signer_lp_token_account(user_lp_account.into())
+            .cooldown(cooldown_pda.into())
+            .token_program(SPL_TOKEN_ID.into())
+            .event_authority(event_authority.into())
+            .program(RLP_ID)
+            .liquidity_pool_id(0)
+            .cooldown_id(0)
+            .instruction()
+    );
+
+    let mut ix = ix;
+    ix.accounts.push(AccountMeta { pubkey: p.asset, is_signer: false, is_writable: false });
+    ix.accounts.push(AccountMeta { pubkey: p.pool_asset_account, is_signer: false, is_writable: true });
+    ix.accounts.push(AccountMeta { pubkey: user_asset_ata, is_signer: false, is_writable: true });
+
+    let get = |k: &Pubkey, default: Account| -> Account {
+        req_result.resulting_accounts.iter().find(|(kk, _)| kk == k).map(|(_, a)| a.clone())
+            .or_else(|| deposit_result.resulting_accounts.iter().find(|(kk, _)| kk == k).map(|(_, a)| a.clone()))
+            .unwrap_or(default)
+    };
+
+    let user_lp_pre_withdraw_balance = u64::from_le_bytes(
+        get(&user_lp_account, create_token_account(&p.lp_token_mint, &user, 0)).data[64..72].try_into().unwrap()
+    );
+
+    let mut accounts = vec![
+        (user, signer_account()),
+        (p.settings, get(&p.settings, p.settings_acc.clone())),
+        (p.lp_pda, get(&p.lp_pda, p.lp_pda_acc.clone())),
+        (p.lp_token_mint, get(&p.lp_token_mint, p.lp_token_mint_acc.clone())),
+        (cooldown_lp_ata, cooldown_lp_after), // injected balance
+        (user_lp_account, get(&user_lp_account, create_token_account(&p.lp_token_mint, &user, 0))),
+        (cooldown_pda, get(&cooldown_pda, empty_account())),
+        (p.asset, get(&p.asset, p.asset_acc.clone())),
+        (p.pool_asset_account, get(&p.pool_asset_account, p.pool_asset_account_acc.clone())),
+        (user_asset_ata, get(&user_asset_ata, create_token_account(&p.asset_mint, &user, 0))),
+        (system_program::ID, system_program_account()),
+    ];
+    accounts.extend(spl_program_accounts());
+    accounts.extend(event_cpi_accounts());
+
+    let r = with_mollusk_clock(1000, |m| {
+        m.process_and_validate_instruction(&ix, &accounts, &[Check::success()])
+    });
+
+    // user_lp_account balance went UP by `injected` (refund) and otherwise stays put.
+    // Cooldown ATA was closed (zero balance).
+    let user_lp_after = r.resulting_accounts.iter().find(|(k, _)| *k == user_lp_account).unwrap().1.clone();
+    let user_lp_post_balance = u64::from_le_bytes(user_lp_after.data[64..72].try_into().unwrap());
+    assert_eq!(
+        user_lp_post_balance,
+        user_lp_pre_withdraw_balance + injected,
+        "excess in cooldown ATA refunded to signer's LP account"
+    );
+}
