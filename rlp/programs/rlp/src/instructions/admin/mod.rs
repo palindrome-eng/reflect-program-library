@@ -30,3 +30,6 @@ pub use rlp_admin_context::*;
 
 pub mod update_oracle;
 pub use update_oracle::*;
+
+pub mod force_remove_asset;
+pub use force_remove_asset::*;

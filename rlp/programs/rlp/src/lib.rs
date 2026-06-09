@@ -118,4 +118,11 @@ pub mod rlp {
     ) -> Result<()> {
         instructions::update_oracle(ctx)
     }
+
+    pub fn force_remove_asset(
+        ctx: Context<ForceRemoveAsset>,
+        _liquidity_pool_id: u8,
+    ) -> Result<()> {
+        instructions::force_remove_asset(ctx)
+    }
 }

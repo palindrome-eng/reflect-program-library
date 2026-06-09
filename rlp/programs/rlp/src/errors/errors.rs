@@ -148,4 +148,13 @@ pub enum RlpError {
 
     #[msg("OracleDataTooStale")]
     OracleDataTooStale,
+
+    #[msg("PoolAssetFrozen")]
+    PoolAssetFrozen,
+
+    #[msg("PoolAssetNotFrozen")]
+    PoolAssetNotFrozen,
+
+    #[msg("CannotRemoveLastAsset")]
+    CannotRemoveLastAsset,
 }

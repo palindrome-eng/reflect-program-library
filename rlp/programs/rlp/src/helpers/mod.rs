@@ -6,3 +6,6 @@ pub use loaders::*;
 
 pub mod action_check_protocol;
 pub use action_check_protocol::*;
+
+pub mod freeze_check;
+pub use freeze_check::*;

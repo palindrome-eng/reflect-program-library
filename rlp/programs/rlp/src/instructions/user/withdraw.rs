@@ -15,6 +15,7 @@ use anchor_spl::token::{
     Burn
 };
 use crate::helpers::{
+    assert_no_reserve_frozen,
     load_assets,
     load_reserves,
     load_user_token_accounts
@@ -89,6 +90,7 @@ pub fn withdraw<'a>(
     let assets: Vec<(Pubkey, Asset)> = load_assets(liquidity_pool, remaining_accounts)?;
     let asset_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
     let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
+    assert_no_reserve_frozen(&reserves)?;
     let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;
 
     let mut amounts_out: Vec<(Pubkey, u64)> = Vec::with_capacity(assets.len());
