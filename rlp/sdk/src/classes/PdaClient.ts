@@ -1,5 +1,6 @@
 import {
   Address,
+  address,
   getAddressEncoder,
   getProgramDerivedAddress,
   getU8Encoder,
@@ -11,6 +12,9 @@ import {
   LIQUIDITY_POOL_SEED,
   ASSET_SEED,
   COOLDOWN_SEED,
+  EVENT_AUTHORITY_SEED,
+  PROXY_STATE_SEED,
+  PROXY_PROGRAM_ADDRESS,
 } from "../constants";
 import { RLP_PROGRAM_ADDRESS } from "../generated";
 
@@ -57,6 +61,30 @@ export class PdaClient {
         getU8Encoder().encode(liquidityPoolId),
         getU64Encoder().encode(cooldownId),
       ],
+    });
+  }
+
+  /**
+   * Anchor's standard `event_authority` PDA. The codama-generated async
+   * builders auto-derive this when omitted, so most callers won't need it
+   * directly — exposed for low-level instruction inspection.
+   */
+  static async deriveEventAuthority() {
+    return getProgramDerivedAddress({
+      programAddress: RLP_PROGRAM_ADDRESS,
+      seeds: [EVENT_AUTHORITY_SEED],
+    });
+  }
+
+  /**
+   * Derive the senior tranche's ProxyState address from its branded mint.
+   * Uses the proxy program ID, not the RLP program ID. Used by NAV slash
+   * setup (audit-M06).
+   */
+  static async deriveProxyState(brandedMint: Address) {
+    return getProgramDerivedAddress({
+      programAddress: address(PROXY_PROGRAM_ADDRESS),
+      seeds: [PROXY_STATE_SEED, getAddressEncoder().encode(brandedMint)],
     });
   }
 }

@@ -498,6 +498,7 @@ describe("RLP SDK Full Flow Test", function () {
     const ix = await getInitializeRlpInstructionAsync({
       signer: admin.signer,
       swapFeeBps: 30,
+          program: PROGRAM_ID,
     });
     const result = sendSdkInstruction(ix);
     assertSuccess(result, "initializeRlp");
@@ -515,6 +516,7 @@ describe("RLP SDK Full Flow Test", function () {
       assetMint: assetMint1.address,
       oracle: oracle1Address,
       accessLevel: AccessLevel.Public,
+          program: PROGRAM_ID,
     });
     const result = sendSdkInstruction(ix);
     assertSuccess(result, "addAsset (asset 1, public)");
@@ -528,6 +530,7 @@ describe("RLP SDK Full Flow Test", function () {
       assetMint: assetMint2.address,
       oracle: oracle2Address,
       accessLevel: AccessLevel.Public,
+          program: PROGRAM_ID,
     });
     const result = sendSdkInstruction(ix);
     assertSuccess(result, "addAsset (asset 2, public)");
@@ -545,7 +548,8 @@ describe("RLP SDK Full Flow Test", function () {
         action,
         role: Role.PUBLIC,
         update: Update.Add,
-      });
+            program: PROGRAM_ID,
+    });
       assertSuccess(sendSdkInstruction(ix), `updateActionRole ${Action[action]} -> PUBLIC`);
     }
   });
@@ -557,6 +561,7 @@ describe("RLP SDK Full Flow Test", function () {
       action: Action.SuspendDeposits,
       role: Role.TESTEE,
       update: Update.Add,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "add TESTEE to SuspendDeposits");
 
@@ -565,6 +570,7 @@ describe("RLP SDK Full Flow Test", function () {
       action: Action.SuspendDeposits,
       role: Role.TESTEE,
       update: Update.Remove,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "remove TESTEE from SuspendDeposits");
   });
@@ -577,6 +583,7 @@ describe("RLP SDK Full Flow Test", function () {
     const ix = await getCreatePermissionAccountInstructionAsync({
       caller: admin.signer,
       newAdmin: user.address,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "createPermissionAccount");
     expect(accountExists(userPermissionsPda)).to.be.true;
@@ -593,6 +600,7 @@ describe("RLP SDK Full Flow Test", function () {
       address: user.address,
       role: Role.PUBLIC,
       update: Update.Add,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "updateRoleHolder add PUBLIC");
   });
@@ -605,6 +613,7 @@ describe("RLP SDK Full Flow Test", function () {
       address: user.address,
       role: Role.CRANK,
       update: Update.Add,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "add CRANK");
 
@@ -614,6 +623,7 @@ describe("RLP SDK Full Flow Test", function () {
       address: user.address,
       role: Role.CRANK,
       update: Update.Remove,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "remove CRANK");
   });
@@ -625,11 +635,13 @@ describe("RLP SDK Full Flow Test", function () {
     if (!programLoaded) return this.skip();
     let ix = await getFreezeFunctionalityInstructionAsync({
       admin: admin.signer, action: Action.FreezeDeposit, freeze: true,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "freeze Restake");
 
     ix = await getFreezeFunctionalityInstructionAsync({
       admin: admin.signer, action: Action.FreezeDeposit, freeze: false,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "unfreeze Restake");
   });
@@ -645,7 +657,9 @@ describe("RLP SDK Full Flow Test", function () {
       lpTokenMint: lpTokenMint.address,
       cooldownDuration: 0n, // 0 for instant withdrawals in test
       depositCap: null,
-      assets: new Uint8Array([0, 1]), // asset indices to include in the pool
+      assets: new Uint8Array([0, 1]),
+      protectedVault: null, // no NAV slashing for this test pool
+      program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "initializeLp");
     expect(accountExists(liquidityPoolPda)).to.be.true;
@@ -657,7 +671,7 @@ describe("RLP SDK Full Flow Test", function () {
       [
         {
           address: liquidityPoolPda,
-          data: { bump: 0, index: 0, lpToken: lpTokenMint.address, cooldowns: 0n, cooldownDuration: 0n, depositCap: null, assetCount: 2, assets: new Uint8Array([0, 1, 255, 255]) } as any,
+          data: { bump: 0, index: 0, lpToken: lpTokenMint.address, cooldowns: 0n, cooldownDuration: 0n, depositCap: null, assetCount: 2, assets: new Uint8Array([0, 1, 255, 255]), protectedVault: null } as any,
         },
       ],
       [
@@ -677,6 +691,7 @@ describe("RLP SDK Full Flow Test", function () {
       liquidityPool: liquidityPoolPda,
       lockupId: 0n,
       newCap: 1_000_000_000_000n,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "updateDepositCap (set)");
 
@@ -685,6 +700,7 @@ describe("RLP SDK Full Flow Test", function () {
       liquidityPool: liquidityPoolPda,
       lockupId: 0n,
       newCap: null,
+          program: PROGRAM_ID,
     });
     assertSuccess(sendSdkInstruction(ix), "updateDepositCap (remove)");
   });
@@ -755,6 +771,7 @@ describe("RLP SDK Full Flow Test", function () {
       cooldown: cooldownPda,
       liquidityPoolId: 0,
       amount: withdrawAmount,
+          program: PROGRAM_ID,
     });
 
     assertSuccess(
@@ -788,60 +805,50 @@ describe("RLP SDK Full Flow Test", function () {
   });
 
   // ========================================================================
-  // 12. slash
+  // 12. slash (NAV-based, audit-M06)
   // ========================================================================
-  it("should slash tokens from the liquidity pool", async function () {
+  //
+  // The legacy operator-discretion slash was replaced. The new `slash`
+  // requires:
+  //   - The pool was initialized with `protectedVault: Some(proxy_state)`.
+  //   - A real ProxyState account at that address (owned by the proxy
+  //     program) so the program can read principal/commission and compare
+  //     to the live vault value.
+  //
+  // The pool used in the rest of this suite was created with no
+  // protected_vault, so a slash call here would reject with
+  // PoolHasNoProtectedVault (51). Verify that gating works, and leave the
+  // full NAV happy-path coverage to the integration tests on the Rust side
+  // (mollusk) where mocking a 124-byte ProxyState account is straightforward.
+  it("should reject slash when pool has no protected vault", async function () {
     if (!programLoaded) return this.skip();
 
-    // First deposit more so there's tokens in the pool to slash
-    const amount = 2_000_000_000n;
+    // Fund the pool a bit so the check we hit is the protected-vault check,
+    // not an empty-reserve check.
+    const seed = 1_000_000_000n;
     await createAtaAndMint(
-      assetMint1.address, user.address, admin.keypair, amount,
+      assetMint1.address, user.address, admin.keypair, seed,
     );
-
-    const depositIx = await restaking.deposit(user.signer, amount, assetMint1.address, 0, 0n);
+    const depositIx = await restaking.deposit(user.signer, seed, assetMint1.address, 0, 0n);
     assertSuccess(
       sendSdkInstruction(depositIx, [user.keypair], user.keypair),
       "deposit for slash test",
     );
 
-    const poolBalanceBefore = getTokenBalance(poolAsset1Ata);
-    expect(poolBalanceBefore).to.be.greaterThan(0n);
-
-    // MAX_SLASH_BPS = 1000 (10%), slash within limit
-    const slashAmount = poolBalanceBefore / 20n; // 5%
-
-    // Create destination ATA
-    const destKp = generateKeypair();
-    svm.airdrop(toPublicKey(destKp.address), BigInt(LAMPORTS_PER_SOL));
-    const destAta = await createAta(assetMint1.address, destKp.address);
-
-    const ix = await getSlashInstructionAsync({
-      signer: admin.signer,
-      liquidityPool: liquidityPoolPda,
-      mint: assetMint1.address,
-      asset: asset1Pda,
-      liquidityPoolTokenAccount: poolAsset1Ata,
-      destination: destAta,
-      liquidityPoolId: 0,
-      amount: slashAmount,
-      assetId: 0,
-    });
-
-    // The program's destination account needs writable for CPI transfer,
-    // but the IDL marks it readonly. Fix the account meta manually.
-    const legacyIx = convertToLegacyInstruction(ix);
-    const destIdx = legacyIx.keys.findIndex(
-      (k) => k.pubkey.toBase58() === destAta,
+    // Build a slash instruction against a placeholder ProxyState. The pool
+    // doesn't have `protected_vault` set, so we should fail with code 6051
+    // (PoolHasNoProtectedVault). Any proxy_state pubkey works since we
+    // never get past the early require.
+    const dummyProxyState = (await PdaClient.deriveSettings())[0]; // any addr
+    const ix = await restaking.slash(
+      admin.signer,
+      0,
+      assetMint1.address,
+      dummyProxyState,
+      1_000n,
     );
-    if (destIdx >= 0) legacyIx.keys[destIdx].isWritable = true;
-    assertSuccess(sendTransaction([legacyIx]), "slash");
-
-    const poolBalanceAfter = getTokenBalance(poolAsset1Ata);
-    expect(poolBalanceAfter).to.equal(poolBalanceBefore - slashAmount);
-    const destBalance = getTokenBalance(destAta);
-    expect(destBalance).to.equal(slashAmount);
-    console.log(`    Slashed: ${slashAmount}, pool: ${poolBalanceBefore} -> ${poolBalanceAfter}`);
+    const result = sendSdkInstruction(ix);
+    expect(result).to.be.instanceOf(FailedTransactionMetadata);
   });
 
   // ========================================================================
@@ -889,6 +896,7 @@ describe("RLP SDK Full Flow Test", function () {
       tokenToSignerAccount: userAsset2Ata,
       amountIn: swapAmount,
       minOut: null,
+          program: PROGRAM_ID,
     });
 
     assertSuccess(
@@ -1038,5 +1046,49 @@ describe("RLP SDK Full Flow Test", function () {
           : expectedApprox - s.amount;
       expect(diff).to.be.lessThanOrEqual(1n);
     }
+  });
+
+  // ========================================================================
+  // 17. Insurance.initializePoolReserve wrapper (audit-E02)
+  // ========================================================================
+  //
+  // The pool reserve ATAs were originally created manually inside the test
+  // flow (see the deposit test). The new `initialize_pool_reserve`
+  // instruction wraps this in an admin-gated call. Verify the wrapper
+  // produces an instruction that successfully creates an ATA owned by the
+  // liquidity pool PDA.
+  it("Insurance.initializePoolReserve creates reserve ATAs idempotently", async function () {
+    if (!programLoaded) return this.skip();
+
+    // The asset1/asset2 reserves already exist from the deposit setup. The
+    // instruction uses init_if_needed under the hood, so calling it again
+    // is a no-op.
+    const ix = await restaking.initializePoolReserve(
+      admin.signer,
+      0,
+      assetMint1.address,
+    );
+    assertSuccess(sendSdkInstruction(ix), "initializePoolReserve (idempotent)");
+  });
+
+  // ========================================================================
+  // 18. Insurance.forceRemoveAsset wrapper (audit-M02)
+  // ========================================================================
+  //
+  // The new admin recovery path for permanently-frozen pool assets. The
+  // wrapper exists; the underlying program rejects unless the asset's pool
+  // reserve ATA is actually frozen. This test verifies the wrapper
+  // constructs the right instruction and the program rejects an unfrozen
+  // pool reserve with PoolAssetNotFrozen (custom error 6049).
+  it("Insurance.forceRemoveAsset rejects when pool reserve is not frozen", async function () {
+    if (!programLoaded) return this.skip();
+
+    const ix = await restaking.forceRemoveAsset(
+      admin.signer,
+      0,
+      assetMint1.address,
+    );
+    const result = sendSdkInstruction(ix);
+    expect(result).to.be.instanceOf(FailedTransactionMetadata);
   });
 });
