@@ -21,11 +21,6 @@ formal_verification
 attrs.txt
 qed.lock
 qed.toml
-QEDGEN_REPORT.md
-QEDGEN_AUDIT.md
 /audits
-QEDGEN_READINESS.json
-QEDGEN_READINESS.md
-QEDGEN_COVERAGE.txt
 rlp.qedspec
 .agents

@@ -20,14 +20,14 @@ Peer expectations: a `@solana/kit` `Rpc<SolanaRpcApi>` for read paths, and a `Tr
 
 ```ts
 import { createSolanaRpc } from "@solana/kit";
-import { Insurance, PdaClient } from "@reflectmoney/junior";
+import { JuniorTranche, PdaClient } from "@reflectmoney/junior";
 
 const rpc = createSolanaRpc("https://api.mainnet-beta.solana.com");
-const insurance = new Insurance(rpc);
-await insurance.load();
+const juniorTranche = new JuniorTranche(rpc);
+await juniorTranche.load();
 
 // Deposit into liquidity pool 0
-const ix = await insurance.deposit(
+const ix = await juniorTranche.deposit(
   signer,
   1_000_000_000n,  // amount in raw asset units
   USDC_MINT,

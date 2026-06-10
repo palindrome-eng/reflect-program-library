@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { address } from "@solana/kit";
-import { Insurance } from "../../sdk/src/classes/Insurance";
+import { JuniorTranche } from "../../sdk/src/classes/JuniorTranche";
 import { AccessLevel, Action, Role, Update } from "../../sdk/src/generated";
 import { createRpc } from "../utils/connection";
 import {
@@ -47,8 +47,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.initializeRlp(signer, Number(opts.swapFeeBps));
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.initializeRlp(signer, Number(opts.swapFeeBps));
         const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
         printSuccess(`Protocol initialized. Signature: ${sig}`);
       } catch (e) { printError(e); }
@@ -67,8 +67,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.initializeLiquidityPool(signer, {
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.initializeLiquidityPool(signer, {
           lpTokenMint: address(opts.lpTokenMint),
           cooldownDuration: BigInt(opts.cooldownDuration),
           depositCap: opts.depositCap ? BigInt(opts.depositCap) : null,
@@ -91,8 +91,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.addAsset(
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.addAsset(
           signer,
           address(opts.mint),
           address(opts.oracle),
@@ -114,8 +114,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.updateOracle(
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.updateOracle(
           signer,
           address(opts.mint),
           address(opts.oracle),
@@ -135,8 +135,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.createPermissionAccount(signer, address(opts.newAdmin));
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.createPermissionAccount(signer, address(opts.newAdmin));
         const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
         printSuccess(`Permission account created. Signature: ${sig}`);
       } catch (e) { printError(e); }
@@ -154,8 +154,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.updateRoleHolder(
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.updateRoleHolder(
           signer,
           address(opts.address),
           parseRole(opts.role),
@@ -178,8 +178,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.updateActionRole(
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.updateActionRole(
           signer,
           parseAction(opts.action),
           parseRole(opts.role),
@@ -201,9 +201,9 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
-        const ix = await insurance.updateDepositCap(
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
+        const ix = await juniorTranche.updateDepositCap(
           signer,
           Number(opts.poolId),
           opts.newCap ? BigInt(opts.newCap) : null,
@@ -223,8 +223,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.freezeFunctionality(signer, parseAction(opts.action), true);
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.freezeFunctionality(signer, parseAction(opts.action), true);
         const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
         printSuccess(`Action frozen. Signature: ${sig}`);
       } catch (e) { printError(e); }
@@ -240,8 +240,8 @@ export function registerAdminCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const ix = await insurance.freezeFunctionality(signer, parseAction(opts.action), false);
+        const juniorTranche = new JuniorTranche(rpc);
+        const ix = await juniorTranche.freezeFunctionality(signer, parseAction(opts.action), false);
         const sig = await sendAndConfirm(resolveRpcUrl(globals), kp, ix);
         printSuccess(`Action unfrozen. Signature: ${sig}`);
       } catch (e) { printError(e); }

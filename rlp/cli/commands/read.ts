@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { Insurance } from "../../sdk/src/classes/Insurance";
+import { JuniorTranche } from "../../sdk/src/classes/JuniorTranche";
 import { createRpc } from "../utils/connection";
 import { resolveRpcUrl } from "../utils/keypair";
 import { printSuccess, printError, printTable } from "../utils/format";
@@ -12,8 +12,8 @@ export function registerReadCommands(program: Command) {
       try {
         const globals = cmd.optsWithGlobals();
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const settings = await insurance.getSettingsData();
+        const juniorTranche = new JuniorTranche(rpc);
+        const settings = await juniorTranche.getSettingsData();
         printSuccess("Settings", settings);
       } catch (e) {
         printError(e);
@@ -27,8 +27,8 @@ export function registerReadCommands(program: Command) {
       try {
         const globals = cmd.optsWithGlobals();
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        const pools = await insurance.getLiquidityPools();
+        const juniorTranche = new JuniorTranche(rpc);
+        const pools = await juniorTranche.getLiquidityPools();
         printTable(
           pools.map((p) => ({
             address: p.address,
@@ -51,9 +51,9 @@ export function registerReadCommands(program: Command) {
       try {
         const globals = cmd.optsWithGlobals();
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
+        const juniorTranche = new JuniorTranche(rpc);
         console.log("ok1");
-        const assets = await insurance.getAssets();
+        const assets = await juniorTranche.getAssets();
         console.log("ok");
         printTable(
           assets.map((a) => ({
@@ -77,9 +77,9 @@ export function registerReadCommands(program: Command) {
       try {
         const globals = cmd.optsWithGlobals();
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
-        const price = await insurance.fetchOraclePrice(opts.mint);
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
+        const price = await juniorTranche.fetchOraclePrice(opts.mint);
         printSuccess("Oracle Price", {
           price: price.price.toString(),
           exponent: price.exponent,

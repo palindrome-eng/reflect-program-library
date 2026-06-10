@@ -10,7 +10,7 @@ const program = new Command();
 
 program
   .name("rlp")
-  .description("RLP Insurance Protocol CLI")
+  .description("Reflect Liquid Protection (RLP) CLI — junior tranche")
   .version("1.0.0")
   .option("--keypair <path>", "Path to keypair file", process.env.KEYPAIR)
   .option("--rpc <url>", "Solana RPC URL", process.env.RPC_URL);

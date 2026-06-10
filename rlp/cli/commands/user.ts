@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { address } from "@solana/kit";
-import { Insurance } from "../../sdk/src/classes/Insurance";
+import { JuniorTranche } from "../../sdk/src/classes/JuniorTranche";
 import { createRpc } from "../utils/connection";
 import {
   loadKeypairFile,
@@ -25,9 +25,9 @@ export function registerUserCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
-        const ix = await insurance.deposit(
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
+        const ix = await juniorTranche.deposit(
           signer,
           BigInt(opts.amount),
           address(opts.mint),
@@ -52,9 +52,9 @@ export function registerUserCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
-        const ix = await insurance.requestWithdrawal(
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
+        const ix = await juniorTranche.requestWithdrawal(
           signer,
           Number(opts.poolId),
           BigInt(opts.amount),
@@ -77,9 +77,9 @@ export function registerUserCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
-        const ix = await insurance.withdraw(
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
+        const ix = await juniorTranche.withdraw(
           signer,
           Number(opts.poolId),
           BigInt(opts.cooldownId),
@@ -105,9 +105,9 @@ export function registerUserCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
-        const ix = await insurance.swap(
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
+        const ix = await juniorTranche.swap(
           signer,
           Number(opts.poolId),
           address(opts.tokenFrom),

@@ -52,7 +52,7 @@ export type AccountWithAddress<T> = {
   address: Address;
 };
 
-export class Insurance {
+export class JuniorTranche {
   private connection: Rpc<SolanaRpcApi>;
   private settings!: Settings;
   private liquidityPools!: AccountWithAddress<LiquidityPool>[];
@@ -861,7 +861,7 @@ export class Insurance {
       throw new Error(`Oracle account not found: ${oracleAddress}`);
     }
 
-    return Insurance.deserializePythPrice(new Uint8Array(account.data));
+    return JuniorTranche.deserializePythPrice(new Uint8Array(account.data));
   }
 
   /**

@@ -55,7 +55,7 @@ import {
   Update,
 } from "../src/generated";
 import { PdaClient } from "../src/classes/PdaClient";
-import { Insurance, type AccountWithAddress } from "../src/classes/Insurance";
+import { JuniorTranche, type AccountWithAddress } from "../src/classes/JuniorTranche";
 import type { LiquidityPool, Asset, Settings } from "../src/generated";
 
 const RLP_SO_PATH = path.join(__dirname, "../../target/deploy/rlp.so");
@@ -205,7 +205,7 @@ describe("RLP SDK Full Flow Test", function () {
   let createdCooldownPda: Address;
 
   // SDK class instance (used for deposit/withdraw which need remaining accounts)
-  let restaking: Insurance;
+  let restaking: JuniorTranche;
 
   // ========================================================================
   // Transaction helpers
@@ -689,8 +689,8 @@ describe("RLP SDK Full Flow Test", function () {
     assertSuccess(sendSdkInstruction(ix), "initializeLp");
     expect(accountExists(liquidityPoolPda)).to.be.true;
 
-    // Initialize Insurance SDK instance with cached state from LiteSVM
-    restaking = new Insurance(null as any); // no RPC needed — we inject cached data
+    // Initialize JuniorTranche SDK instance with cached state from LiteSVM
+    restaking = new JuniorTranche(null as any); // no RPC needed — we inject cached data
     restaking.loadFromCache(
       { liquidityPools: 1, assets: 2 } as Settings,
       [
@@ -750,7 +750,7 @@ describe("RLP SDK Full Flow Test", function () {
     // Create user LP ATA
     await createAta(lpTokenMint.address, user.address, user.keypair);
 
-    // Insurance.deposit() returns instruction with remaining accounts included
+    // JuniorTranche.deposit() returns instruction with remaining accounts included
     const ix = await restaking.deposit(user.signer, amount, assetMint1.address, 0, 0n);
     const result = sendSdkInstruction(ix, [user.keypair], user.keypair);
     assertSuccess(result, "deposit");
@@ -821,7 +821,7 @@ describe("RLP SDK Full Flow Test", function () {
     await createAta(assetMint1.address, user.address, user.keypair);
     await createAta(assetMint2.address, user.address, user.keypair);
 
-    // Insurance.withdraw() returns instruction with remaining accounts included
+    // JuniorTranche.withdraw() returns instruction with remaining accounts included
     const ix = await restaking.withdraw(user.signer, 0, 0n);
     const result = sendSdkInstruction(ix, [user.keypair], user.keypair);
 
@@ -946,7 +946,7 @@ describe("RLP SDK Full Flow Test", function () {
     const knownPublishTime = BigInt(Math.floor(Date.now() / 1000));
     const rawData = createMockPythPriceData(knownPrice, knownExponent, knownPublishTime);
 
-    const parsed = Insurance.deserializePythPrice(rawData);
+    const parsed = JuniorTranche.deserializePythPrice(rawData);
 
     expect(parsed.price).to.equal(knownPrice);
     expect(parsed.exponent).to.equal(knownExponent);
@@ -989,7 +989,7 @@ describe("RLP SDK Full Flow Test", function () {
     const pool2Bal = getTokenBalance(poolAsset2Ata);
 
     // Simulate
-    const simulated = Insurance.simulateDepositMath({
+    const simulated = JuniorTranche.simulateDepositMath({
       depositAmount,
       depositAssetPrice: { price: 100_00000000n, exponent: -8 },
       depositAssetDecimals: 9,
@@ -1046,7 +1046,7 @@ describe("RLP SDK Full Flow Test", function () {
 
     const redeemAmount = userLpBal / 4n;
 
-    const simulated = Insurance.simulateWithdrawMath({
+    const simulated = JuniorTranche.simulateWithdrawMath({
       lpTokenAmount: redeemAmount,
       lpTokenSupply: lpSupply,
       reserves: [
@@ -1076,7 +1076,7 @@ describe("RLP SDK Full Flow Test", function () {
   });
 
   // ========================================================================
-  // 17. Insurance.initializePoolReserve wrapper (audit-E02)
+  // 17. JuniorTranche.initializePoolReserve wrapper (audit-E02)
   // ========================================================================
   //
   // The pool reserve ATAs were originally created manually inside the test
@@ -1084,7 +1084,7 @@ describe("RLP SDK Full Flow Test", function () {
   // instruction wraps this in an admin-gated call. Verify the wrapper
   // produces an instruction that successfully creates an ATA owned by the
   // liquidity pool PDA.
-  it("Insurance.initializePoolReserve creates reserve ATAs idempotently", async function () {
+  it("JuniorTranche.initializePoolReserve creates reserve ATAs idempotently", async function () {
     if (!programLoaded) return this.skip();
 
     // The asset1/asset2 reserves already exist from the deposit setup. The
@@ -1099,7 +1099,7 @@ describe("RLP SDK Full Flow Test", function () {
   });
 
   // ========================================================================
-  // 18. Insurance.forceRemoveAsset wrapper (audit-M02)
+  // 18. JuniorTranche.forceRemoveAsset wrapper (audit-M02)
   // ========================================================================
   //
   // The new admin recovery path for permanently-frozen pool assets. The
@@ -1107,7 +1107,7 @@ describe("RLP SDK Full Flow Test", function () {
   // reserve ATA is actually frozen. This test verifies the wrapper
   // constructs the right instruction and the program rejects an unfrozen
   // pool reserve with PoolAssetNotFrozen (custom error 6049).
-  it("Insurance.forceRemoveAsset rejects when pool reserve is not frozen", async function () {
+  it("JuniorTranche.forceRemoveAsset rejects when pool reserve is not frozen", async function () {
     if (!programLoaded) return this.skip();
 
     const ix = await restaking.forceRemoveAsset(
