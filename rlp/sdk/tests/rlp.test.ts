@@ -2,6 +2,7 @@ import { describe, it, before } from "mocha";
 import { expect } from "chai";
 import {
   LiteSVM,
+  Clock,
   FailedTransactionMetadata,
   TransactionMetadata,
 } from "litesvm";
@@ -59,6 +60,11 @@ import type { LiquidityPool, Asset, Settings } from "../src/generated";
 
 const RLP_SO_PATH = path.join(__dirname, "../../target/deploy/rlp.so");
 const PYTH_PROGRAM_ID = "rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ";
+
+// LiteSVM's sysvar Clock defaults to unix_timestamp=0, which makes the program's
+// Pyth oracle staleness check (age <= 120s) fail for any realistic publish_time.
+// Pin the SVM clock to a fixed epoch so oracle mocks line up.
+const TEST_EPOCH_SECONDS = 1_750_000_000n;
 
 // ============================================================================
 // TYPES & HELPERS
@@ -413,7 +419,8 @@ describe("RLP SDK Full Flow Test", function () {
 
   function createPythOracle(price: bigint, exponent: number): Address {
     const kp = Keypair.generate();
-    const publishTime = BigInt(Math.floor(Date.now() / 1000));
+    // Use the pinned SVM clock so age = svm_now - publish_time = 0.
+    const publishTime = svm.getClock().unixTimestamp;
     svm.setAccount(kp.publicKey, {
       lamports: 1_000_000,
       data: Buffer.from(createMockPythPriceData(price, exponent, publishTime)),
@@ -430,6 +437,9 @@ describe("RLP SDK Full Flow Test", function () {
 
   before(async function () {
     svm = new LiteSVM();
+    // Pin the SVM clock to a fixed unix timestamp so mock Pyth oracle
+    // publish_time is in range for the program's staleness check.
+    svm.setClock(new Clock(0n, 0n, 0n, 0n, TEST_EPOCH_SECONDS));
 
     const adminKp = generateKeypair();
     admin = { ...adminKp, signer: createSignerFromKeypair(adminKp.keypair) };
@@ -540,18 +550,33 @@ describe("RLP SDK Full Flow Test", function () {
   // ========================================================================
   // 3. updateActionRole
   // ========================================================================
-  it("should set Restake, Withdraw, Swap, Slash to PUBLIC", async function () {
+  it("should set Deposit, Withdraw, Swap to PUBLIC (Slash stays admin-only)", async function () {
     if (!programLoaded) return this.skip();
-    for (const action of [Action.Deposit, Action.Withdraw, Action.Swap, Action.Slash]) {
+    // Slash is intentionally not publicly assignable (post-audit): the
+    // program rejects role=PUBLIC for it. Only Deposit/Withdraw/Swap qualify.
+    for (const action of [Action.Deposit, Action.Withdraw, Action.Swap]) {
       const ix = await getUpdateActionRoleInstructionAsync({
         admin: admin.signer,
         action,
         role: Role.PUBLIC,
         update: Update.Add,
-            program: PROGRAM_ID,
-    });
+        program: PROGRAM_ID,
+      });
       assertSuccess(sendSdkInstruction(ix), `updateActionRole ${Action[action]} -> PUBLIC`);
     }
+  });
+
+  it("should reject setting Slash to PUBLIC", async function () {
+    if (!programLoaded) return this.skip();
+    const ix = await getUpdateActionRoleInstructionAsync({
+      admin: admin.signer,
+      action: Action.Slash,
+      role: Role.PUBLIC,
+      update: Update.Add,
+      program: PROGRAM_ID,
+    });
+    const result = sendSdkInstruction(ix);
+    expect(result.success, "Slash → PUBLIC must be rejected").to.be.false;
   });
 
   it("should add and remove a role from an action", async function () {
@@ -824,8 +849,10 @@ describe("RLP SDK Full Flow Test", function () {
     if (!programLoaded) return this.skip();
 
     // Fund the pool a bit so the check we hit is the protected-vault check,
-    // not an empty-reserve check.
-    const seed = 1_000_000_000n;
+    // not an empty-reserve check. Use a non-round amount so the signed
+    // transaction is distinct from previous deposits — otherwise LiteSVM
+    // would reject as AlreadyProcessed (same signer + ix data + blockhash).
+    const seed = 1_234_567_890n;
     await createAtaAndMint(
       assetMint1.address, user.address, admin.keypair, seed,
     );
@@ -848,7 +875,7 @@ describe("RLP SDK Full Flow Test", function () {
       1_000n,
     );
     const result = sendSdkInstruction(ix);
-    expect(result).to.be.instanceOf(FailedTransactionMetadata);
+    expect(result.success, "slash without protected_vault must be rejected").to.be.false;
   });
 
   // ========================================================================
@@ -1089,6 +1116,6 @@ describe("RLP SDK Full Flow Test", function () {
       assetMint1.address,
     );
     const result = sendSdkInstruction(ix);
-    expect(result).to.be.instanceOf(FailedTransactionMetadata);
+    expect(result.success, "forceRemoveAsset on unfrozen reserve must be rejected").to.be.false;
   });
 });
