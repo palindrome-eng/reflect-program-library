@@ -1,6 +1,7 @@
 {
-  "name": "@reflectmoney/insurance",
+  "name": "@reflectmoney/junior",
   "version": "1.0.0",
+  "description": "TypeScript SDK for the Reflect Liquid Protection (RLP) program, powering junior tranche of Reflect's two-tranche protection system.",
   "type": "commonjs",
   "author": "stablecoinjesus @ Palindrome Engineering",
   "repository": {

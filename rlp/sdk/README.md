@@ -1,6 +1,6 @@
-# @reflectmoney/insurance
+# @reflectmoney/junior
 
-TypeScript SDK for the **Reflect Liquidity Pool (RLP)** Solana program — the junior tranche of Reflect's two-tranche stablecoin insurance system.
+TypeScript SDK for the **Reflect Liquid Protection (RLP)** Solana program — the junior tranche of Reflect's two-tranche stablecoin protection system.
 
 Wraps Codama-generated instruction builders and provides higher-level helpers for pool lifecycle, deposits, cooldown-gated withdrawals, NAV-based slashing, and admin operations.
 
@@ -9,7 +9,7 @@ Wraps Codama-generated instruction builders and provides higher-level helpers fo
 ## Install
 
 ```sh
-npm install @reflectmoney/insurance @solana/kit
+npm install @reflectmoney/junior @solana/kit
 ```
 
 Peer expectations: a `@solana/kit` `Rpc<SolanaRpcApi>` for read paths, and a `TransactionSigner` for writes.
@@ -20,7 +20,7 @@ Peer expectations: a `@solana/kit` `Rpc<SolanaRpcApi>` for read paths, and a `Tr
 
 ```ts
 import { createSolanaRpc } from "@solana/kit";
-import { Insurance, PdaClient } from "@reflectmoney/insurance";
+import { Insurance, PdaClient } from "@reflectmoney/junior";
 
 const rpc = createSolanaRpc("https://api.mainnet-beta.solana.com");
 const insurance = new Insurance(rpc);

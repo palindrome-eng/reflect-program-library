@@ -1,6 +1,6 @@
-# Reflect Liquidity Protocol (RLP)
+# Reflect Liquid Protection (RLP)
 
-The Reflect Liquidity Protocol (RLP) is a DeFi protocol that provides backstop liquidity for the Reflect Protocol ecosystem. RLP enables users to provide liquidity to a multi-asset pool in exchange for LP tokens, with the liquidity being freely available to Reflect Protocol for core functionalities such as stablecoin swaps, collateral swaps, or slashing as insurance claims. In return for providing this liquidity, Reflect Protocol shares a portion of its revenue with RLP participants. The protocol implements a role-based access control system, automated market making capabilities, and risk management through slashing mechanisms.
+The Reflect Liquid Protection (RLP) program is the **junior tranche** of Reflect's two-tranche stablecoin protection system. It provides backstop liquidity for the Reflect Protocol ecosystem: users deposit assets into a multi-asset pool in exchange for LP tokens, and that liquidity is freely available to Reflect Protocol for core functionalities such as stablecoin swaps, collateral swaps, and — most importantly — covering losses on the senior tranche via NAV-based slashing. In return for providing this protection, Reflect Protocol shares a portion of its revenue with RLP participants. The protocol implements a role-based access control system, automated market making capabilities, and risk management through slashing mechanisms.
 
 ## Core Architecture
 
@@ -27,9 +27,9 @@ The protocol implements a role-based access control (RBAC) system with the follo
 
 #### Actions
 The protocol defines specific actions that can be performed:
-- **Core Actions**: `Restake`, `Withdraw`, `Slash`, `Swap`
-- **Freeze Actions**: `FreezeRestake`, `FreezeWithdraw`, `FreezeSlash`, `FreezeSwap`
-- **Administrative Actions**: `InitializeLiquidityPool`, `AddAsset`, `UpdateDepositCap`, `DepositRewards`, `Management`, `SuspendDeposits`, `FreezeProgram`, `UpdateRole`, `UpdateAction`
+- **Core Actions**: `Deposit`, `Withdraw`, `Slash`, `Swap`
+- **Freeze Actions**: `FreezeDeposit`, `FreezeWithdraw`, `FreezeSlash`, `FreezeSwap`
+- **Administrative Actions**: `InitializeLiquidityPool`, `AddAsset`, `UpdateDepositCap`, `Management`, `SuspendDeposits`, `UpdateRole`, `UpdateAction`, `UpdateOracle`, `RemovePoolAsset`
 
 #### User Permissions
 The `UserPermissions` account is optional and only required for permissioned actions. Public actions can be performed without this account. When a user needs to perform a permissioned instruction, they must have a `UserPermissions` account that stores:
@@ -50,7 +50,7 @@ Liquidity pools are the core mechanism for asset management:
 - **cooldown_duration**: Duration of the withdrawal cooldown period
 
 #### Pool Operations
-1. **Restaking**: Users deposit assets into the pool and receive LP tokens
+1. **Deposit**: Users deposit assets into the pool and receive LP tokens
 2. **Withdrawal**: Users burn LP tokens to withdraw their share of all pool assets
 3. **Rewards**: External actors can deposit rewards directly into pool asset accounts
 4. **Swapping**: Permissioned users can swap between assets within the pool
@@ -67,7 +67,7 @@ Assets are used for:
 - Tracking pool composition
 
 ### Cooldown System
-The protocol implements a cooldown mechanism for withdrawals to prevent frontrunning of insurance claims:
+The protocol implements a cooldown mechanism for withdrawals to prevent frontrunning of senior-tranche loss coverage:
 
 #### Cooldown Account
 - **authority**: User who initiated the withdrawal
@@ -78,13 +78,13 @@ Users must first request a withdrawal, which locks their LP tokens in a cooldown
 
 ## Core Operations
 
-### Restaking (Depositing)
+### Deposit
 Users can deposit supported assets into liquidity pools:
 
-1. **Permission Validation**: Validates user permissions for restaking
+1. **Permission Validation**: Validates user permissions for depositing
 ```rust
 action_check_protocol(
-    Action::Restake,
+    Action::Deposit,
     permissions.as_deref(),
     &settings.access_control
 )?;
@@ -307,14 +307,14 @@ transfer(CpiContext::new_with_signer(token_program.to_account_info(),
     }, &[lp_seeds]), amount_out)?;
 ```
 
-### Slashing Mechanism
-The protocol includes a slashing mechanism for risk management:
+### Slashing Mechanism (NAV-based)
+The protocol implements a **NAV-based** slashing mechanism for covering losses on the senior (proxy) tranche.
 
 #### Slash Operation
-- **Permission Required**: Only users with specific role can slash
-- **Target**: Specific asset within a liquidity pool
-- **Process**: Transfers specified amount from pool to destination account
-- **Use Case**: Insurance claims management, emergency fund transfers, protocol fees
+- **Permission Required**: Only roles bound to `Action::Slash`. **`Action::Slash` cannot be assigned to `Role::PUBLIC`** — it is admin-only by construction (post-audit).
+- **Required Pool State**: The pool must have been initialized with `protected_vault: Some(proxy_state)` pointing at the senior tranche's `ProxyState` PDA. Pools without a `protected_vault` cannot be slashed.
+- **Process**: The instruction reads `principal + integrators_commission` from the `ProxyState` and the live vault value, computes `loss = max(0, principal + integrators_commission − vault_value)`, then transfers up to `max_amount` of the configured asset from the pool reserve **directly into the protected proxy vault** (closing the gap, not extracting to an arbitrary destination).
+- **Use Case**: Junior-tranche coverage of senior-tranche losses; self-healing because the next senior crank sees the gap closed.
 
 #### Slashing Impact
 When slashing occurs, it reduces the total pool value, making all existing LP tokens worth slightly less in USD terms. However, this does not affect future deposits because:
@@ -398,7 +398,7 @@ Amount Out = (Amount In × Token From Price) / Token To Price
 
 ### Risk Management
 - **Cooldown Periods**: Prevent rapid withdrawals
-- **Slashing Mechanism**: Insurance claims management
+- **Slashing Mechanism**: NAV-based coverage of senior-tranche losses
 - **Permission Controls**: Limit sensitive operations to authorized users
 
 ## Technical Implementation
@@ -433,21 +433,20 @@ src/
 │   │   ├── create_permission_account.rs
 │   │   └── rlp_admin_context.rs
 │   ├── user/             # End-user operations
-│   │   ├── restake.rs
+│   │   ├── deposit.rs
 │   │   ├── request_withdraw.rs
 │   │   └── withdraw.rs
-│   ├── crank/            # Automated operations
-│   │   └── deposit_rewards.rs
 │   ├── swap/             # Asset swapping
 │   │   └── swap.rs
-│   └── slash/            # Risk management
+│   └── slash/            # NAV-based senior-tranche loss coverage
 │       └── slash.rs
 ├── helpers/              # Utility functions and calculations
 │   ├── action_check_protocol.rs
-│   ├── calculate_receipts_on_mint.rs
-│   ├── get_price_from_pyth.rs
-│   ├── get_price_from_switchboard.rs
-│   └── calculate_total_deposits.rs
+│   ├── freeze_check.rs
+│   ├── nav_math.rs
+│   ├── proxy_state.rs
+│   ├── loaders/          # Account loaders
+│   └── oracle/           # Pyth + Switchboard readers
 ├── events/               # On-chain event definitions
 ├── constants/            # Protocol configuration values
 └── errors/               # Custom error types
@@ -456,23 +455,20 @@ src/
 #### Instruction Categories
 
 **Admin Instructions** (`instructions/admin/`)
-- **Initialization**: `initialize_rlp`, `initialize_lp`, `initialize_lp_token_account`
-- **Asset Management**: `add_asset`, `update_deposit_cap`
+- **Initialization**: `initialize_rlp`, `initialize_lp`, `initialize_pool_reserve`
+- **Asset Management**: `add_asset`, `update_deposit_cap`, `update_oracle`, `force_remove_asset`
 - **Permission Management**: `create_permission_account`, `action_update`, `role_holder_update`
 - **Security Controls**: `freeze_functionality`
 
 **User Instructions** (`instructions/user/`)
-- **Liquidity Operations**: `restake` (deposit), `request_withdraw`, `withdraw`
+- **Liquidity Operations**: `deposit`, `request_withdraw`, `withdraw`
 - **Access Level**: Requires appropriate permissions or public access
-
-**Crank Instructions** (`instructions/crank/`)
-- **Reward Distribution**: `deposit_rewards` - allows external actors to deposit rewards
 
 **Swap Instructions** (`instructions/swap/`)
 - **Asset Trading**: `swap_lp` - permissioned asset swapping within pools
 
 **Slash Instructions** (`instructions/slash/`)
-- **Risk Management**: `slash` - emergency fund extraction for insurance claims
+- **Risk Management**: `slash` - NAV-based coverage of senior-tranche losses (transfers asset into the protected proxy vault to close the principal + commission gap)
 
 #### State Management
 
@@ -627,11 +623,11 @@ pub fn new_defaults() -> Result<Self> {
     access_control.add_role_to_action(Action::Swap, Role::CRANK)?;
     
     // User actions
-    access_control.add_role_to_action(Action::Restake, Role::TESTEE)?;
+    access_control.add_role_to_action(Action::Deposit, Role::TESTEE)?;
     access_control.add_role_to_action(Action::Withdraw, Role::TESTEE)?;
     
     // Freeze actions
-    access_control.add_role_to_action(Action::FreezeRestake, Role::FREEZE)?;
+    access_control.add_role_to_action(Action::FreezeDeposit, Role::FREEZE)?;
     access_control.add_role_to_action(Action::FreezeWithdraw, Role::FREEZE)?;
     
     Ok(access_control)
