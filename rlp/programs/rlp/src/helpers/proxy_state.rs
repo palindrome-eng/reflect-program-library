@@ -7,7 +7,9 @@ use crate::errors::RlpError;
 /// discriminator; the proxy program is pinocchio-based and uses a fixed
 /// `#[repr(C)]` byte layout).
 ///
-/// Field offsets (matches reflect-proxy-program/program/src/state.rs):
+/// Field offsets (matches reflect-proxy-program/program/src/state.rs on
+/// the `audit/all-fixes` branch — v3 layout after E06 two-step authority
+/// transfer appended `pending_authority`):
 ///
 /// ```text
 ///   0..32    branded_mint
@@ -19,8 +21,14 @@ use crate::errors::RlpError;
 ///   114      bump
 ///   115      frozen (0 = active, 1 = frozen)
 ///   116..124 deposit_cap (u64 LE)
+///   124..156 pending_authority (zeroed = none; populated mid two-step transfer)
 /// ```
-const PROXY_STATE_LEN: usize = 124;
+///
+/// RLP reads only the fields needed for NAV slash gating; `pending_authority`
+/// is not exposed via `ProxyStateView`. The length is checked with strict
+/// equality so a future proxy-layout change forces an RLP redeploy and a
+/// matching update here (rather than silently reading stale offsets).
+const PROXY_STATE_LEN: usize = 156;
 
 const OFFSET_BRANDED_MINT: usize = 0;
 const OFFSET_STABLECOIN_MINT: usize = 32;
