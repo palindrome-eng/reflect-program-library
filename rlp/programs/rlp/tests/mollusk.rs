@@ -2776,7 +2776,8 @@ fn proxy_program_id() -> Pubkey {
     Pubkey::new_from_array(rlp::constants::PROXY_PROGRAM_ID.to_bytes())
 }
 
-/// Build a 124-byte ProxyState account matching `ProxyStateView`'s layout.
+/// Build a 156-byte ProxyState account matching `ProxyStateView`'s v3 layout
+/// (post-E06 two-step authority transfer in the proxy's `audit/all-fixes`).
 /// principal + integrators_commission = booked senior claims (USDC-denominated).
 fn create_proxy_state_account(
     branded_mint: &Pubkey,
@@ -2784,7 +2785,7 @@ fn create_proxy_state_account(
     principal: u64,
     integrators_commission: u64,
 ) -> Account {
-    let mut data = vec![0u8; 124];
+    let mut data = vec![0u8; 156];
     data[0..32].copy_from_slice(&branded_mint.to_bytes());
     data[32..64].copy_from_slice(&stablecoin_mint.to_bytes());
     // 64..66: fee = 0
@@ -2794,6 +2795,7 @@ fn create_proxy_state_account(
     // 114: bump
     // 115: frozen = 0
     // 116..124: deposit_cap = 0
+    // 124..156: pending_authority = zeros (none)
     Account {
         lamports: 2_000_000,
         data,
