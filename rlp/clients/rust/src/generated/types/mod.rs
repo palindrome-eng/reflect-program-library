@@ -30,6 +30,8 @@
   pub(crate) mod r#update_deposit_cap_event;
   pub(crate) mod r#update_oracle_event;
   pub(crate) mod r#update_role_holder_event;
+  pub(crate) mod r#withdraw_asset_amount;
+  pub(crate) mod r#withdraw_event;
 
   pub use self::r#access_control::*;
   pub use self::r#access_level::*;
@@ -56,4 +58,6 @@
   pub use self::r#update_deposit_cap_event::*;
   pub use self::r#update_oracle_event::*;
   pub use self::r#update_role_holder_event::*;
+  pub use self::r#withdraw_asset_amount::*;
+  pub use self::r#withdraw_event::*;
 
