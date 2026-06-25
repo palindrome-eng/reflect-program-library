@@ -20,7 +20,7 @@ use crate::helpers::{
     load_reserves,
     load_user_token_accounts
 };
-use crate::events::WithdrawEvent;
+use crate::events::{WithdrawAssetAmount, WithdrawEvent};
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
 pub struct WithdrawArgs {
@@ -93,7 +93,7 @@ pub fn withdraw<'a>(
     assert_no_reserve_frozen(&reserves)?;
     let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;
 
-    let mut amounts_out: Vec<(Pubkey, u64)> = Vec::with_capacity(assets.len());
+    let mut amounts_out: Vec<WithdrawAssetAmount> = Vec::with_capacity(assets.len());
 
     for i in 0..assets.len() {
         let (reserve_key, reserve) = &reserves[i];
@@ -134,7 +134,10 @@ pub fn withdraw<'a>(
                 user_pool_share_amount
             )?;
 
-            amounts_out.push((asset.mint, user_pool_share_amount));
+            amounts_out.push(WithdrawAssetAmount {
+                mint: asset.mint,
+                amount: user_pool_share_amount,
+            });
         }
     }
 
