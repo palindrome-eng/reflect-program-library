@@ -844,7 +844,7 @@ describe("RLP SDK Full Flow Test", function () {
   // protected_vault, so a slash call here would reject with
   // PoolHasNoProtectedVault (51). Verify that gating works, and leave the
   // full NAV happy-path coverage to the integration tests on the Rust side
-  // (mollusk) where mocking a 124-byte ProxyState account is straightforward.
+  // (mollusk) where mocking a 156-byte ProxyState account is straightforward.
   it("should reject slash when pool has no protected vault", async function () {
     if (!programLoaded) return this.skip();
 
