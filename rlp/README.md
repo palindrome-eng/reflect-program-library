@@ -10,8 +10,7 @@ The `Settings` account serves as the central configuration hub for the entire pr
 - **bump**: PDA bump for the settings account
 - **liquidity_pools**: Counter tracking the number of active liquidity pools (default: 1 core pool, expandable)
 - **assets**: Counter tracking the number of supported assets
-- **frozen**: Global freeze flag that halts all protocol operations when set
-- **access_control**: Complex permissions system controlling who can perform specific actions
+- **access_control**: Permission system controlling who can perform specific actions, including granular action freezing through `KillSwitch`
 
 ### Access Control System
 The protocol implements a role-based access control (RBAC) system with the following components:
