@@ -52,7 +52,7 @@ import {
 } from "../instructions";
 
 export const RLP_PROGRAM_ADDRESS =
-  "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz" as Address<"RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz">;
+  "JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av" as Address<"JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av">;
 
 export enum RlpAccount {
   Asset,
@@ -331,7 +331,7 @@ export function identifyRlpInstruction(
 }
 
 export type ParsedRlpInstruction<
-  TProgram extends string = "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz",
+  TProgram extends string = "JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av",
 > =
   | ({
       instructionType: RlpInstruction.AddAsset;
