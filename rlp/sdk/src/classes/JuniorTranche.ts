@@ -16,11 +16,11 @@ import {
   type AccessLevel,
   RLP_PROGRAM_ADDRESS,
   LIQUIDITY_POOL_DISCRIMINATOR,
+  ASSET_DISCRIMINATOR,
   USER_PERMISSIONS_DISCRIMINATOR,
   fetchSettings,
   fetchLiquidityPool,
   getLiquidityPoolDecoder,
-  getAssetEncoder,
   getAssetDecoder,
   getCooldownEncoder,
   getCooldownDecoder,
@@ -120,7 +120,6 @@ export class JuniorTranche {
       return this.assets;
     }
 
-    const encoder = getAssetEncoder();
     const decoder = getAssetDecoder();
 
     const programAccounts = await (this.connection as any)
@@ -128,7 +127,13 @@ export class JuniorTranche {
         encoding: "base64",
         withContext: false,
         filters: [
-          { dataSize: BigInt((encoder as any).fixedSize) },
+          {
+            memcmp: {
+              encoding: "base64",
+              offset: BigInt(0),
+              bytes: Buffer.from(ASSET_DISCRIMINATOR).toString("base64"),
+            },
+          },
         ],
       })
       .send();
