@@ -14,6 +14,7 @@ import {
   type Cooldown,
   type UserPermissions,
   type AccessLevel,
+  type Oracle,
   RLP_PROGRAM_ADDRESS,
   LIQUIDITY_POOL_DISCRIMINATOR,
   ASSET_DISCRIMINATOR,
@@ -51,6 +52,21 @@ export type AccountWithAddress<T> = {
   data: T;
   address: Address;
 };
+
+/**
+ * Resolve the on-chain oracle account address from an `Oracle` discriminated
+ * union. Codama emits the two variants with different field shapes:
+ *   - Pyth    → { __kind: "Pyth"; account: Address; feedId: [u8;32] }
+ *   - Doppler → { __kind: "Doppler"; fields: readonly [Address] }
+ *
+ * Old code did `(oracle as any).fields[0]` uniformly, which returns `undefined`
+ * for the Pyth variant (no `.fields` — the address lives at `.account`). Every
+ * deposit / slash / swap on a Pyth-priced asset was therefore passing an
+ * undefined oracle account to the program.
+ */
+function oracleAccountAddress(oracle: Oracle): Address {
+  return oracle.__kind === "Pyth" ? oracle.account : oracle.fields[0];
+}
 
 export class JuniorTranche {
   private connection: Rpc<SolanaRpcApi>;
@@ -385,7 +401,7 @@ export class JuniorTranche {
     if (!assetEntry)
       throw new Error(`Asset not found for stablecoin mint ${stablecoinMint}`);
 
-    const oracleAddress = (assetEntry.data.oracle as any).fields[0] as Address;
+    const oracleAddress = oracleAccountAddress(assetEntry.data.oracle);
 
     const [liquidityPoolTokenAccount] = await findAssociatedTokenPda({
       mint: stablecoinMint,
@@ -473,7 +489,7 @@ export class JuniorTranche {
         owner: liquidityPoolAddress,
         tokenProgram: TOKEN_PROGRAM_ADDRESS,
       });
-      const oracleAddress = (asset.data.oracle as any).fields[0] as Address;
+      const oracleAddress = oracleAccountAddress(asset.data.oracle);
 
       remaining.push(
         { address: poolAta, role: AccountRole.READONLY },
@@ -554,7 +570,7 @@ export class JuniorTranche {
     const assetEntry = assets.find((a) => a.data.mint === mint);
     if (!assetEntry) throw new Error(`Asset not found for mint ${mint}`);
 
-    const oracleAddress = (assetEntry.data.oracle as any).fields[0];
+    const oracleAddress = oracleAccountAddress(assetEntry.data.oracle);
 
     const lpEntry = this.liquidityPools.find(
       (lp) => lp.data.index === liquidityPoolId,
@@ -687,10 +703,8 @@ export class JuniorTranche {
     if (!tokenToEntry)
       throw new Error(`Asset not found for mint ${tokenToMint}`);
 
-    const tokenFromOracle = (tokenFromEntry.data.oracle as any)
-      .fields[0] as Address;
-    const tokenToOracle = (tokenToEntry.data.oracle as any)
-      .fields[0] as Address;
+    const tokenFromOracle = oracleAccountAddress(tokenFromEntry.data.oracle);
+    const tokenToOracle = oracleAccountAddress(tokenToEntry.data.oracle);
 
     const lpEntry = this.liquidityPools.find(
       (lp) => lp.data.index === liquidityPoolId,
@@ -853,17 +867,30 @@ export class JuniorTranche {
     mintOrOracle: Address,
   ): Promise<{ price: bigint; exponent: number; publishTime: bigint }> {
     // Resolve oracle address — try cached assets first, fall back to treating
-    // the input as a direct oracle address.
+    // the input as a direct oracle address. `Oracle` is a discriminated union
+    // (`Pyth` uses `account`, `Doppler` uses `fields[0]`), so unwrap per-variant.
     let oracleAddress: Address = mintOrOracle;
     const assets = await this.getAssets();
     const assetEntry = assets.find((a) => a.data.mint === mintOrOracle);
     if (assetEntry) {
-      oracleAddress = (assetEntry.data.oracle as any).fields[0] as Address;
+      oracleAddress = oracleAccountAddress(assetEntry.data.oracle);
     }
 
     const account = await fetchEncodedAccount(this.connection, oracleAddress);
     if (!account.exists) {
       throw new Error(`Oracle account not found: ${oracleAddress}`);
+    }
+
+    // NOTE: only Pyth accounts are decodable by `deserializePythPrice`. If the
+    // asset's oracle is Doppler, the caller must fetch the raw account and use
+    // the doppler oracle SDK's `PriceDataSerializer` instead.
+    if (
+      assetEntry &&
+      assetEntry.data.oracle.__kind !== "Pyth"
+    ) {
+      throw new Error(
+        `fetchOraclePrice only decodes Pyth oracles; asset ${assetEntry.data.mint} uses ${assetEntry.data.oracle.__kind}`,
+      );
     }
 
     return JuniorTranche.deserializePythPrice(new Uint8Array(account.data));

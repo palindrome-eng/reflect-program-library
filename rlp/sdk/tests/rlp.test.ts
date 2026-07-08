@@ -700,8 +700,12 @@ describe("RLP SDK Full Flow Test", function () {
         },
       ],
       [
-        { address: asset1Pda, data: { bump: 0, index: 0, mint: assetMint1.address, oracle: { __kind: "Pyth" as const, fields: [oracle1Address] }, accessLevel: AccessLevel.Public } as any },
-        { address: asset2Pda, data: { bump: 0, index: 1, mint: assetMint2.address, oracle: { __kind: "Pyth" as const, fields: [oracle2Address] }, accessLevel: AccessLevel.Public } as any },
+        // Codama Oracle union: Pyth = { account: Address; feedId: [u8;32] }.
+        // The mock Pyth price account (createMockPythPriceData) writes a
+        // feed_id filled with 0x01 bytes, so the on-chain feed_id check in
+        // the RLP oracle reader accepts this fixture.
+        { address: asset1Pda, data: { bump: 0, index: 0, mint: assetMint1.address, oracle: { __kind: "Pyth" as const, account: oracle1Address, feedId: new Uint8Array(32).fill(1) }, accessLevel: AccessLevel.Public } as any },
+        { address: asset2Pda, data: { bump: 0, index: 1, mint: assetMint2.address, oracle: { __kind: "Pyth" as const, account: oracle2Address, feedId: new Uint8Array(32).fill(1) }, accessLevel: AccessLevel.Public } as any },
       ],
     );
   });
