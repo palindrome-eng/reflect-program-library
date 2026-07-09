@@ -6,6 +6,7 @@
 //!
 
 use solana_pubkey::Pubkey;
+use crate::generated::types::WithdrawAssetAmount;
 use borsh::BorshSerialize;
 use borsh::BorshDeserialize;
 
@@ -16,8 +17,7 @@ pub struct WithdrawEvent {
 pub from: Pubkey,
 pub liquidity_pool_id: u8,
 pub amount_in: u64,
-pub amount_out: u64,
-pub usd_value: u128,
+pub amounts_out: Vec<WithdrawAssetAmount>,
 }
 
 

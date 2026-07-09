@@ -20,8 +20,10 @@ import {
   parseAddAssetInstruction,
   parseCreatePermissionAccountInstruction,
   parseDepositInstruction,
+  parseForceRemoveAssetInstruction,
   parseFreezeFunctionalityInstruction,
   parseInitializeLpInstruction,
+  parseInitializePoolReserveInstruction,
   parseInitializeRlpInstruction,
   parseRequestWithdrawalInstruction,
   parseSlashInstruction,
@@ -34,8 +36,10 @@ import {
   type ParsedAddAssetInstruction,
   type ParsedCreatePermissionAccountInstruction,
   type ParsedDepositInstruction,
+  type ParsedForceRemoveAssetInstruction,
   type ParsedFreezeFunctionalityInstruction,
   type ParsedInitializeLpInstruction,
+  type ParsedInitializePoolReserveInstruction,
   type ParsedInitializeRlpInstruction,
   type ParsedRequestWithdrawalInstruction,
   type ParsedSlashInstruction,
@@ -48,7 +52,7 @@ import {
 } from "../instructions";
 
 export const RLP_PROGRAM_ADDRESS =
-  "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz" as Address<"RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz">;
+  "JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av" as Address<"JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av">;
 
 export enum RlpAccount {
   Asset,
@@ -126,8 +130,10 @@ export enum RlpInstruction {
   AddAsset,
   CreatePermissionAccount,
   Deposit,
+  ForceRemoveAsset,
   FreezeFunctionality,
   InitializeLp,
+  InitializePoolReserve,
   InitializeRlp,
   RequestWithdrawal,
   Slash,
@@ -180,6 +186,17 @@ export function identifyRlpInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([26, 47, 174, 160, 163, 115, 100, 180]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.ForceRemoveAsset;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([65, 152, 119, 202, 25, 239, 206, 157]),
       ),
       0,
@@ -197,6 +214,17 @@ export function identifyRlpInstruction(
     )
   ) {
     return RlpInstruction.InitializeLp;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([151, 225, 119, 195, 196, 190, 98, 18]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.InitializePoolReserve;
   }
   if (
     containsBytes(
@@ -303,7 +331,7 @@ export function identifyRlpInstruction(
 }
 
 export type ParsedRlpInstruction<
-  TProgram extends string = "RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz",
+  TProgram extends string = "JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av",
 > =
   | ({
       instructionType: RlpInstruction.AddAsset;
@@ -315,11 +343,17 @@ export type ParsedRlpInstruction<
       instructionType: RlpInstruction.Deposit;
     } & ParsedDepositInstruction<TProgram>)
   | ({
+      instructionType: RlpInstruction.ForceRemoveAsset;
+    } & ParsedForceRemoveAssetInstruction<TProgram>)
+  | ({
       instructionType: RlpInstruction.FreezeFunctionality;
     } & ParsedFreezeFunctionalityInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.InitializeLp;
     } & ParsedInitializeLpInstruction<TProgram>)
+  | ({
+      instructionType: RlpInstruction.InitializePoolReserve;
+    } & ParsedInitializePoolReserveInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.InitializeRlp;
     } & ParsedInitializeRlpInstruction<TProgram>)
@@ -372,6 +406,13 @@ export function parseRlpInstruction<TProgram extends string>(
         ...parseDepositInstruction(instruction),
       };
     }
+    case RlpInstruction.ForceRemoveAsset: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.ForceRemoveAsset,
+        ...parseForceRemoveAssetInstruction(instruction),
+      };
+    }
     case RlpInstruction.FreezeFunctionality: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -384,6 +425,13 @@ export function parseRlpInstruction<TProgram extends string>(
       return {
         instructionType: RlpInstruction.InitializeLp,
         ...parseInitializeLpInstruction(instruction),
+      };
+    }
+    case RlpInstruction.InitializePoolReserve: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.InitializePoolReserve,
+        ...parseInitializePoolReserveInstruction(instruction),
       };
     }
     case RlpInstruction.InitializeRlp: {

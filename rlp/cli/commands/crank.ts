@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { address } from "@solana/kit";
-import { Insurance } from "../../sdk/src/classes/Insurance";
+import { JuniorTranche } from "../../sdk/src/classes/JuniorTranche";
 import { createRpc } from "../utils/connection";
 import {
   loadKeypairFile,
@@ -25,9 +25,9 @@ export function registerCrankCommands(program: Command) {
         const kp = loadKeypairFile(resolveKeypairPath(globals));
         const signer = keypairToSigner(kp);
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
-        const ix = await insurance.slash(
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
+        const ix = await juniorTranche.slash(
           address(opts.mint),
           BigInt(opts.amount),
           signer,

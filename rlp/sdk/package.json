@@ -1,6 +1,7 @@
 {
-  "name": "@reflectmoney/insurance",
-  "version": "1.0.0",
+  "name": "@reflectmoney/junior",
+  "version": "1.1.2",
+  "description": "TypeScript SDK for the Reflect Liquid Protection (RLP) program, powering junior tranche of Reflect's two-tranche protection system.",
   "type": "commonjs",
   "author": "stablecoinjesus @ Palindrome Engineering",
   "repository": {
@@ -9,7 +10,8 @@
   },
   "scripts": {
     "build": "npx tsc",
-    "test": "mocha --require tsx --timeout 120000 tests/**/*.test.ts"
+    "test": "mocha --require tsx --timeout 120000 tests/**/*.test.ts",
+    "prepublishOnly": "rm -rf dist && npm run build && npm test"
   },
   "dependencies": {
     "@solana-program/system": "^0.12.0",
@@ -24,9 +26,8 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "/dist"
+    "dist"
   ],
-  "yalcSig": "727b494d980f37ab0f6bb0dda8b1894f",
   "devDependencies": {
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",

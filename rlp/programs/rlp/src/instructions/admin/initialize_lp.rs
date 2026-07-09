@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{mint_to, Mint, MintTo, Token, TokenAccount};
 use crate::states::*;
@@ -11,6 +12,7 @@ pub struct InitializeLiquidityPoolArgs {
     pub cooldown_duration: u64,
     pub deposit_cap: Option<u64>,
     pub assets: Vec<u8>,
+    pub protected_vault: Option<Pubkey>,
 }
 
 pub fn initialize_lp(
@@ -21,6 +23,7 @@ pub fn initialize_lp(
         cooldown_duration,
         deposit_cap,
         assets,
+        protected_vault,
     } = args;
 
     let liquidity_pool = &mut ctx.accounts.liquidity_pool;
@@ -31,6 +34,11 @@ pub fn initialize_lp(
 
     require!(
         assets.len() >= 1 && assets.len() <= MAX_POOL_ASSETS,
+        RlpError::InvalidInput
+    );
+
+    require!(
+        cooldown_duration <= MAX_COOLDOWN_DURATION,
         RlpError::InvalidInput
     );
 
@@ -60,6 +68,7 @@ pub fn initialize_lp(
         deposit_cap,
         asset_count: assets.len() as u8,
         assets: asset_array,
+        protected_vault,
     });
 
     let signer_seeds = &[
@@ -94,7 +103,7 @@ pub fn initialize_lp(
         .checked_add(1)
         .ok_or(RlpError::MathOverflow)?;
 
-    emit!(InitializeLiquidityPoolEvent {
+    emit_cpi!(InitializeLiquidityPoolEvent {
         admin: ctx.accounts.signer.key(),
         liquidity_pool: liquidity_pool.key(),
         lp_token: lp_token.key(),
@@ -103,6 +112,7 @@ pub fn initialize_lp(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct InitializeLiquidityPool<'info> {
     #[account(mut)]
@@ -147,15 +157,15 @@ pub struct InitializeLiquidityPool<'info> {
     #[account(
         mut,
         constraint = lp_token_mint.supply == 0 @ RlpError::InvalidReceiptTokenSupply,
-        constraint = lp_token_mint.mint_authority.unwrap() == liquidity_pool.key() @ RlpError::InvalidReceiptTokenMintAuthority,
-        // constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
+        constraint = lp_token_mint.mint_authority == COption::Some(liquidity_pool.key()) @ RlpError::InvalidReceiptTokenMintAuthority,
+        constraint = lp_token_mint.freeze_authority.is_none() @ RlpError::InvalidReceiptTokenFreezeAuthority,
         constraint = lp_token_mint.is_initialized @ RlpError::InvalidReceiptTokenSetup,
-        // constraint = lp_token_mint.decimals == 9 @ RlpError::InvalidReceiptTokenDecimals
+        constraint = lp_token_mint.decimals as u32 <= PRECISION @ RlpError::InvalidReceiptTokenDecimals,
     )]
     pub lp_token_mint: Box<Account<'info, Mint>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = signer,
         associated_token::mint = lp_token_mint,
         associated_token::authority = liquidity_pool,

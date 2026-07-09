@@ -18,13 +18,22 @@ pub struct RequestWithdrawEvent {
     pub amount: u64,
 }
 
+/// Per-asset entry in `WithdrawEvent::amounts_out`. Borsh-equivalent to
+/// the previous `(Pubkey, u64)` tuple, but the named struct is required so
+/// Anchor's IDL emitter can describe it (the spec has no tuple type, so a
+/// `Vec<(Pubkey, u64)>` field is silently omitted from the IDL).
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct WithdrawAssetAmount {
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
 #[event]
 pub struct WithdrawEvent {
     pub from: Pubkey,
     pub liquidity_pool_id: u8,
     pub amount_in: u64,
-    pub amount_out: u64,
-    pub usd_value: u128,
+    pub amounts_out: Vec<WithdrawAssetAmount>,
 }
 
 #[event]
@@ -32,6 +41,14 @@ pub struct DepositRewardEvent {
     pub authority: Pubkey,
     pub asset: Pubkey,
     pub amount: u64
+}
+
+#[event]
+pub struct ForceRemoveAssetEvent {
+    pub admin: Pubkey,
+    pub liquidity_pool: Pubkey,
+    pub asset: Pubkey,
+    pub asset_index: u8,
 }
 
 #[event]
@@ -90,8 +107,10 @@ pub struct UpdateDepositCapEvent {
 pub struct SlashEvent {
     pub admin: Pubkey,
     pub liquidity_pool: Pubkey,
-    pub amount: u64,
-    pub mint: Pubkey
+    pub protected_vault: Pubkey,
+    pub stablecoin_mint: Pubkey,
+    pub loss_usdc: u64,
+    pub amount_tokens: u64,
 }
 
 #[event]

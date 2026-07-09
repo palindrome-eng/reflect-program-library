@@ -31,6 +31,12 @@ pub struct UpdateRoleHolder {
           
               
           pub system_program: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl UpdateRoleHolder {
@@ -40,7 +46,7 @@ impl UpdateRoleHolder {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: UpdateRoleHolderInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(5+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(7+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.admin,
             true
@@ -59,6 +65,14 @@ impl UpdateRoleHolder {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.system_program,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
@@ -122,6 +136,8 @@ impl UpdateRoleHolderInstructionArgs {
                 ///   2. `[writable]` admin_permissions
                 ///   3. `[writable]` update_admin_permissions
                 ///   4. `[optional]` system_program (default to `11111111111111111111111111111111`)
+          ///   5. `[]` event_authority
+          ///   6. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct UpdateRoleHolderBuilder {
             admin: Option<solana_pubkey::Pubkey>,
@@ -129,6 +145,8 @@ pub struct UpdateRoleHolderBuilder {
                 admin_permissions: Option<solana_pubkey::Pubkey>,
                 update_admin_permissions: Option<solana_pubkey::Pubkey>,
                 system_program: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         address: Option<Pubkey>,
                 role: Option<Role>,
                 update: Option<Update>,
@@ -163,6 +181,16 @@ impl UpdateRoleHolderBuilder {
 #[inline(always)]
     pub fn system_program(&mut self, system_program: solana_pubkey::Pubkey) -> &mut Self {
                         self.system_program = Some(system_program);
+                    self
+    }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -200,6 +228,8 @@ impl UpdateRoleHolderBuilder {
                                         admin_permissions: self.admin_permissions.expect("admin_permissions is not set"),
                                         update_admin_permissions: self.update_admin_permissions.expect("update_admin_permissions is not set"),
                                         system_program: self.system_program.unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = UpdateRoleHolderInstructionArgs {
                                                               address: self.address.clone().expect("address is not set"),
@@ -228,6 +258,12 @@ impl UpdateRoleHolderBuilder {
                 
                     
               pub system_program: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `update_role_holder` CPI instruction.
@@ -249,6 +285,12 @@ pub struct UpdateRoleHolderCpi<'a, 'b> {
           
               
           pub system_program: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: UpdateRoleHolderInstructionArgs,
   }
@@ -266,6 +308,8 @@ impl<'a, 'b> UpdateRoleHolderCpi<'a, 'b> {
               admin_permissions: accounts.admin_permissions,
               update_admin_permissions: accounts.update_admin_permissions,
               system_program: accounts.system_program,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -289,7 +333,7 @@ impl<'a, 'b> UpdateRoleHolderCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(5+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(7+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.admin.key,
             true
@@ -310,6 +354,14 @@ impl<'a, 'b> UpdateRoleHolderCpi<'a, 'b> {
             *self.system_program.key,
             false
           ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false
+          ));
                       remaining_accounts.iter().for_each(|remaining_account| {
       accounts.push(solana_instruction::AccountMeta {
           pubkey: *remaining_account.0.key,
@@ -326,13 +378,15 @@ impl<'a, 'b> UpdateRoleHolderCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(6 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(8 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.admin.clone());
                         account_infos.push(self.settings.clone());
                         account_infos.push(self.admin_permissions.clone());
                         account_infos.push(self.update_admin_permissions.clone());
                         account_infos.push(self.system_program.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -352,6 +406,8 @@ impl<'a, 'b> UpdateRoleHolderCpi<'a, 'b> {
                 ///   2. `[writable]` admin_permissions
                 ///   3. `[writable]` update_admin_permissions
           ///   4. `[]` system_program
+          ///   5. `[]` event_authority
+          ///   6. `[]` program
 #[derive(Clone, Debug)]
 pub struct UpdateRoleHolderCpiBuilder<'a, 'b> {
   instruction: Box<UpdateRoleHolderCpiBuilderInstruction<'a, 'b>>,
@@ -366,6 +422,8 @@ impl<'a, 'b> UpdateRoleHolderCpiBuilder<'a, 'b> {
               admin_permissions: None,
               update_admin_permissions: None,
               system_program: None,
+              event_authority: None,
+              program: None,
                                             address: None,
                                 role: None,
                                 update: None,
@@ -396,6 +454,16 @@ impl<'a, 'b> UpdateRoleHolderCpiBuilder<'a, 'b> {
       #[inline(always)]
     pub fn system_program(&mut self, system_program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.system_program = Some(system_program);
+                    self
+    }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -452,6 +520,10 @@ impl<'a, 'b> UpdateRoleHolderCpiBuilder<'a, 'b> {
           update_admin_permissions: self.instruction.update_admin_permissions.expect("update_admin_permissions is not set"),
                   
           system_program: self.instruction.system_program.expect("system_program is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -466,6 +538,8 @@ struct UpdateRoleHolderCpiBuilderInstruction<'a, 'b> {
                 admin_permissions: Option<&'b solana_account_info::AccountInfo<'a>>,
                 update_admin_permissions: Option<&'b solana_account_info::AccountInfo<'a>>,
                 system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         address: Option<Pubkey>,
                 role: Option<Role>,
                 update: Option<Update>,

@@ -28,6 +28,12 @@ pub struct UpdateOracle {
           
               
           pub oracle: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl UpdateOracle {
@@ -37,7 +43,7 @@ impl UpdateOracle {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(5+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(7+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
@@ -56,6 +62,14 @@ impl UpdateOracle {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.oracle,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
@@ -104,6 +118,8 @@ impl Default for UpdateOracleInstructionData {
           ///   2. `[]` settings
                 ///   3. `[writable]` asset
           ///   4. `[]` oracle
+          ///   5. `[]` event_authority
+          ///   6. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct UpdateOracleBuilder {
             signer: Option<solana_pubkey::Pubkey>,
@@ -111,6 +127,8 @@ pub struct UpdateOracleBuilder {
                 settings: Option<solana_pubkey::Pubkey>,
                 asset: Option<solana_pubkey::Pubkey>,
                 oracle: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                 __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
@@ -143,6 +161,16 @@ impl UpdateOracleBuilder {
                         self.oracle = Some(oracle);
                     self
     }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
+                    self
+    }
             /// Add an additional account to the instruction.
   #[inline(always)]
   pub fn add_remaining_account(&mut self, account: solana_instruction::AccountMeta) -> &mut Self {
@@ -163,6 +191,8 @@ impl UpdateOracleBuilder {
                                         settings: self.settings.expect("settings is not set"),
                                         asset: self.asset.expect("asset is not set"),
                                         oracle: self.oracle.expect("oracle is not set"),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
     
     accounts.instruction_with_remaining_accounts(&self.__remaining_accounts)
@@ -186,6 +216,12 @@ impl UpdateOracleBuilder {
                 
                     
               pub oracle: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `update_oracle` CPI instruction.
@@ -207,6 +243,12 @@ pub struct UpdateOracleCpi<'a, 'b> {
           
               
           pub oracle: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
         }
 
 impl<'a, 'b> UpdateOracleCpi<'a, 'b> {
@@ -221,6 +263,8 @@ impl<'a, 'b> UpdateOracleCpi<'a, 'b> {
               settings: accounts.settings,
               asset: accounts.asset,
               oracle: accounts.oracle,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                 }
   }
   #[inline(always)]
@@ -243,7 +287,7 @@ impl<'a, 'b> UpdateOracleCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(5+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(7+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.signer.key,
             true
@@ -264,6 +308,14 @@ impl<'a, 'b> UpdateOracleCpi<'a, 'b> {
             *self.oracle.key,
             false
           ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false
+          ));
                       remaining_accounts.iter().for_each(|remaining_account| {
       accounts.push(solana_instruction::AccountMeta {
           pubkey: *remaining_account.0.key,
@@ -278,13 +330,15 @@ impl<'a, 'b> UpdateOracleCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(6 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(8 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.signer.clone());
                         account_infos.push(self.admin.clone());
                         account_infos.push(self.settings.clone());
                         account_infos.push(self.asset.clone());
                         account_infos.push(self.oracle.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -304,6 +358,8 @@ impl<'a, 'b> UpdateOracleCpi<'a, 'b> {
           ///   2. `[]` settings
                 ///   3. `[writable]` asset
           ///   4. `[]` oracle
+          ///   5. `[]` event_authority
+          ///   6. `[]` program
 #[derive(Clone, Debug)]
 pub struct UpdateOracleCpiBuilder<'a, 'b> {
   instruction: Box<UpdateOracleCpiBuilderInstruction<'a, 'b>>,
@@ -318,6 +374,8 @@ impl<'a, 'b> UpdateOracleCpiBuilder<'a, 'b> {
               settings: None,
               asset: None,
               oracle: None,
+              event_authority: None,
+              program: None,
                                 __remaining_accounts: Vec::new(),
     });
     Self { instruction }
@@ -345,6 +403,16 @@ impl<'a, 'b> UpdateOracleCpiBuilder<'a, 'b> {
       #[inline(always)]
     pub fn oracle(&mut self, oracle: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.oracle = Some(oracle);
+                    self
+    }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
                     self
     }
             /// Add an additional account to the instruction.
@@ -381,6 +449,10 @@ impl<'a, 'b> UpdateOracleCpiBuilder<'a, 'b> {
           asset: self.instruction.asset.expect("asset is not set"),
                   
           oracle: self.instruction.oracle.expect("oracle is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                     };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
   }
@@ -394,6 +466,8 @@ struct UpdateOracleCpiBuilderInstruction<'a, 'b> {
                 settings: Option<&'b solana_account_info::AccountInfo<'a>>,
                 asset: Option<&'b solana_account_info::AccountInfo<'a>>,
                 oracle: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                 /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
   __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

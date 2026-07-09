@@ -2,7 +2,6 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::close_account;
 use anchor_spl::token::CloseAccount;
 use anchor_spl::token::Token;
-use spl_math::precise_number::PreciseNumber;
 use crate::errors::RlpError;
 use crate::helpers::action_check_protocol;
 use crate::states::*;
@@ -16,11 +15,12 @@ use anchor_spl::token::{
     Burn
 };
 use crate::helpers::{
+    assert_no_reserve_frozen,
     load_assets,
     load_reserves,
     load_user_token_accounts
 };
-use crate::events::WithdrawEvent;
+use crate::events::{WithdrawAssetAmount, WithdrawEvent};
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
 pub struct WithdrawArgs {
@@ -50,11 +50,12 @@ pub fn withdraw<'a>(
     let cooldown = &ctx.accounts.cooldown;
     let liquidity_pool = &ctx.accounts.liquidity_pool;
     let cooldown_lp_token_account = &ctx.accounts.cooldown_lp_token_account;
+    let signer_lp_token_account = &ctx.accounts.signer_lp_token_account;
     let lp_token_mint = &ctx.accounts.lp_token_mint;
     let token_program = &ctx.accounts.token_program;
     let signer = &ctx.accounts.signer;
 
-    let lp_token_amount = cooldown_lp_token_account.amount;
+    let lp_token_amount = cooldown.locked_amount;
     let lp_token_supply = lp_token_mint.supply;
 
     let clock = Clock::get()?;
@@ -67,6 +68,11 @@ pub fn withdraw<'a>(
     require!(
         lp_token_amount > 0 && lp_token_supply > 0,
         RlpError::InvalidInput
+    );
+
+    require!(
+        cooldown_lp_token_account.amount >= lp_token_amount,
+        RlpError::NotEnoughFunds
     );
 
     let remaining_accounts = &ctx.remaining_accounts;
@@ -84,27 +90,20 @@ pub fn withdraw<'a>(
     let assets: Vec<(Pubkey, Asset)> = load_assets(liquidity_pool, remaining_accounts)?;
     let asset_datas = assets.iter().map(|(_, asset)| asset).collect::<Vec<&Asset>>();
     let reserves = load_reserves(liquidity_pool, &asset_datas, remaining_accounts)?;
+    assert_no_reserve_frozen(&reserves)?;
     let user_token_accounts = load_user_token_accounts(signer, &asset_datas, remaining_accounts)?;
 
-    let mut total_withdrawn: u64 = 0;
+    let mut amounts_out: Vec<WithdrawAssetAmount> = Vec::with_capacity(assets.len());
 
     for i in 0..assets.len() {
         let (reserve_key, reserve) = &reserves[i];
         let (user_token_account_key, _) = &user_token_accounts[i];
+        let (_, asset) = &assets[i];
 
-        let user_pool_share_amount = PreciseNumber::new(reserve.amount as u128)
+        let user_pool_share_amount: u128 = (reserve.amount as u128)
+            .checked_mul(lp_token_amount as u128)
             .ok_or(RlpError::MathOverflow)?
-            .checked_mul(
-                &PreciseNumber::new(lp_token_amount as u128)
-                .ok_or(RlpError::MathOverflow)?
-            )
-            .ok_or(RlpError::MathOverflow)?
-            .checked_div(
-                &PreciseNumber::new(lp_token_supply as u128)
-                .ok_or(RlpError::MathOverflow)?
-            )
-            .ok_or(RlpError::MathOverflow)?
-            .to_imprecise()
+            .checked_div(lp_token_supply as u128)
             .ok_or(RlpError::MathOverflow)?;
 
         let user_pool_share_amount: u64 = user_pool_share_amount
@@ -135,9 +134,10 @@ pub fn withdraw<'a>(
                 user_pool_share_amount
             )?;
 
-            total_withdrawn = total_withdrawn
-                .checked_add(user_pool_share_amount)
-                .ok_or(RlpError::MathOverflow)?;
+            amounts_out.push(WithdrawAssetAmount {
+                mint: asset.mint,
+                amount: user_pool_share_amount,
+            });
         }
     }
 
@@ -147,6 +147,22 @@ pub fn withdraw<'a>(
         &cooldown_id.to_le_bytes(),
         &[cooldown.bump]
     ];
+
+    let excess = cooldown_lp_token_account.amount.saturating_sub(lp_token_amount);
+    if excess > 0 {
+        transfer(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(),
+                Transfer {
+                    from: cooldown_lp_token_account.to_account_info(),
+                    to: signer_lp_token_account.to_account_info(),
+                    authority: cooldown.to_account_info()
+                },
+                &[cooldown_seeds]
+            ),
+            excess
+        )?;
+    }
 
     burn(
         CpiContext::new_with_signer(
@@ -173,19 +189,17 @@ pub fn withdraw<'a>(
         )
     )?;
 
-    // usd_value is 0 because the withdraw path does not load oracle accounts.
-    // Off-chain indexers can price the per-asset amounts from transaction logs.
-    emit!(WithdrawEvent {
+    emit_cpi!(WithdrawEvent {
         from: signer.key(),
         liquidity_pool_id: liquidity_pool.index,
         amount_in: lp_token_amount,
-        amount_out: total_withdrawn,
-        usd_value: 0,
+        amounts_out,
     });
 
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(
     args: WithdrawArgs
@@ -235,6 +249,13 @@ pub struct Withdraw<'info> {
         associated_token::authority = cooldown,
     )]
     pub cooldown_lp_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        token::mint = lp_token_mint,
+        token::authority = signer,
+    )]
+    pub signer_lp_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,

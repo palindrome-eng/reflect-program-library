@@ -63,6 +63,8 @@ export type AddAssetInstruction<
   TAccountOracle extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -90,6 +92,12 @@ export type AddAssetInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -136,6 +144,8 @@ export type AddAssetAsyncInput<
   TAccountAssetMint extends string = string,
   TAccountOracle extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin?: Address<TAccountAdmin>;
@@ -144,6 +154,8 @@ export type AddAssetAsyncInput<
   assetMint: Address<TAccountAssetMint>;
   oracle: Address<TAccountOracle>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   accessLevel: AddAssetInstructionDataArgs["accessLevel"];
 };
 
@@ -155,6 +167,8 @@ export async function getAddAssetInstructionAsync<
   TAccountAssetMint extends string,
   TAccountOracle extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: AddAssetAsyncInput<
@@ -164,7 +178,9 @@ export async function getAddAssetInstructionAsync<
     TAccountAsset,
     TAccountAssetMint,
     TAccountOracle,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -176,7 +192,9 @@ export async function getAddAssetInstructionAsync<
     TAccountAsset,
     TAccountAssetMint,
     TAccountOracle,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -191,6 +209,8 @@ export async function getAddAssetInstructionAsync<
     assetMint: { value: input.assetMint ?? null, isWritable: true },
     oracle: { value: input.oracle ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -237,6 +257,19 @@ export async function getAddAssetInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -248,6 +281,8 @@ export async function getAddAssetInstructionAsync<
       getAccountMeta(accounts.assetMint),
       getAccountMeta(accounts.oracle),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getAddAssetInstructionDataEncoder().encode(
       args as AddAssetInstructionDataArgs,
@@ -261,7 +296,9 @@ export async function getAddAssetInstructionAsync<
     TAccountAsset,
     TAccountAssetMint,
     TAccountOracle,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -273,6 +310,8 @@ export type AddAssetInput<
   TAccountAssetMint extends string = string,
   TAccountOracle extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   admin: Address<TAccountAdmin>;
@@ -281,6 +320,8 @@ export type AddAssetInput<
   assetMint: Address<TAccountAssetMint>;
   oracle: Address<TAccountOracle>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   accessLevel: AddAssetInstructionDataArgs["accessLevel"];
 };
 
@@ -292,6 +333,8 @@ export function getAddAssetInstruction<
   TAccountAssetMint extends string,
   TAccountOracle extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: AddAssetInput<
@@ -301,7 +344,9 @@ export function getAddAssetInstruction<
     TAccountAsset,
     TAccountAssetMint,
     TAccountOracle,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): AddAssetInstruction<
@@ -312,7 +357,9 @@ export function getAddAssetInstruction<
   TAccountAsset,
   TAccountAssetMint,
   TAccountOracle,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -326,6 +373,8 @@ export function getAddAssetInstruction<
     assetMint: { value: input.assetMint ?? null, isWritable: true },
     oracle: { value: input.oracle ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -351,6 +400,8 @@ export function getAddAssetInstruction<
       getAccountMeta(accounts.assetMint),
       getAccountMeta(accounts.oracle),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getAddAssetInstructionDataEncoder().encode(
       args as AddAssetInstructionDataArgs,
@@ -364,7 +415,9 @@ export function getAddAssetInstruction<
     TAccountAsset,
     TAccountAssetMint,
     TAccountOracle,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -381,6 +434,8 @@ export type ParsedAddAssetInstruction<
     assetMint: TAccountMetas[4];
     oracle: TAccountMetas[5];
     systemProgram: TAccountMetas[6];
+    eventAuthority: TAccountMetas[7];
+    program: TAccountMetas[8];
   };
   data: AddAssetInstructionData;
 };
@@ -393,7 +448,7 @@ export function parseAddAssetInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedAddAssetInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 7) {
+  if (instruction.accounts.length < 9) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -413,6 +468,8 @@ export function parseAddAssetInstruction<
       assetMint: getNextAccount(),
       oracle: getNextAccount(),
       systemProgram: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getAddAssetInstructionDataDecoder().decode(instruction.data),
   };

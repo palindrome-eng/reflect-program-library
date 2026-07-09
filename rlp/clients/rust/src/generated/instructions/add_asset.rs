@@ -35,6 +35,12 @@ pub struct AddAsset {
           
               
           pub system_program: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl AddAsset {
@@ -44,7 +50,7 @@ impl AddAsset {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: AddAssetInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(7+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(9+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
@@ -71,6 +77,14 @@ impl AddAsset {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.system_program,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
@@ -134,6 +148,8 @@ impl AddAssetInstructionArgs {
                 ///   4. `[writable]` asset_mint
                 ///   5. `[writable]` oracle
                 ///   6. `[optional]` system_program (default to `11111111111111111111111111111111`)
+          ///   7. `[]` event_authority
+          ///   8. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct AddAssetBuilder {
             signer: Option<solana_pubkey::Pubkey>,
@@ -143,6 +159,8 @@ pub struct AddAssetBuilder {
                 asset_mint: Option<solana_pubkey::Pubkey>,
                 oracle: Option<solana_pubkey::Pubkey>,
                 system_program: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         access_level: Option<AccessLevel>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
@@ -187,6 +205,16 @@ impl AddAssetBuilder {
                         self.system_program = Some(system_program);
                     self
     }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
+                    self
+    }
                     #[inline(always)]
       pub fn access_level(&mut self, access_level: AccessLevel) -> &mut Self {
         self.access_level = Some(access_level);
@@ -214,6 +242,8 @@ impl AddAssetBuilder {
                                         asset_mint: self.asset_mint.expect("asset_mint is not set"),
                                         oracle: self.oracle.expect("oracle is not set"),
                                         system_program: self.system_program.unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = AddAssetInstructionArgs {
                                                               access_level: self.access_level.clone().expect("access_level is not set"),
@@ -246,6 +276,12 @@ impl AddAssetBuilder {
                 
                     
               pub system_program: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `add_asset` CPI instruction.
@@ -273,6 +309,12 @@ pub struct AddAssetCpi<'a, 'b> {
           
               
           pub system_program: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: AddAssetInstructionArgs,
   }
@@ -292,6 +334,8 @@ impl<'a, 'b> AddAssetCpi<'a, 'b> {
               asset_mint: accounts.asset_mint,
               oracle: accounts.oracle,
               system_program: accounts.system_program,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -315,7 +359,7 @@ impl<'a, 'b> AddAssetCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(7+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(9+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.signer.key,
             true
@@ -344,6 +388,14 @@ impl<'a, 'b> AddAssetCpi<'a, 'b> {
             *self.system_program.key,
             false
           ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false
+          ));
                       remaining_accounts.iter().for_each(|remaining_account| {
       accounts.push(solana_instruction::AccountMeta {
           pubkey: *remaining_account.0.key,
@@ -360,7 +412,7 @@ impl<'a, 'b> AddAssetCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(8 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(10 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.signer.clone());
                         account_infos.push(self.admin.clone());
@@ -369,6 +421,8 @@ impl<'a, 'b> AddAssetCpi<'a, 'b> {
                         account_infos.push(self.asset_mint.clone());
                         account_infos.push(self.oracle.clone());
                         account_infos.push(self.system_program.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -390,6 +444,8 @@ impl<'a, 'b> AddAssetCpi<'a, 'b> {
                 ///   4. `[writable]` asset_mint
                 ///   5. `[writable]` oracle
           ///   6. `[]` system_program
+          ///   7. `[]` event_authority
+          ///   8. `[]` program
 #[derive(Clone, Debug)]
 pub struct AddAssetCpiBuilder<'a, 'b> {
   instruction: Box<AddAssetCpiBuilderInstruction<'a, 'b>>,
@@ -406,6 +462,8 @@ impl<'a, 'b> AddAssetCpiBuilder<'a, 'b> {
               asset_mint: None,
               oracle: None,
               system_program: None,
+              event_authority: None,
+              program: None,
                                             access_level: None,
                     __remaining_accounts: Vec::new(),
     });
@@ -444,6 +502,16 @@ impl<'a, 'b> AddAssetCpiBuilder<'a, 'b> {
       #[inline(always)]
     pub fn system_program(&mut self, system_program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.system_program = Some(system_program);
+                    self
+    }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -492,6 +560,10 @@ impl<'a, 'b> AddAssetCpiBuilder<'a, 'b> {
           oracle: self.instruction.oracle.expect("oracle is not set"),
                   
           system_program: self.instruction.system_program.expect("system_program is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -508,6 +580,8 @@ struct AddAssetCpiBuilderInstruction<'a, 'b> {
                 asset_mint: Option<&'b solana_account_info::AccountInfo<'a>>,
                 oracle: Option<&'b solana_account_info::AccountInfo<'a>>,
                 system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         access_level: Option<AccessLevel>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
   __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,

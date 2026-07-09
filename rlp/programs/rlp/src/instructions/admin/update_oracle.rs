@@ -5,6 +5,7 @@ use crate::events::UpdateOracleEvent;
 use crate::helpers::{get_price_from_pyth, get_price_from_doppler};
 use crate::states::*;
 use pyth_solana_receiver_sdk::ID as PYTH_PROGRAM_ID;
+use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 
 pub fn update_oracle(ctx: Context<UpdateOracle>) -> Result<()> {
     let asset = &mut ctx.accounts.asset;
@@ -16,8 +17,15 @@ pub fn update_oracle(ctx: Context<UpdateOracle>) -> Result<()> {
     let old_oracle = *asset.oracle.key();
 
     let new_oracle = if oracle_account.owner.as_ref() == PYTH_PROGRAM_ID.as_ref() {
-        get_price_from_pyth(oracle_account, &clock)?;
-        Oracle::Pyth(oracle_account.key())
+        let feed_id = {
+            let data = oracle_account.try_borrow_data()?;
+            let mut slice: &[u8] = &data;
+            let price_update = PriceUpdateV2::try_deserialize(&mut slice)
+                .map_err(|_| RlpError::InvalidOracle)?;
+            price_update.price_message.feed_id
+        };
+        get_price_from_pyth(oracle_account, &clock, &feed_id)?;
+        Oracle::Pyth { account: oracle_account.key(), feed_id }
     } else if oracle_account.owner == &DOPPLER_ORACLE_PROGRAM_ID {
         get_price_from_doppler(oracle_account)?;
         Oracle::Doppler(oracle_account.key())
@@ -37,6 +45,7 @@ pub fn update_oracle(ctx: Context<UpdateOracle>) -> Result<()> {
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct UpdateOracle<'info> {
     #[account(mut)]

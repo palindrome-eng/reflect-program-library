@@ -5,7 +5,10 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-rlp = "rhLMe6vyM1wVLJaxrWUckVmPxSia58nSWZRDtYQow6D"
+rlp = "JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av"
+
+[programs.mainnet]
+rlp = "JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av"
 
 [registry]
 url = "https://api.apr.dev"

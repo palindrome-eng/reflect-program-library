@@ -5,6 +5,7 @@
 //! <https://github.com/codama-idl/codama>
 //!
 
+use solana_pubkey::Pubkey;
 use borsh::BorshSerialize;
 use borsh::BorshDeserialize;
 
@@ -40,6 +41,12 @@ pub struct InitializeLp {
           
               
           pub associated_token_program: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl InitializeLp {
@@ -49,7 +56,7 @@ impl InitializeLp {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: InitializeLpInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(9+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(11+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
@@ -86,6 +93,14 @@ impl InitializeLp {
             self.associated_token_program,
             false
           ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
+            false
+          ));
                       accounts.extend_from_slice(remaining_accounts);
     let mut data = InitializeLpInstructionData::new().try_to_vec().unwrap();
           let mut args = args.try_to_vec().unwrap();
@@ -103,13 +118,13 @@ impl InitializeLp {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
  pub struct InitializeLpInstructionData {
             discriminator: [u8; 8],
-                        }
+                              }
 
 impl InitializeLpInstructionData {
   pub fn new() -> Self {
     Self {
                         discriminator: [110, 252, 116, 251, 81, 191, 57, 96],
-                                                            }
+                                                                          }
   }
 
     pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
@@ -129,6 +144,7 @@ impl Default for InitializeLpInstructionData {
                   pub cooldown_duration: u64,
                 pub deposit_cap: Option<u64>,
                 pub assets: Vec<u8>,
+                pub protected_vault: Option<Pubkey>,
       }
 
 impl InitializeLpInstructionArgs {
@@ -151,6 +167,8 @@ impl InitializeLpInstructionArgs {
                 ///   6. `[optional]` system_program (default to `11111111111111111111111111111111`)
                 ///   7. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
                 ///   8. `[optional]` associated_token_program (default to `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`)
+          ///   9. `[]` event_authority
+          ///   10. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct InitializeLpBuilder {
             signer: Option<solana_pubkey::Pubkey>,
@@ -162,9 +180,12 @@ pub struct InitializeLpBuilder {
                 system_program: Option<solana_pubkey::Pubkey>,
                 token_program: Option<solana_pubkey::Pubkey>,
                 associated_token_program: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         cooldown_duration: Option<u64>,
                 deposit_cap: Option<u64>,
                 assets: Option<Vec<u8>>,
+                protected_vault: Option<Pubkey>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
@@ -220,6 +241,16 @@ impl InitializeLpBuilder {
                         self.associated_token_program = Some(associated_token_program);
                     self
     }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
+                    self
+    }
                     #[inline(always)]
       pub fn cooldown_duration(&mut self, cooldown_duration: u64) -> &mut Self {
         self.cooldown_duration = Some(cooldown_duration);
@@ -234,6 +265,12 @@ impl InitializeLpBuilder {
                 #[inline(always)]
       pub fn assets(&mut self, assets: Vec<u8>) -> &mut Self {
         self.assets = Some(assets);
+        self
+      }
+                /// `[optional argument]`
+#[inline(always)]
+      pub fn protected_vault(&mut self, protected_vault: Pubkey) -> &mut Self {
+        self.protected_vault = Some(protected_vault);
         self
       }
         /// Add an additional account to the instruction.
@@ -260,11 +297,14 @@ impl InitializeLpBuilder {
                                         system_program: self.system_program.unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
                                         token_program: self.token_program.unwrap_or(solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")),
                                         associated_token_program: self.associated_token_program.unwrap_or(solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = InitializeLpInstructionArgs {
                                                               cooldown_duration: self.cooldown_duration.clone().expect("cooldown_duration is not set"),
                                                                   deposit_cap: self.deposit_cap.clone(),
                                                                   assets: self.assets.clone().expect("assets is not set"),
+                                                                  protected_vault: self.protected_vault.clone(),
                                     };
     
     accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
@@ -300,6 +340,12 @@ impl InitializeLpBuilder {
                 
                     
               pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `initialize_lp` CPI instruction.
@@ -333,6 +379,12 @@ pub struct InitializeLpCpi<'a, 'b> {
           
               
           pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: InitializeLpInstructionArgs,
   }
@@ -354,6 +406,8 @@ impl<'a, 'b> InitializeLpCpi<'a, 'b> {
               system_program: accounts.system_program,
               token_program: accounts.token_program,
               associated_token_program: accounts.associated_token_program,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -377,7 +431,7 @@ impl<'a, 'b> InitializeLpCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(9+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(11+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.signer.key,
             true
@@ -414,6 +468,14 @@ impl<'a, 'b> InitializeLpCpi<'a, 'b> {
             *self.associated_token_program.key,
             false
           ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false
+          ));
                       remaining_accounts.iter().for_each(|remaining_account| {
       accounts.push(solana_instruction::AccountMeta {
           pubkey: *remaining_account.0.key,
@@ -430,7 +492,7 @@ impl<'a, 'b> InitializeLpCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(10 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(12 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.signer.clone());
                         account_infos.push(self.permissions.clone());
@@ -441,6 +503,8 @@ impl<'a, 'b> InitializeLpCpi<'a, 'b> {
                         account_infos.push(self.system_program.clone());
                         account_infos.push(self.token_program.clone());
                         account_infos.push(self.associated_token_program.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -464,6 +528,8 @@ impl<'a, 'b> InitializeLpCpi<'a, 'b> {
           ///   6. `[]` system_program
           ///   7. `[]` token_program
           ///   8. `[]` associated_token_program
+          ///   9. `[]` event_authority
+          ///   10. `[]` program
 #[derive(Clone, Debug)]
 pub struct InitializeLpCpiBuilder<'a, 'b> {
   instruction: Box<InitializeLpCpiBuilderInstruction<'a, 'b>>,
@@ -482,9 +548,12 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
               system_program: None,
               token_program: None,
               associated_token_program: None,
+              event_authority: None,
+              program: None,
                                             cooldown_duration: None,
                                 deposit_cap: None,
                                 assets: None,
+                                protected_vault: None,
                     __remaining_accounts: Vec::new(),
     });
     Self { instruction }
@@ -534,6 +603,16 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
                         self.instruction.associated_token_program = Some(associated_token_program);
                     self
     }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
+                    self
+    }
                     #[inline(always)]
       pub fn cooldown_duration(&mut self, cooldown_duration: u64) -> &mut Self {
         self.instruction.cooldown_duration = Some(cooldown_duration);
@@ -548,6 +627,12 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
                 #[inline(always)]
       pub fn assets(&mut self, assets: Vec<u8>) -> &mut Self {
         self.instruction.assets = Some(assets);
+        self
+      }
+                /// `[optional argument]`
+#[inline(always)]
+      pub fn protected_vault(&mut self, protected_vault: Pubkey) -> &mut Self {
+        self.instruction.protected_vault = Some(protected_vault);
         self
       }
         /// Add an additional account to the instruction.
@@ -576,6 +661,7 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
                                                               cooldown_duration: self.instruction.cooldown_duration.clone().expect("cooldown_duration is not set"),
                                                                   deposit_cap: self.instruction.deposit_cap.clone(),
                                                                   assets: self.instruction.assets.clone().expect("assets is not set"),
+                                                                  protected_vault: self.instruction.protected_vault.clone(),
                                     };
         let instruction = InitializeLpCpi {
         __program: self.instruction.__program,
@@ -597,6 +683,10 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
           token_program: self.instruction.token_program.expect("token_program is not set"),
                   
           associated_token_program: self.instruction.associated_token_program.expect("associated_token_program is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -615,9 +705,12 @@ struct InitializeLpCpiBuilderInstruction<'a, 'b> {
                 system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                 token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                 associated_token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         cooldown_duration: Option<u64>,
                 deposit_cap: Option<u64>,
                 assets: Option<Vec<u8>>,
+                protected_vault: Option<Pubkey>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
   __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

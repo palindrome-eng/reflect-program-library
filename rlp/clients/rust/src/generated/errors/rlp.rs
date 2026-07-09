@@ -151,12 +151,33 @@ pub enum RlpError {
     /// 6046 - AlreadyUnfrozen
     #[error("AlreadyUnfrozen")]
     AlreadyUnfrozen = 0x179E,
-    /// 6047 - SlashAmountExceedsLimit
-    #[error("SlashAmountExceedsLimit")]
-    SlashAmountExceedsLimit = 0x179F,
-    /// 6048 - OracleDataTooStale
+    /// 6047 - OracleDataTooStale
     #[error("OracleDataTooStale")]
-    OracleDataTooStale = 0x17A0,
+    OracleDataTooStale = 0x179F,
+    /// 6048 - PoolAssetFrozen
+    #[error("PoolAssetFrozen")]
+    PoolAssetFrozen = 0x17A0,
+    /// 6049 - PoolAssetNotFrozen
+    #[error("PoolAssetNotFrozen")]
+    PoolAssetNotFrozen = 0x17A1,
+    /// 6050 - CannotRemoveLastAsset
+    #[error("CannotRemoveLastAsset")]
+    CannotRemoveLastAsset = 0x17A2,
+    /// 6051 - PoolHasNoProtectedVault
+    #[error("PoolHasNoProtectedVault")]
+    PoolHasNoProtectedVault = 0x17A3,
+    /// 6052 - ProtectedVaultMismatch
+    #[error("ProtectedVaultMismatch")]
+    ProtectedVaultMismatch = 0x17A4,
+    /// 6053 - NoNavLossToCover
+    #[error("NoNavLossToCover")]
+    NoNavLossToCover = 0x17A5,
+    /// 6054 - NavCoverageExceedsLoss
+    #[error("NavCoverageExceedsLoss")]
+    NavCoverageExceedsLoss = 0x17A6,
+    /// 6055 - ProtectedVaultMintMismatch
+    #[error("ProtectedVaultMintMismatch")]
+    ProtectedVaultMintMismatch = 0x17A7,
 }
 
 impl From<RlpError> for solana_program_error::ProgramError {

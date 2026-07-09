@@ -8,8 +8,10 @@
   pub(crate) mod r#add_asset;
   pub(crate) mod r#create_permission_account;
   pub(crate) mod r#deposit;
+  pub(crate) mod r#force_remove_asset;
   pub(crate) mod r#freeze_functionality;
   pub(crate) mod r#initialize_lp;
+  pub(crate) mod r#initialize_pool_reserve;
   pub(crate) mod r#initialize_rlp;
   pub(crate) mod r#request_withdrawal;
   pub(crate) mod r#slash;
@@ -23,8 +25,10 @@
   pub use self::r#add_asset::*;
   pub use self::r#create_permission_account::*;
   pub use self::r#deposit::*;
+  pub use self::r#force_remove_asset::*;
   pub use self::r#freeze_functionality::*;
   pub use self::r#initialize_lp::*;
+  pub use self::r#initialize_pool_reserve::*;
   pub use self::r#initialize_rlp::*;
   pub use self::r#request_withdrawal::*;
   pub use self::r#slash::*;

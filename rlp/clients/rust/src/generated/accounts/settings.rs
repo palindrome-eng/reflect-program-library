@@ -19,13 +19,14 @@ pub liquidity_pools: u8,
 pub assets: u8,
 pub access_control: AccessControl,
 pub swap_fee_bps: u16,
+pub supremo_count: u8,
 }
 
 
 pub const SETTINGS_DISCRIMINATOR: [u8; 8] = [223, 179, 163, 190, 177, 224, 67, 173];
 
 impl Settings {
-      pub const LEN: usize = 378;
+      pub const LEN: usize = 379;
   
   
   

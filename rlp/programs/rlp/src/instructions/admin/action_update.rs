@@ -24,10 +24,12 @@ pub fn update_action_role_protocol(
         role,
         update
     } = args;
-        
+
+    require!(role != Role::UNSET, crate::errors::RlpError::InvalidInput);
+
     action_check_protocol(
-        Action::UpdateAction, 
-        Some(&creds), 
+        Action::UpdateAction,
+        Some(&creds),
         &settings.access_control
     )?;
   

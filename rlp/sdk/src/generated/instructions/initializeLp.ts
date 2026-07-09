@@ -12,6 +12,7 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressDecoder,
   getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
@@ -73,6 +74,8 @@ export type InitializeLpInstruction<
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
     "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -106,6 +109,12 @@ export type InitializeLpInstruction<
       TAccountAssociatedTokenProgram extends string
         ? ReadonlyAccount<TAccountAssociatedTokenProgram>
         : TAccountAssociatedTokenProgram,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -115,12 +124,14 @@ export type InitializeLpInstructionData = {
   cooldownDuration: bigint;
   depositCap: Option<bigint>;
   assets: ReadonlyUint8Array;
+  protectedVault: Option<Address>;
 };
 
 export type InitializeLpInstructionDataArgs = {
   cooldownDuration: number | bigint;
   depositCap: OptionOrNullable<number | bigint>;
   assets: ReadonlyUint8Array;
+  protectedVault: OptionOrNullable<Address>;
 };
 
 export function getInitializeLpInstructionDataEncoder(): Encoder<InitializeLpInstructionDataArgs> {
@@ -130,6 +141,7 @@ export function getInitializeLpInstructionDataEncoder(): Encoder<InitializeLpIns
       ["cooldownDuration", getU64Encoder()],
       ["depositCap", getOptionEncoder(getU64Encoder())],
       ["assets", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+      ["protectedVault", getOptionEncoder(getAddressEncoder())],
     ]),
     (value) => ({ ...value, discriminator: INITIALIZE_LP_DISCRIMINATOR }),
   );
@@ -141,6 +153,7 @@ export function getInitializeLpInstructionDataDecoder(): Decoder<InitializeLpIns
     ["cooldownDuration", getU64Decoder()],
     ["depositCap", getOptionDecoder(getU64Decoder())],
     ["assets", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ["protectedVault", getOptionDecoder(getAddressDecoder())],
   ]);
 }
 
@@ -164,6 +177,8 @@ export type InitializeLpAsyncInput<
   TAccountSystemProgram extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   permissions?: Address<TAccountPermissions>;
@@ -174,9 +189,12 @@ export type InitializeLpAsyncInput<
   systemProgram?: Address<TAccountSystemProgram>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   cooldownDuration: InitializeLpInstructionDataArgs["cooldownDuration"];
   depositCap: InitializeLpInstructionDataArgs["depositCap"];
   assets: InitializeLpInstructionDataArgs["assets"];
+  protectedVault: InitializeLpInstructionDataArgs["protectedVault"];
 };
 
 export async function getInitializeLpInstructionAsync<
@@ -189,6 +207,8 @@ export async function getInitializeLpInstructionAsync<
   TAccountSystemProgram extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: InitializeLpAsyncInput<
@@ -200,7 +220,9 @@ export async function getInitializeLpInstructionAsync<
     TAccountDeadSharesVault,
     TAccountSystemProgram,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -214,7 +236,9 @@ export async function getInitializeLpInstructionAsync<
     TAccountDeadSharesVault,
     TAccountSystemProgram,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -234,6 +258,8 @@ export async function getInitializeLpInstructionAsync<
       value: input.associatedTokenProgram ?? null,
       isWritable: false,
     },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -296,6 +322,19 @@ export async function getInitializeLpInstructionAsync<
     accounts.associatedTokenProgram.value =
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -309,6 +348,8 @@ export async function getInitializeLpInstructionAsync<
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getInitializeLpInstructionDataEncoder().encode(
       args as InitializeLpInstructionDataArgs,
@@ -324,7 +365,9 @@ export async function getInitializeLpInstructionAsync<
     TAccountDeadSharesVault,
     TAccountSystemProgram,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -338,6 +381,8 @@ export type InitializeLpInput<
   TAccountSystemProgram extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   permissions: Address<TAccountPermissions>;
@@ -348,9 +393,12 @@ export type InitializeLpInput<
   systemProgram?: Address<TAccountSystemProgram>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   cooldownDuration: InitializeLpInstructionDataArgs["cooldownDuration"];
   depositCap: InitializeLpInstructionDataArgs["depositCap"];
   assets: InitializeLpInstructionDataArgs["assets"];
+  protectedVault: InitializeLpInstructionDataArgs["protectedVault"];
 };
 
 export function getInitializeLpInstruction<
@@ -363,6 +411,8 @@ export function getInitializeLpInstruction<
   TAccountSystemProgram extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: InitializeLpInput<
@@ -374,7 +424,9 @@ export function getInitializeLpInstruction<
     TAccountDeadSharesVault,
     TAccountSystemProgram,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): InitializeLpInstruction<
@@ -387,7 +439,9 @@ export function getInitializeLpInstruction<
   TAccountDeadSharesVault,
   TAccountSystemProgram,
   TAccountTokenProgram,
-  TAccountAssociatedTokenProgram
+  TAccountAssociatedTokenProgram,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -406,6 +460,8 @@ export function getInitializeLpInstruction<
       value: input.associatedTokenProgram ?? null,
       isWritable: false,
     },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -441,6 +497,8 @@ export function getInitializeLpInstruction<
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getInitializeLpInstructionDataEncoder().encode(
       args as InitializeLpInstructionDataArgs,
@@ -456,7 +514,9 @@ export function getInitializeLpInstruction<
     TAccountDeadSharesVault,
     TAccountSystemProgram,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram
+    TAccountAssociatedTokenProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -475,6 +535,8 @@ export type ParsedInitializeLpInstruction<
     systemProgram: TAccountMetas[6];
     tokenProgram: TAccountMetas[7];
     associatedTokenProgram: TAccountMetas[8];
+    eventAuthority: TAccountMetas[9];
+    program: TAccountMetas[10];
   };
   data: InitializeLpInstructionData;
 };
@@ -487,7 +549,7 @@ export function parseInitializeLpInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedInitializeLpInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 9) {
+  if (instruction.accounts.length < 11) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -509,6 +571,8 @@ export function parseInitializeLpInstruction<
       systemProgram: getNextAccount(),
       tokenProgram: getNextAccount(),
       associatedTokenProgram: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getInitializeLpInstructionDataDecoder().decode(instruction.data),
   };

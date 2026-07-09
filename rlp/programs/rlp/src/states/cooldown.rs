@@ -8,6 +8,7 @@ pub struct Cooldown {
     pub authority: Pubkey,
     pub liquidity_pool_id: u8,
     pub unlock_ts: u64,
+    pub locked_amount: u64,
 }
 
 impl Cooldown {
@@ -19,9 +20,11 @@ impl Cooldown {
     pub fn lock(&mut self, duration: u64) -> Result<()> {
         let clock = Clock::get()?;
 
-        let now = clock.unix_timestamp;
-        self.unlock_ts = (now as u64) + duration;
-        
+        let now = clock.unix_timestamp as u64;
+        self.unlock_ts = now
+            .checked_add(duration)
+            .ok_or(crate::errors::RlpError::MathOverflow)?;
+
         Ok(())
     }
 }

@@ -23,6 +23,11 @@ pub cooldown_duration: u64,
 pub deposit_cap: Option<u64>,
 pub asset_count: u8,
 pub assets: [u8; 4],
+/// ProxyState account this pool's junior tranche covers.
+/// When set, `slash_for_nav_coverage` is enabled and pulls from this pool's
+/// reserve of the proxy's stablecoin_mint into the proxy's vault, capped at
+/// the proxy's current mark-to-market loss (principal + commission - vault_value).
+pub protected_vault: Option<Pubkey>,
 }
 
 

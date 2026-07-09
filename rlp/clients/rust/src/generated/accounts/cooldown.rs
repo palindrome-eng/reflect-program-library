@@ -20,13 +20,14 @@ pub index: u64,
 pub authority: Pubkey,
 pub liquidity_pool_id: u8,
 pub unlock_ts: u64,
+pub locked_amount: u64,
 }
 
 
 pub const COOLDOWN_DISCRIMINATOR: [u8; 8] = [50, 166, 94, 192, 234, 64, 152, 208];
 
 impl Cooldown {
-      pub const LEN: usize = 58;
+      pub const LEN: usize = 66;
   
   
   

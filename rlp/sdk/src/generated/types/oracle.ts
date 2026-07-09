@@ -8,8 +8,12 @@
 
 import {
   combineCodec,
+  fixDecoderSize,
+  fixEncoderSize,
   getAddressDecoder,
   getAddressEncoder,
+  getBytesDecoder,
+  getBytesEncoder,
   getDiscriminatedUnionDecoder,
   getDiscriminatedUnionEncoder,
   getStructDecoder,
@@ -17,57 +21,60 @@ import {
   getTupleDecoder,
   getTupleEncoder,
   type Address,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
   type GetDiscriminatedUnionVariant,
   type GetDiscriminatedUnionVariantContent,
+  type ReadonlyUint8Array,
 } from "@solana/kit";
 
 export type Oracle =
-  | { __kind: "Pyth"; fields: readonly [Address] }
+  | { __kind: "Pyth"; account: Address; feedId: ReadonlyUint8Array }
   | { __kind: "Doppler"; fields: readonly [Address] };
 
 export type OracleArgs = Oracle;
 
-export function getOracleEncoder(): FixedSizeEncoder<OracleArgs> {
+export function getOracleEncoder(): Encoder<OracleArgs> {
   return getDiscriminatedUnionEncoder([
     [
       "Pyth",
-      getStructEncoder([["fields", getTupleEncoder([getAddressEncoder()])]]),
+      getStructEncoder([
+        ["account", getAddressEncoder()],
+        ["feedId", fixEncoderSize(getBytesEncoder(), 32)],
+      ]),
     ],
     [
       "Doppler",
       getStructEncoder([["fields", getTupleEncoder([getAddressEncoder()])]]),
     ],
-  ]) as FixedSizeEncoder<OracleArgs>;
+  ]);
 }
 
-export function getOracleDecoder(): FixedSizeDecoder<Oracle> {
+export function getOracleDecoder(): Decoder<Oracle> {
   return getDiscriminatedUnionDecoder([
     [
       "Pyth",
-      getStructDecoder([["fields", getTupleDecoder([getAddressDecoder()])]]),
+      getStructDecoder([
+        ["account", getAddressDecoder()],
+        ["feedId", fixDecoderSize(getBytesDecoder(), 32)],
+      ]),
     ],
     [
       "Doppler",
       getStructDecoder([["fields", getTupleDecoder([getAddressDecoder()])]]),
     ],
-  ]) as FixedSizeDecoder<Oracle>;
+  ]);
 }
 
-export function getOracleCodec(): FixedSizeCodec<OracleArgs, Oracle> {
+export function getOracleCodec(): Codec<OracleArgs, Oracle> {
   return combineCodec(getOracleEncoder(), getOracleDecoder());
 }
 
 // Data Enum Helpers.
 export function oracle(
   kind: "Pyth",
-  data: GetDiscriminatedUnionVariantContent<
-    OracleArgs,
-    "__kind",
-    "Pyth"
-  >["fields"],
+  data: GetDiscriminatedUnionVariantContent<OracleArgs, "__kind", "Pyth">,
 ): GetDiscriminatedUnionVariant<OracleArgs, "__kind", "Pyth">;
 export function oracle(
   kind: "Doppler",

@@ -25,6 +25,7 @@ pub enum Action {
     UpdateRole = 14,
     UpdateAction = 15,
     UpdateOracle = 16,
+    RemovePoolAsset = 17,
 }
 
 impl Action {
@@ -49,6 +50,7 @@ impl Action {
             14 => Ok(Action::UpdateRole),
             15 => Ok(Action::UpdateAction),
             16 => Ok(Action::UpdateOracle),
+            17 => Ok(Action::RemovePoolAsset),
             _ => Err(error!(RlpError::InvalidState)),
         }
     }
@@ -72,6 +74,7 @@ impl Action {
             Action::UpdateRole => 14u8,
             Action::UpdateAction => 15u8,
             Action::UpdateOracle => 16u8,
+            Action::RemovePoolAsset => 17u8,
         };
         
         variant.serialize(writer)?;
@@ -97,6 +100,7 @@ impl Action {
             14 => Some(Action::UpdateRole),
             15 => Some(Action::UpdateAction),
             16 => Some(Action::UpdateOracle),
+            17 => Some(Action::RemovePoolAsset),
             _ => None,
         }
     }
@@ -106,6 +110,10 @@ impl Action {
             Action::Deposit | Action::Withdraw | Action::Swap | Action::Slash => true,
             _ => false,
         }
+    }
+
+    pub fn is_publicly_assignable(&self) -> bool {
+        matches!(self, Action::Deposit | Action::Withdraw | Action::Swap)
     }
 
     pub fn to_action(&self) -> Result<Self> {

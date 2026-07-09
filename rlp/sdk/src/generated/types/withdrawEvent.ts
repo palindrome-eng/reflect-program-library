@@ -10,57 +10,59 @@ import {
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
+  getArrayDecoder,
+  getArrayEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU128Decoder,
-  getU128Encoder,
   getU64Decoder,
   getU64Encoder,
   getU8Decoder,
   getU8Encoder,
   type Address,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
 } from "@solana/kit";
+import {
+  getWithdrawAssetAmountDecoder,
+  getWithdrawAssetAmountEncoder,
+  type WithdrawAssetAmount,
+  type WithdrawAssetAmountArgs,
+} from ".";
 
 export type WithdrawEvent = {
   from: Address;
   liquidityPoolId: number;
   amountIn: bigint;
-  amountOut: bigint;
-  usdValue: bigint;
+  amountsOut: Array<WithdrawAssetAmount>;
 };
 
 export type WithdrawEventArgs = {
   from: Address;
   liquidityPoolId: number;
   amountIn: number | bigint;
-  amountOut: number | bigint;
-  usdValue: number | bigint;
+  amountsOut: Array<WithdrawAssetAmountArgs>;
 };
 
-export function getWithdrawEventEncoder(): FixedSizeEncoder<WithdrawEventArgs> {
+export function getWithdrawEventEncoder(): Encoder<WithdrawEventArgs> {
   return getStructEncoder([
     ["from", getAddressEncoder()],
     ["liquidityPoolId", getU8Encoder()],
     ["amountIn", getU64Encoder()],
-    ["amountOut", getU64Encoder()],
-    ["usdValue", getU128Encoder()],
+    ["amountsOut", getArrayEncoder(getWithdrawAssetAmountEncoder())],
   ]);
 }
 
-export function getWithdrawEventDecoder(): FixedSizeDecoder<WithdrawEvent> {
+export function getWithdrawEventDecoder(): Decoder<WithdrawEvent> {
   return getStructDecoder([
     ["from", getAddressDecoder()],
     ["liquidityPoolId", getU8Decoder()],
     ["amountIn", getU64Decoder()],
-    ["amountOut", getU64Decoder()],
-    ["usdValue", getU128Decoder()],
+    ["amountsOut", getArrayDecoder(getWithdrawAssetAmountDecoder())],
   ]);
 }
 
-export function getWithdrawEventCodec(): FixedSizeCodec<
+export function getWithdrawEventCodec(): Codec<
   WithdrawEventArgs,
   WithdrawEvent
 > {

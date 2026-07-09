@@ -14,6 +14,7 @@
   pub(crate) mod r#create_permission_account_event;
   pub(crate) mod r#deposit_event;
   pub(crate) mod r#deposit_reward_event;
+  pub(crate) mod r#force_remove_asset_event;
   pub(crate) mod r#freeze_protocol_action_event;
   pub(crate) mod r#initialize_liquidity_pool_event;
   pub(crate) mod r#initialize_rlp_event;
@@ -29,6 +30,7 @@
   pub(crate) mod r#update_deposit_cap_event;
   pub(crate) mod r#update_oracle_event;
   pub(crate) mod r#update_role_holder_event;
+  pub(crate) mod r#withdraw_asset_amount;
   pub(crate) mod r#withdraw_event;
 
   pub use self::r#access_control::*;
@@ -40,6 +42,7 @@
   pub use self::r#create_permission_account_event::*;
   pub use self::r#deposit_event::*;
   pub use self::r#deposit_reward_event::*;
+  pub use self::r#force_remove_asset_event::*;
   pub use self::r#freeze_protocol_action_event::*;
   pub use self::r#initialize_liquidity_pool_event::*;
   pub use self::r#initialize_rlp_event::*;
@@ -55,5 +58,6 @@
   pub use self::r#update_deposit_cap_event::*;
   pub use self::r#update_oracle_event::*;
   pub use self::r#update_role_holder_event::*;
+  pub use self::r#withdraw_asset_amount::*;
   pub use self::r#withdraw_event::*;
 

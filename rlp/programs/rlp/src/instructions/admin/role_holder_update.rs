@@ -13,10 +13,10 @@ pub struct UpdateRoleHolderArgs {
 }
 
 pub fn update_role_holder_protocol(
-    ctx: Context<RlpAdminRoleUpdate>,
+    mut ctx: Context<RlpAdminRoleUpdate>,
     args: UpdateRoleHolderArgs
 ) -> Result<()> {
-    let accounts = ctx.accounts;
+    let accounts = &mut ctx.accounts;
     let settings = &mut accounts.settings;
     let update_admin_permissions = &mut accounts.update_admin_permissions;
 
@@ -25,6 +25,8 @@ pub fn update_role_holder_protocol(
         role,
         update
     } = args;
+
+    require!(role != Role::UNSET, RlpError::InvalidInput);
 
     require!(
         update_admin_permissions.authority == address,
@@ -40,14 +42,28 @@ pub fn update_role_holder_protocol(
 
     match update{
         Update::Add => {
-            update_admin_permissions.add_protocol_role(role)?;            
+            update_admin_permissions.add_protocol_role(role)?;
+            if role == Role::SUPREMO {
+                settings.supremo_count = settings.supremo_count
+                    .checked_add(1)
+                    .ok_or(RlpError::MathOverflow)?;
+            }
         },
         Update::Remove => {
+            if role == Role::SUPREMO {
+                require!(
+                    settings.supremo_count > 1,
+                    RlpError::MinimumSuperadminsRequired
+                );
+            }
             update_admin_permissions.remove_protocol_role(role)?;
+            if role == Role::SUPREMO {
+                settings.supremo_count = settings.supremo_count.saturating_sub(1);
+            }
         }
     }
 
-    emit!(UpdateRoleHolderEvent {
+    emit_cpi!(UpdateRoleHolderEvent {
         address,
         role,
         update
@@ -56,6 +72,7 @@ pub fn update_role_holder_protocol(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct RlpAdminRoleUpdate<'info> {
     #[account(mut)]

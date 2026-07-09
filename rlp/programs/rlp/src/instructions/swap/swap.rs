@@ -94,19 +94,17 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let fee = &ctx.accounts.settings.swap_fee_bps;
     let reserve_to_amount = token_to_pool.amount;
 
-    let oracle_amount_out: u64 = token_from_price
+    let oracle_amount_out: u128 = token_from_price
         .mul(amount_in, *token_from_decimals)?
         .checked_div(token_to_price.mul(1, *token_to_decimals)?)
-        .ok_or(RlpError::MathOverflow)?
-        .try_into()
-        .map_err(|_| RlpError::MathOverflow)?;
+        .ok_or(RlpError::MathOverflow)?;
 
-    let impact_factor = (oracle_amount_out as u128)
+    let impact_factor = oracle_amount_out
         .checked_mul(BPS_PRECISION)
         .ok_or(RlpError::MathOverflow)?
         .checked_div(
             (reserve_to_amount as u128)
-                .checked_add(oracle_amount_out as u128)
+                .checked_add(oracle_amount_out)
                 .ok_or(RlpError::MathOverflow)?,
         )
         .ok_or(RlpError::MathOverflow)?;
@@ -114,7 +112,7 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
     let impact_complement = BPS_PRECISION
         .checked_sub(impact_factor)
         .ok_or(RlpError::MathOverflow)?;
-    let amount_after_impact = (oracle_amount_out as u128)
+    let amount_after_impact = oracle_amount_out
         .checked_mul(impact_complement)
         .ok_or(RlpError::MathOverflow)?
         .checked_div(BPS_PRECISION)
@@ -124,20 +122,26 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
         .checked_sub(*fee as u128)
         .ok_or(RlpError::MathOverflow)?;
 
-    let amount_out = amount_after_impact
+    let amount_out_u128 = amount_after_impact
         .checked_mul(fee_complement)
         .ok_or(RlpError::MathOverflow)?
         .checked_div(BPS_PRECISION)
         .ok_or(RlpError::MathOverflow)?;
 
+    require!(amount_out_u128 > 0, RlpError::NotEnoughFunds);
+
     require!(
-        token_to_pool.amount as u128 >= amount_out,
+        token_to_pool.amount as u128 >= amount_out_u128,
         RlpError::NotEnoughFunds
     );
 
+    let amount_out: u64 = amount_out_u128
+        .try_into()
+        .map_err(|_| RlpError::MathOverflow)?;
+
     if let Some(min_amount) = min_out {
         require!(
-            amount_out as u128 >= min_amount as u128,
+            amount_out >= min_amount,
             RlpError::SlippageExceeded
         );
     }
@@ -170,19 +174,20 @@ pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
             },
             &[lp_seeds],
         ),
-        amount_out as u64,
+        amount_out,
     )?;
 
-    emit!(SwapEvent {
+    emit_cpi!(SwapEvent {
         signer: signer.key(),
         liquidity_pool: liquidity_pool.key(),
         amount_in,
-        amount_out: amount_out as u64,
+        amount_out,
     });
 
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct Swap<'info> {
     #[account(mut)]

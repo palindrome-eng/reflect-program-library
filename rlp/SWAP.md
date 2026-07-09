@@ -1,56 +1,81 @@
-The main formula for swap:
+# RLP Swap Pricing
 
-Current Oracle based only formula:
-Oracle formula: oracle_out = a × y / x
+RLP swaps are **oracle-priced with output-reserve damping**. They are not constant-product (Uniswap-style) AMM swaps. This document describes the formula the program actually implements and the design intent behind it.
 
-We're searching to define an "impact factor" that defines a relationship between
-the trade size and liquidity in the pool, it can never exceed 1 so we can apply it to the oracle price as such:
+## Formula
 
-amount_out = oracle_amount_out × (1 - impact_factor)
+Given:
 
-The impact factor should be high for a big trade size and low pool liquidity and low for a small trade with high pool liquidity:
+- `amount_in` — units of the input asset the caller sends
+- `P_from` — oracle price of the input asset
+- `P_to` — oracle price of the output asset
+- `reserve_out` — pool's current balance of the output asset
+- `fee_bps` — protocol swap fee (in basis points)
+- `BPS = 10_000`
 
-Linear:
-impact_factor = trade_size / (liquidity_pool)
+The program computes:
 
-Problem: What if user wants to swap 200% of pool? impact = 2 so:
-amount_out = oracle_out * (1 - 2) = oracle_out * (-1) = negative!
+```
+oracle_out          = amount_in × P_from / P_to
+impact_factor       = oracle_out / (reserve_out + oracle_out)
+amount_after_impact = oracle_out × (1 − impact_factor)
+amount_out          = amount_after_impact × (1 − fee_bps / BPS)
+```
 
-Asymptotic:
-impact_factor = trade_size / (liquidity_pool + trade_size)
+Substituting:
 
-advantage: it can never exceed 1 so our formula is safe.
+```
+amount_out = oracle_out × reserve_out / (reserve_out + oracle_out) × (1 − fee_bps / BPS)
+```
 
-Relation to AMM constant product:
+Reference implementation: `programs/rlp/src/instructions/swap/swap.rs`.
 
-x = amount of token x in the pool
-y = amount of token y in the pool
-a = amount of token x that wants to be swapped
+## Design intent
 
-Following the AMM constant product formula, K = x * y we get:
+The pool is an oracle-anchored basket of stable-ish assets. Pricing is anchored to the oracle quote rather than the pool's reserve ratio. The asymptotic `impact_factor` reduces the payout when a swap is large relative to the output reserve, so a trade can never claim more than the existing reserve can support:
 
-amount_out = y × a / (x + a)
+- `impact_factor` is in `[0, 1)` for any positive `oracle_out` and `reserve_out`.
+- As `oracle_out → 0` (small trade vs reserve), `impact_factor → 0` and `amount_out ≈ oracle_out × (1 − fee_bps / BPS)`.
+- As `oracle_out → ∞` (large trade vs reserve), `impact_factor → 1` and `amount_out → 0`.
 
-we're looking to express the AMM out formula as:
+This is the property a linear `impact_factor = oracle_out / reserve_out` does not have — a large enough trade would otherwise produce a negative payout.
 
-amount_out = something × (1 - impact_factor)
+## Comparison to constant-product
 
-If we divide amm_amount_out / oracle_amount_out we get:
+A fee-less constant-product AMM uses:
 
-amount_out       y × a / (x + a)
-──────────── = ───────────────── = x / (x + a)
-oracle_out         a × y / x
+```
+amount_out = reserve_out × amount_in / (reserve_in + amount_in)
+```
 
-This means:
+It is anchored to reserve ratios, not to an external oracle. RLP intentionally does not use this model: the protocol prices stable-asset swaps relative to oracle truth, not relative to pool composition. The constant-product expression appears in this document only to motivate the shape of the asymptotic impact factor — it is not the formula the program runs.
 
-amount_out = oracle_out × x/(x + a)
-           = oracle_out × (1 - impact_factor)
+## Path-dependence (audit issue L13)
 
-Therefore:
+The per-call impact factor is not path-independent. Splitting one large swap into many smaller ones reduces the total impact and pushes the aggregate output toward the undamped oracle quote. With output reserve `R` and a desired oracle output `O`:
 
-1 - impact_factor = x / (x + a)
+- One call: `amount_out ≈ O × R / (R + O)`
+- `n` equal-size sub-swaps, each with oracle output `O/n`: the sum of payouts approaches `O` as `n → ∞`.
 
-impact_factor = 1 - x/(x + a)
-              = (x + a - x) / (x + a)
-              = a / (x + a)
+This is a known property of the per-call damping model and is not addressed in the program math itself.
 
+### Mitigation
+
+`swap` is access-controlled. Callers must hold a role that maps to `Action::Swap` in the protocol's `AccessControl`, and (for assets with `AccessLevel::Private`) the caller must additionally hold a permission account. The intended operator population is a small set of whitelisted keypairs with no incentive to extract value from LPs by splitting trades.
+
+Path-dependence is therefore an accepted operational characteristic rather than an exploitable vulnerability: the attack surface described in L13 only matters under a permissionless-swap model, which RLP does not adopt. If the access-control model ever opens up to untrusted callers, the protocol should add an aggregate per-slot or per-epoch output cap to bound cumulative extraction.
+
+## Slippage protection
+
+Callers may pass `min_out: Option<u64>`. When `Some(n)` with `n > 0`, the program rejects swaps whose final `amount_out` falls below `n`. A `None` or `Some(0)` value disables slippage protection — callers requiring slippage protection must pass a positive `min_out`.
+
+## Guards
+
+The program enforces, in addition to the formula above:
+
+- `amount_in > 0` (rejected at instruction entry).
+- `amount_out > 0` (audit issue L02 fix — rejects swaps against an empty target reserve where the math saturates to zero output).
+- `reserve_out ≥ amount_out` (reserve must cover the payout).
+- Source and destination mints must differ; both assets must be whitelisted in the pool; oracle freshness and confidence are validated per the Pyth/Doppler readers.
+
+Intermediate arithmetic is kept in `u128` until the final amount is bounded against the reserve, then narrowed to `u64` for the transfer (audit issue E11 fix).

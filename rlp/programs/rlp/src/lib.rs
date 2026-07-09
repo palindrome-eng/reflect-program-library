@@ -9,7 +9,11 @@ pub mod helpers;
 
 use crate::instructions::*;
 
-declare_id!("RLptfFmhKtGLrJ9fD4o8VCHGWZZLSRrpaTKzJXdCCWz");
+#[cfg(feature = "staging")]
+declare_id!("GSEYK2FtDLywAoxn2mioXCft9FWH6Zn4VmKUArGyTVj8");
+
+#[cfg(not(feature = "staging"))]
+declare_id!("JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av");
 
 #[program]
 pub mod rlp {
@@ -27,6 +31,13 @@ pub mod rlp {
         args: InitializeLiquidityPoolArgs
     ) -> Result<()> {
         instructions::initialize_lp(ctx, args)
+    }
+
+    pub fn initialize_pool_reserve(
+        ctx: Context<InitializePoolReserve>,
+        _liquidity_pool_id: u8,
+    ) -> Result<()> {
+        instructions::initialize_pool_reserve(ctx)
     }
 
     pub fn add_asset(
@@ -110,5 +121,12 @@ pub mod rlp {
         ctx: Context<UpdateOracle>,
     ) -> Result<()> {
         instructions::update_oracle(ctx)
+    }
+
+    pub fn force_remove_asset(
+        ctx: Context<ForceRemoveAsset>,
+        _liquidity_pool_id: u8,
+    ) -> Result<()> {
+        instructions::force_remove_asset(ctx)
     }
 }

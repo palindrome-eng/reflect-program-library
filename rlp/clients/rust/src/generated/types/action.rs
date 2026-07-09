@@ -29,6 +29,7 @@ SuspendDeposits,
 UpdateRole,
 UpdateAction,
 UpdateOracle,
+RemovePoolAsset,
 }
 
 

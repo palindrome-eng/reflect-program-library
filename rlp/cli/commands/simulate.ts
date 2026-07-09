@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { address, fetchEncodedAccount } from "@solana/kit";
 import { findAssociatedTokenPda, TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
-import { Insurance } from "../../sdk/src/classes/Insurance";
+import { JuniorTranche } from "../../sdk/src/classes/JuniorTranche";
 import { createRpc } from "../utils/connection";
 import { resolveRpcUrl } from "../utils/keypair";
 import { printSuccess, printError, formatTokenAmount } from "../utils/format";
@@ -39,19 +39,19 @@ export function registerSimulateCommands(program: Command) {
       try {
         const globals = cmd.optsWithGlobals();
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
 
         const depositMint = address(opts.mint);
         const poolId = Number(opts.poolId);
 
         // Find the pool
-        const pools = insurance.getCachedLiquidityPools();
+        const pools = juniorTranche.getCachedLiquidityPools();
         const pool = pools.find((p) => p.data.index === poolId);
         if (!pool) throw new Error(`Pool ${poolId} not found`);
 
         // Find the deposit asset
-        const assets = insurance.getCachedAssets();
+        const assets = juniorTranche.getCachedAssets();
         const depositAsset = assets.find((a) => a.data.mint === depositMint);
         if (!depositAsset) throw new Error(`Asset not found for mint ${depositMint}`);
 
@@ -71,7 +71,7 @@ export function registerSimulateCommands(program: Command) {
         const lpMintInfo = decodeMint(new Uint8Array(lpMintAccount.data));
 
         // Fetch deposit asset oracle price
-        const oraclePrice = await insurance.fetchOraclePrice(depositMint);
+        const oraclePrice = await juniorTranche.fetchOraclePrice(depositMint);
 
         // Get pool asset indices
         const poolAssetIndices = Array.from(pool.data.assets).slice(0, pool.data.assetCount);
@@ -107,7 +107,7 @@ export function registerSimulateCommands(program: Command) {
           }
 
           // Fetch oracle price for this asset
-          const assetOraclePrice = await insurance.fetchOraclePrice(asset.data.mint);
+          const assetOraclePrice = await juniorTranche.fetchOraclePrice(asset.data.mint);
 
           reserves.push({
             mint: asset.data.mint,
@@ -119,7 +119,7 @@ export function registerSimulateCommands(program: Command) {
         }
 
         // Run simulation
-        const lpTokensReceived = Insurance.simulateDepositMath({
+        const lpTokensReceived = JuniorTranche.simulateDepositMath({
           depositAmount,
           depositAssetPrice: {
             price: oraclePrice.price,
@@ -172,16 +172,16 @@ export function registerSimulateCommands(program: Command) {
       try {
         const globals = cmd.optsWithGlobals();
         const rpc = createRpc(resolveRpcUrl(globals));
-        const insurance = new Insurance(rpc);
-        await insurance.load();
+        const juniorTranche = new JuniorTranche(rpc);
+        await juniorTranche.load();
 
         const poolId = Number(opts.poolId);
 
-        const pools = insurance.getCachedLiquidityPools();
+        const pools = juniorTranche.getCachedLiquidityPools();
         const pool = pools.find((p) => p.data.index === poolId);
         if (!pool) throw new Error(`Pool ${poolId} not found`);
 
-        const assets = insurance.getCachedAssets();
+        const assets = juniorTranche.getCachedAssets();
 
         // Fetch LP mint info
         const lpMintAccount = await fetchEncodedAccount(rpc, pool.data.lpToken);
@@ -215,7 +215,7 @@ export function registerSimulateCommands(program: Command) {
           reserves.push({ mint: asset.data.mint, balance });
         }
 
-        const result = Insurance.simulateWithdrawMath({
+        const result = JuniorTranche.simulateWithdrawMath({
           lpTokenAmount: lpAmount,
           lpTokenSupply: lpMintInfo.supply,
           reserves: reserves.map((r) => ({ mint: address(r.mint), balance: r.balance })),

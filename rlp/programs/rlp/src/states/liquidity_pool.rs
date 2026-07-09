@@ -2,6 +2,7 @@ use crate::constants::*;
 use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address;
+use anchor_spl::token::spl_token::state::AccountState;
 use anchor_spl::token::{mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer};
 use spl_math::precise_number::PreciseNumber;
 
@@ -18,6 +19,11 @@ pub struct LiquidityPool {
     pub deposit_cap: Option<u64>,
     pub asset_count: u8,
     pub assets: [u8; MAX_POOL_ASSETS],
+    /// ProxyState account this pool's junior tranche covers.
+    /// When set, `slash_for_nav_coverage` is enabled and pulls from this pool's
+    /// reserve of the proxy's stablecoin_mint into the proxy's vault, capped at
+    /// the proxy's current mark-to-market loss (principal + commission - vault_value).
+    pub protected_vault: Option<Pubkey>,
 }
 
 impl LiquidityPool {
@@ -54,7 +60,6 @@ impl LiquidityPool {
         &self,
         remaining_accounts: &[AccountInfo],
         liquidity_pool: &Account<LiquidityPool>,
-        settings: &Account<Settings>,
         clock: &Clock,
     ) -> Result<PreciseNumber> {
         let expected_len = self.asset_count as usize * 4;
@@ -81,7 +86,7 @@ impl LiquidityPool {
             );
 
             let token_account = TokenAccount::try_deserialize(
-                &mut token_account_info.try_borrow_mut_data()?.as_ref(),
+                &mut token_account_info.try_borrow_data()?.as_ref(),
             )
             .map_err(|_| crate::errors::RlpError::InvalidInput)?;
 
@@ -91,11 +96,16 @@ impl LiquidityPool {
             );
 
             require!(
+                token_account.state != AccountState::Frozen,
+                crate::errors::RlpError::PoolAssetFrozen
+            );
+
+            require!(
                 asset_info.owner == &crate::ID,
                 crate::errors::RlpError::InvalidInput
             );
 
-            let asset = Asset::try_deserialize(&mut asset_info.try_borrow_mut_data()?.as_ref())
+            let asset = Asset::try_deserialize(&mut asset_info.try_borrow_data()?.as_ref())
                 .map_err(|_| crate::errors::RlpError::InvalidInput)?;
 
             require!(
@@ -157,7 +167,7 @@ impl LiquidityPool {
                 crate::errors::RlpError::InvalidInput
             );
 
-            let mint_data = &mut mint_info.try_borrow_mut_data()?;
+            let mint_data = mint_info.try_borrow_data()?;
             let mint_account = Mint::try_deserialize(&mut mint_data.as_ref())
                 .map_err(|_| crate::errors::RlpError::InvalidInput)?;
 
@@ -196,6 +206,8 @@ impl LiquidityPool {
             deposit_value
                 .checked_div(&scale_down_precise)
                 .ok_or(crate::errors::RlpError::MathOverflow)?
+                .floor()
+                .ok_or(crate::errors::RlpError::MathOverflow)?
                 .to_imprecise()
                 .ok_or(crate::errors::RlpError::MathOverflow)?
                 .try_into()
@@ -211,6 +223,8 @@ impl LiquidityPool {
                 .ok_or(crate::errors::RlpError::MathOverflow)?;
 
             deposit_ratio
+                .floor()
+                .ok_or(crate::errors::RlpError::MathOverflow)?
                 .to_imprecise()
                 .ok_or(crate::errors::RlpError::MathOverflow)?
                 .try_into()

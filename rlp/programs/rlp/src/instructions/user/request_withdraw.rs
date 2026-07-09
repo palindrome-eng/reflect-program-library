@@ -28,6 +28,8 @@ pub fn request_withdrawal(
         amount
     } = args;
 
+    require!(amount > 0, RlpError::InvalidInput);
+
     let settings = &ctx.accounts.settings;
     let permissions = &ctx.accounts.permissions;
 
@@ -46,6 +48,7 @@ pub fn request_withdrawal(
     cooldown.index = liquidity_pool.cooldowns;
     cooldown.liquidity_pool_id = liquidity_pool_id;
     cooldown.authority = signer.key();
+    cooldown.locked_amount = amount;
 
     cooldown.lock(liquidity_pool.cooldown_duration)?;
 
@@ -69,7 +72,7 @@ pub fn request_withdrawal(
         .checked_add(1)
         .ok_or(RlpError::MathOverflow)?;
 
-    emit!(RequestWithdrawEvent {
+    emit_cpi!(RequestWithdrawEvent {
         amount,
         authority: signer.key(),
         liquidity_pool_id
@@ -78,6 +81,7 @@ pub fn request_withdrawal(
     Ok(())
 }
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(
     args: RequestWithdrawalArgs
@@ -143,7 +147,7 @@ pub struct RequestWithdrawal<'info> {
     pub cooldown: Box<Account<'info, Cooldown>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = signer,
         associated_token::mint = lp_token_mint,
         associated_token::authority = cooldown,

@@ -68,6 +68,8 @@ export type UpdateRoleHolderInstruction<
   TAccountUpdateAdminPermissions extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -89,6 +91,12 @@ export type UpdateRoleHolderInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -143,12 +151,16 @@ export type UpdateRoleHolderAsyncInput<
   TAccountAdminPermissions extends string = string,
   TAccountUpdateAdminPermissions extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   settings?: Address<TAccountSettings>;
   adminPermissions?: Address<TAccountAdminPermissions>;
   updateAdminPermissions: Address<TAccountUpdateAdminPermissions>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   address: UpdateRoleHolderInstructionDataArgs["address"];
   role: UpdateRoleHolderInstructionDataArgs["role"];
   update: UpdateRoleHolderInstructionDataArgs["update"];
@@ -160,6 +172,8 @@ export async function getUpdateRoleHolderInstructionAsync<
   TAccountAdminPermissions extends string,
   TAccountUpdateAdminPermissions extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: UpdateRoleHolderAsyncInput<
@@ -167,7 +181,9 @@ export async function getUpdateRoleHolderInstructionAsync<
     TAccountSettings,
     TAccountAdminPermissions,
     TAccountUpdateAdminPermissions,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -177,7 +193,9 @@ export async function getUpdateRoleHolderInstructionAsync<
     TAccountSettings,
     TAccountAdminPermissions,
     TAccountUpdateAdminPermissions,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -196,6 +214,8 @@ export async function getUpdateRoleHolderInstructionAsync<
       isWritable: true,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -233,6 +253,19 @@ export async function getUpdateRoleHolderInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -242,6 +275,8 @@ export async function getUpdateRoleHolderInstructionAsync<
       getAccountMeta(accounts.adminPermissions),
       getAccountMeta(accounts.updateAdminPermissions),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getUpdateRoleHolderInstructionDataEncoder().encode(
       args as UpdateRoleHolderInstructionDataArgs,
@@ -253,7 +288,9 @@ export async function getUpdateRoleHolderInstructionAsync<
     TAccountSettings,
     TAccountAdminPermissions,
     TAccountUpdateAdminPermissions,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -263,12 +300,16 @@ export type UpdateRoleHolderInput<
   TAccountAdminPermissions extends string = string,
   TAccountUpdateAdminPermissions extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   settings: Address<TAccountSettings>;
   adminPermissions: Address<TAccountAdminPermissions>;
   updateAdminPermissions: Address<TAccountUpdateAdminPermissions>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   address: UpdateRoleHolderInstructionDataArgs["address"];
   role: UpdateRoleHolderInstructionDataArgs["role"];
   update: UpdateRoleHolderInstructionDataArgs["update"];
@@ -280,6 +321,8 @@ export function getUpdateRoleHolderInstruction<
   TAccountAdminPermissions extends string,
   TAccountUpdateAdminPermissions extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: UpdateRoleHolderInput<
@@ -287,7 +330,9 @@ export function getUpdateRoleHolderInstruction<
     TAccountSettings,
     TAccountAdminPermissions,
     TAccountUpdateAdminPermissions,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): UpdateRoleHolderInstruction<
@@ -296,7 +341,9 @@ export function getUpdateRoleHolderInstruction<
   TAccountSettings,
   TAccountAdminPermissions,
   TAccountUpdateAdminPermissions,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -314,6 +361,8 @@ export function getUpdateRoleHolderInstruction<
       isWritable: true,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -337,6 +386,8 @@ export function getUpdateRoleHolderInstruction<
       getAccountMeta(accounts.adminPermissions),
       getAccountMeta(accounts.updateAdminPermissions),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getUpdateRoleHolderInstructionDataEncoder().encode(
       args as UpdateRoleHolderInstructionDataArgs,
@@ -348,7 +399,9 @@ export function getUpdateRoleHolderInstruction<
     TAccountSettings,
     TAccountAdminPermissions,
     TAccountUpdateAdminPermissions,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -363,6 +416,8 @@ export type ParsedUpdateRoleHolderInstruction<
     adminPermissions: TAccountMetas[2];
     updateAdminPermissions: TAccountMetas[3];
     systemProgram: TAccountMetas[4];
+    eventAuthority: TAccountMetas[5];
+    program: TAccountMetas[6];
   };
   data: UpdateRoleHolderInstructionData;
 };
@@ -375,7 +430,7 @@ export function parseUpdateRoleHolderInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedUpdateRoleHolderInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 7) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -393,6 +448,8 @@ export function parseUpdateRoleHolderInstruction<
       adminPermissions: getNextAccount(),
       updateAdminPermissions: getNextAccount(),
       systemProgram: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getUpdateRoleHolderInstructionDataDecoder().decode(instruction.data),
   };

@@ -26,6 +26,12 @@ pub struct CreatePermissionAccount {
           
               
           pub system_program: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl CreatePermissionAccount {
@@ -35,7 +41,7 @@ impl CreatePermissionAccount {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: CreatePermissionAccountInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(4+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(6+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.settings,
             false
@@ -50,6 +56,14 @@ impl CreatePermissionAccount {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.system_program,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
@@ -110,12 +124,16 @@ impl CreatePermissionAccountInstructionArgs {
                 ///   1. `[writable]` new_creds
                       ///   2. `[writable, signer]` caller
                 ///   3. `[optional]` system_program (default to `11111111111111111111111111111111`)
+          ///   4. `[]` event_authority
+          ///   5. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct CreatePermissionAccountBuilder {
             settings: Option<solana_pubkey::Pubkey>,
                 new_creds: Option<solana_pubkey::Pubkey>,
                 caller: Option<solana_pubkey::Pubkey>,
                 system_program: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         new_admin: Option<Pubkey>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
@@ -145,6 +163,16 @@ impl CreatePermissionAccountBuilder {
                         self.system_program = Some(system_program);
                     self
     }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
+                    self
+    }
                     #[inline(always)]
       pub fn new_admin(&mut self, new_admin: Pubkey) -> &mut Self {
         self.new_admin = Some(new_admin);
@@ -169,6 +197,8 @@ impl CreatePermissionAccountBuilder {
                                         new_creds: self.new_creds.expect("new_creds is not set"),
                                         caller: self.caller.expect("caller is not set"),
                                         system_program: self.system_program.unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = CreatePermissionAccountInstructionArgs {
                                                               new_admin: self.new_admin.clone().expect("new_admin is not set"),
@@ -192,6 +222,12 @@ impl CreatePermissionAccountBuilder {
                 
                     
               pub system_program: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `create_permission_account` CPI instruction.
@@ -210,6 +246,12 @@ pub struct CreatePermissionAccountCpi<'a, 'b> {
           
               
           pub system_program: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: CreatePermissionAccountInstructionArgs,
   }
@@ -226,6 +268,8 @@ impl<'a, 'b> CreatePermissionAccountCpi<'a, 'b> {
               new_creds: accounts.new_creds,
               caller: accounts.caller,
               system_program: accounts.system_program,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -249,7 +293,7 @@ impl<'a, 'b> CreatePermissionAccountCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(4+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(6+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.settings.key,
             false
@@ -264,6 +308,14 @@ impl<'a, 'b> CreatePermissionAccountCpi<'a, 'b> {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.system_program.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
             false
           ));
                       remaining_accounts.iter().for_each(|remaining_account| {
@@ -282,12 +334,14 @@ impl<'a, 'b> CreatePermissionAccountCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(5 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(7 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.settings.clone());
                         account_infos.push(self.new_creds.clone());
                         account_infos.push(self.caller.clone());
                         account_infos.push(self.system_program.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -306,6 +360,8 @@ impl<'a, 'b> CreatePermissionAccountCpi<'a, 'b> {
                 ///   1. `[writable]` new_creds
                       ///   2. `[writable, signer]` caller
           ///   3. `[]` system_program
+          ///   4. `[]` event_authority
+          ///   5. `[]` program
 #[derive(Clone, Debug)]
 pub struct CreatePermissionAccountCpiBuilder<'a, 'b> {
   instruction: Box<CreatePermissionAccountCpiBuilderInstruction<'a, 'b>>,
@@ -319,6 +375,8 @@ impl<'a, 'b> CreatePermissionAccountCpiBuilder<'a, 'b> {
               new_creds: None,
               caller: None,
               system_program: None,
+              event_authority: None,
+              program: None,
                                             new_admin: None,
                     __remaining_accounts: Vec::new(),
     });
@@ -342,6 +400,16 @@ impl<'a, 'b> CreatePermissionAccountCpiBuilder<'a, 'b> {
       #[inline(always)]
     pub fn system_program(&mut self, system_program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.system_program = Some(system_program);
+                    self
+    }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -384,6 +452,10 @@ impl<'a, 'b> CreatePermissionAccountCpiBuilder<'a, 'b> {
           caller: self.instruction.caller.expect("caller is not set"),
                   
           system_program: self.instruction.system_program.expect("system_program is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -397,6 +469,8 @@ struct CreatePermissionAccountCpiBuilderInstruction<'a, 'b> {
                 new_creds: Option<&'b solana_account_info::AccountInfo<'a>>,
                 caller: Option<&'b solana_account_info::AccountInfo<'a>>,
                 system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         new_admin: Option<Pubkey>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
   __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,

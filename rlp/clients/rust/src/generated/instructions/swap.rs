@@ -61,6 +61,12 @@ pub struct Swap {
           
               
           pub associated_token_program: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl Swap {
@@ -70,7 +76,7 @@ impl Swap {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: SwapInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(16+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(18+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
@@ -140,6 +146,14 @@ impl Swap {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.associated_token_program,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
@@ -213,6 +227,8 @@ impl SwapInstructionArgs {
                 ///   13. `[writable]` token_to_signer_account
                 ///   14. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
                 ///   15. `[optional]` associated_token_program (default to `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`)
+          ///   16. `[]` event_authority
+          ///   17. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct SwapBuilder {
             signer: Option<solana_pubkey::Pubkey>,
@@ -231,6 +247,8 @@ pub struct SwapBuilder {
                 token_to_signer_account: Option<solana_pubkey::Pubkey>,
                 token_program: Option<solana_pubkey::Pubkey>,
                 associated_token_program: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         amount_in: Option<u64>,
                 min_out: Option<u64>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
@@ -323,6 +341,16 @@ impl SwapBuilder {
                         self.associated_token_program = Some(associated_token_program);
                     self
     }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
+                    self
+    }
                     #[inline(always)]
       pub fn amount_in(&mut self, amount_in: u64) -> &mut Self {
         self.amount_in = Some(amount_in);
@@ -365,6 +393,8 @@ impl SwapBuilder {
                                         token_to_signer_account: self.token_to_signer_account.expect("token_to_signer_account is not set"),
                                         token_program: self.token_program.unwrap_or(solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")),
                                         associated_token_program: self.associated_token_program.unwrap_or(solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = SwapInstructionArgs {
                                                               amount_in: self.amount_in.clone().expect("amount_in is not set"),
@@ -425,6 +455,12 @@ impl SwapBuilder {
                 
                     
               pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `swap` CPI instruction.
@@ -479,6 +515,12 @@ pub struct SwapCpi<'a, 'b> {
           
               
           pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: SwapInstructionArgs,
   }
@@ -507,6 +549,8 @@ impl<'a, 'b> SwapCpi<'a, 'b> {
               token_to_signer_account: accounts.token_to_signer_account,
               token_program: accounts.token_program,
               associated_token_program: accounts.associated_token_program,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -530,7 +574,7 @@ impl<'a, 'b> SwapCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(16+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(18+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.signer.key,
             true
@@ -602,6 +646,14 @@ impl<'a, 'b> SwapCpi<'a, 'b> {
             *self.associated_token_program.key,
             false
           ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false
+          ));
                       remaining_accounts.iter().for_each(|remaining_account| {
       accounts.push(solana_instruction::AccountMeta {
           pubkey: *remaining_account.0.key,
@@ -618,7 +670,7 @@ impl<'a, 'b> SwapCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(17 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(19 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.signer.clone());
                         if let Some(admin) = self.admin {
@@ -638,6 +690,8 @@ impl<'a, 'b> SwapCpi<'a, 'b> {
                         account_infos.push(self.token_to_signer_account.clone());
                         account_infos.push(self.token_program.clone());
                         account_infos.push(self.associated_token_program.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -668,6 +722,8 @@ impl<'a, 'b> SwapCpi<'a, 'b> {
                 ///   13. `[writable]` token_to_signer_account
           ///   14. `[]` token_program
           ///   15. `[]` associated_token_program
+          ///   16. `[]` event_authority
+          ///   17. `[]` program
 #[derive(Clone, Debug)]
 pub struct SwapCpiBuilder<'a, 'b> {
   instruction: Box<SwapCpiBuilderInstruction<'a, 'b>>,
@@ -693,6 +749,8 @@ impl<'a, 'b> SwapCpiBuilder<'a, 'b> {
               token_to_signer_account: None,
               token_program: None,
               associated_token_program: None,
+              event_authority: None,
+              program: None,
                                             amount_in: None,
                                 min_out: None,
                     __remaining_accounts: Vec::new(),
@@ -780,6 +838,16 @@ impl<'a, 'b> SwapCpiBuilder<'a, 'b> {
                         self.instruction.associated_token_program = Some(associated_token_program);
                     self
     }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
+                    self
+    }
                     #[inline(always)]
       pub fn amount_in(&mut self, amount_in: u64) -> &mut Self {
         self.instruction.amount_in = Some(amount_in);
@@ -851,6 +919,10 @@ impl<'a, 'b> SwapCpiBuilder<'a, 'b> {
           token_program: self.instruction.token_program.expect("token_program is not set"),
                   
           associated_token_program: self.instruction.associated_token_program.expect("associated_token_program is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -876,6 +948,8 @@ struct SwapCpiBuilderInstruction<'a, 'b> {
                 token_to_signer_account: Option<&'b solana_account_info::AccountInfo<'a>>,
                 token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                 associated_token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         amount_in: Option<u64>,
                 min_out: Option<u64>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.

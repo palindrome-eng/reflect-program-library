@@ -14,19 +14,22 @@ import {
   type Cooldown,
   type UserPermissions,
   type AccessLevel,
+  type Oracle,
   RLP_PROGRAM_ADDRESS,
   LIQUIDITY_POOL_DISCRIMINATOR,
+  ASSET_DISCRIMINATOR,
   USER_PERMISSIONS_DISCRIMINATOR,
   fetchSettings,
   fetchLiquidityPool,
   getLiquidityPoolDecoder,
-  getAssetEncoder,
   getAssetDecoder,
   getCooldownEncoder,
   getCooldownDecoder,
   getUserPermissionsDecoder,
   getInitializeRlpInstructionAsync,
   getInitializeLpInstructionAsync,
+  getInitializePoolReserveInstructionAsync,
+  getForceRemoveAssetInstructionAsync,
   getAddAssetInstructionAsync,
   getSlashInstructionAsync,
   getDepositInstructionAsync,
@@ -50,7 +53,22 @@ export type AccountWithAddress<T> = {
   address: Address;
 };
 
-export class Insurance {
+/**
+ * Resolve the on-chain oracle account address from an `Oracle` discriminated
+ * union. Codama emits the two variants with different field shapes:
+ *   - Pyth    → { __kind: "Pyth"; account: Address; feedId: [u8;32] }
+ *   - Doppler → { __kind: "Doppler"; fields: readonly [Address] }
+ *
+ * Old code did `(oracle as any).fields[0]` uniformly, which returns `undefined`
+ * for the Pyth variant (no `.fields` — the address lives at `.account`). Every
+ * deposit / slash / swap on a Pyth-priced asset was therefore passing an
+ * undefined oracle account to the program.
+ */
+function oracleAccountAddress(oracle: Oracle): Address {
+  return oracle.__kind === "Pyth" ? oracle.account : oracle.fields[0];
+}
+
+export class JuniorTranche {
   private connection: Rpc<SolanaRpcApi>;
   private settings!: Settings;
   private liquidityPools!: AccountWithAddress<LiquidityPool>[];
@@ -118,7 +136,6 @@ export class Insurance {
       return this.assets;
     }
 
-    const encoder = getAssetEncoder();
     const decoder = getAssetDecoder();
 
     const programAccounts = await (this.connection as any)
@@ -126,7 +143,13 @@ export class Insurance {
         encoding: "base64",
         withContext: false,
         filters: [
-          { dataSize: BigInt((encoder as any).fixedSize) },
+          {
+            memcmp: {
+              encoding: "base64",
+              offset: BigInt(0),
+              bytes: Buffer.from(ASSET_DISCRIMINATOR).toString("base64"),
+            },
+          },
         ],
       })
       .send();
@@ -220,6 +243,7 @@ export class Insurance {
     return getInitializeRlpInstructionAsync({
       signer,
       swapFeeBps,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -230,6 +254,14 @@ export class Insurance {
       cooldownDuration: number | bigint;
       depositCap: number | bigint | null;
       assets: number[];
+      /**
+       * Optional senior-tranche ProxyState account this pool covers.
+       * When set, the pool's `slash` flow becomes NAV-coverage-based:
+       * slashed tokens go directly into the proxy vault, capped at the
+       * proxy's current mark-to-market loss (principal + commission -
+       * vault_value). Pools with `None` are un-slashable by design.
+       */
+      protectedVault?: Address | null;
     },
   ) {
     const settings = await this.getSettingsData();
@@ -244,6 +276,62 @@ export class Insurance {
       cooldownDuration: args.cooldownDuration,
       depositCap: args.depositCap,
       assets: new Uint8Array(args.assets),
+      protectedVault: (args.protectedVault ?? null) as any,
+          program: RLP_PROGRAM_ADDRESS,
+    });
+  }
+
+  /**
+   * Create the canonical pool reserve ATA for a single asset. Required after
+   * `initialize_lp` before any deposit/withdraw/swap against that asset can
+   * succeed (audit-E02). Idempotent: safe to call again on an already-
+   * initialized reserve.
+   */
+  async initializePoolReserve(
+    signer: TransactionSigner,
+    liquidityPoolId: number,
+    assetMint: Address,
+  ) {
+    const [liquidityPoolAddress] =
+      await PdaClient.deriveLiquidityPool(liquidityPoolId);
+    const [assetPda] = await PdaClient.deriveAsset(assetMint);
+
+    return getInitializePoolReserveInstructionAsync({
+      signer,
+      liquidityPool: liquidityPoolAddress,
+      asset: assetPda,
+      assetMint,
+      liquidityPoolId,
+    });
+  }
+
+  /**
+   * Admin recovery for a permanently-frozen pool asset (audit-M02). Drops the
+   * asset from the pool's reserve list. Requires the asset's pool reserve ATA
+   * to actually be in the SPL `Frozen` state.
+   */
+  async forceRemoveAsset(
+    signer: TransactionSigner,
+    liquidityPoolId: number,
+    assetMint: Address,
+  ) {
+    const [liquidityPoolAddress] =
+      await PdaClient.deriveLiquidityPool(liquidityPoolId);
+    const [assetPda] = await PdaClient.deriveAsset(assetMint);
+    const [poolTokenAccount] = await findAssociatedTokenPda({
+      mint: assetMint,
+      owner: liquidityPoolAddress,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+
+    return getForceRemoveAssetInstructionAsync({
+      signer,
+      liquidityPool: liquidityPoolAddress,
+      asset: assetPda,
+      assetMint,
+      poolTokenAccount,
+      liquidityPoolId,
+      program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -258,6 +346,7 @@ export class Insurance {
       assetMint,
       oracle,
       accessLevel,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -274,39 +363,70 @@ export class Insurance {
       signer,
       asset: assetEntry.address,
       oracle,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
+  /**
+   * NAV-based junior-tranche slash (audit-M06 redesign). Pulls from this
+   * pool's reserve of the proxy's `stablecoinMint` directly into the proxy's
+   * vault, capped on-chain at the current mark-to-market loss
+   * `principal + commission - vault_value`.
+   *
+   * The pool must have been initialized with `protectedVault` pinned to the
+   * supplied `proxyState`. The proxy's stablecoin_mint must equal the
+   * `stablecoinMint` arg, and the pool must whitelist that mint as one of
+   * its assets.
+   *
+   * @param signer            Caller (must hold the Slash action role).
+   * @param liquidityPoolId   The pool index.
+   * @param stablecoinMint    The proxy's underlying stablecoin (USDC+).
+   * @param proxyState        The senior tranche's ProxyState account.
+   * @param amount            Requested amount in raw stablecoin_mint units.
+   *                          Capped at the current gap; pass any positive
+   *                          value up to that cap.
+   */
   async slash(
-    mint: Address,
-    amount: number | bigint,
     signer: TransactionSigner,
     liquidityPoolId: number,
-    destination: Address,
+    stablecoinMint: Address,
+    proxyState: Address,
+    amount: number | bigint,
   ) {
     const [liquidityPoolAddress] =
       await PdaClient.deriveLiquidityPool(liquidityPoolId);
 
     const assets = await this.getAssets();
-    const assetEntry = assets.find((a) => a.data.mint === mint);
-    if (!assetEntry) throw new Error(`Asset not found for mint ${mint}`);
+    const assetEntry = assets.find((a) => a.data.mint === stablecoinMint);
+    if (!assetEntry)
+      throw new Error(`Asset not found for stablecoin mint ${stablecoinMint}`);
+
+    const oracleAddress = oracleAccountAddress(assetEntry.data.oracle);
 
     const [liquidityPoolTokenAccount] = await findAssociatedTokenPda({
-      mint,
+      mint: stablecoinMint,
       owner: liquidityPoolAddress,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+
+    const [protectedVaultTokenAccount] = await findAssociatedTokenPda({
+      mint: stablecoinMint,
+      owner: proxyState,
       tokenProgram: TOKEN_PROGRAM_ADDRESS,
     });
 
     return getSlashInstructionAsync({
       signer,
       liquidityPool: liquidityPoolAddress,
-      mint,
       asset: assetEntry.address,
+      stablecoinMint,
       liquidityPoolTokenAccount,
-      destination,
+      proxyState,
+      protectedVaultTokenAccount,
+      oracle: oracleAddress,
       liquidityPoolId,
       amount,
-      assetId: assetEntry.data.index,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -369,7 +489,7 @@ export class Insurance {
         owner: liquidityPoolAddress,
         tokenProgram: TOKEN_PROGRAM_ADDRESS,
       });
-      const oracleAddress = (asset.data.oracle as any).fields[0] as Address;
+      const oracleAddress = oracleAccountAddress(asset.data.oracle);
 
       remaining.push(
         { address: poolAta, role: AccountRole.READONLY },
@@ -450,7 +570,7 @@ export class Insurance {
     const assetEntry = assets.find((a) => a.data.mint === mint);
     if (!assetEntry) throw new Error(`Asset not found for mint ${mint}`);
 
-    const oracleAddress = (assetEntry.data.oracle as any).fields[0];
+    const oracleAddress = oracleAccountAddress(assetEntry.data.oracle);
 
     const lpEntry = this.liquidityPools.find(
       (lp) => lp.data.index === liquidityPoolId,
@@ -475,6 +595,7 @@ export class Insurance {
       liquidityPoolIndex: liquidityPoolId,
       amount,
       minLpTokens: (minLpTokens ?? null) as any,
+          program: RLP_PROGRAM_ADDRESS,
     });
 
     const remaining = await this.buildPoolValueRemainingAccounts(
@@ -516,6 +637,7 @@ export class Insurance {
       cooldown: cooldownAddress,
       liquidityPoolId,
       amount,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -535,14 +657,23 @@ export class Insurance {
       cooldownId,
     );
 
+    // audit-1: withdraw needs the signer's LP token account so any excess in
+    // the cooldown ATA can be refunded.
+    const [signerLpTokenAccount] = await findAssociatedTokenPda({
+      mint: lpEntry.data.lpToken,
+      owner: signer.address,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+
     const ix = await getWithdrawInstructionAsync({
       signer,
-      permissions: RLP_PROGRAM_ADDRESS,
       liquidityPool: lpEntry.address,
       lpTokenMint: lpEntry.data.lpToken,
       cooldown: cooldownAddress,
+      signerLpTokenAccount,
       liquidityPoolId,
       cooldownId,
+      program: RLP_PROGRAM_ADDRESS,
     });
 
     const remaining = await this.buildWithdrawRemainingAccounts(
@@ -572,10 +703,8 @@ export class Insurance {
     if (!tokenToEntry)
       throw new Error(`Asset not found for mint ${tokenToMint}`);
 
-    const tokenFromOracle = (tokenFromEntry.data.oracle as any)
-      .fields[0] as Address;
-    const tokenToOracle = (tokenToEntry.data.oracle as any)
-      .fields[0] as Address;
+    const tokenFromOracle = oracleAccountAddress(tokenFromEntry.data.oracle);
+    const tokenToOracle = oracleAccountAddress(tokenToEntry.data.oracle);
 
     const lpEntry = this.liquidityPools.find(
       (lp) => lp.data.index === liquidityPoolId,
@@ -620,6 +749,7 @@ export class Insurance {
       tokenToSignerAccount,
       amountIn,
       minOut: (minOut ?? null) as any,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -630,6 +760,7 @@ export class Insurance {
     return getCreatePermissionAccountInstructionAsync({
       caller,
       newAdmin,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -648,6 +779,7 @@ export class Insurance {
       address: targetAddress,
       role,
       update,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -662,6 +794,7 @@ export class Insurance {
       action,
       role,
       update,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -681,6 +814,7 @@ export class Insurance {
       liquidityPool: lpEntry.address,
       lockupId: liquidityPoolId,
       newCap: newCap as any,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -693,6 +827,7 @@ export class Insurance {
       admin,
       action,
       freeze,
+          program: RLP_PROGRAM_ADDRESS,
     });
   }
 
@@ -732,12 +867,13 @@ export class Insurance {
     mintOrOracle: Address,
   ): Promise<{ price: bigint; exponent: number; publishTime: bigint }> {
     // Resolve oracle address — try cached assets first, fall back to treating
-    // the input as a direct oracle address.
+    // the input as a direct oracle address. `Oracle` is a discriminated union
+    // (`Pyth` uses `account`, `Doppler` uses `fields[0]`), so unwrap per-variant.
     let oracleAddress: Address = mintOrOracle;
     const assets = await this.getAssets();
     const assetEntry = assets.find((a) => a.data.mint === mintOrOracle);
     if (assetEntry) {
-      oracleAddress = (assetEntry.data.oracle as any).fields[0] as Address;
+      oracleAddress = oracleAccountAddress(assetEntry.data.oracle);
     }
 
     const account = await fetchEncodedAccount(this.connection, oracleAddress);
@@ -745,7 +881,19 @@ export class Insurance {
       throw new Error(`Oracle account not found: ${oracleAddress}`);
     }
 
-    return Insurance.deserializePythPrice(new Uint8Array(account.data));
+    // NOTE: only Pyth accounts are decodable by `deserializePythPrice`. If the
+    // asset's oracle is Doppler, the caller must fetch the raw account and use
+    // the doppler oracle SDK's `PriceDataSerializer` instead.
+    if (
+      assetEntry &&
+      assetEntry.data.oracle.__kind !== "Pyth"
+    ) {
+      throw new Error(
+        `fetchOraclePrice only decodes Pyth oracles; asset ${assetEntry.data.mint} uses ${assetEntry.data.oracle.__kind}`,
+      );
+    }
+
+    return JuniorTranche.deserializePythPrice(new Uint8Array(account.data));
   }
 
   /**

@@ -58,6 +58,8 @@ export type InitializeRlpInstruction<
   TAccountSettings extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -76,6 +78,12 @@ export type InitializeRlpInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -119,11 +127,15 @@ export type InitializeRlpAsyncInput<
   TAccountPermissions extends string = string,
   TAccountSettings extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   permissions?: Address<TAccountPermissions>;
   settings?: Address<TAccountSettings>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   swapFeeBps: InitializeRlpInstructionDataArgs["swapFeeBps"];
 };
 
@@ -132,13 +144,17 @@ export async function getInitializeRlpInstructionAsync<
   TAccountPermissions extends string,
   TAccountSettings extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: InitializeRlpAsyncInput<
     TAccountSigner,
     TAccountPermissions,
     TAccountSettings,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -147,7 +163,9 @@ export async function getInitializeRlpInstructionAsync<
     TAccountSigner,
     TAccountPermissions,
     TAccountSettings,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -159,6 +177,8 @@ export async function getInitializeRlpInstructionAsync<
     permissions: { value: input.permissions ?? null, isWritable: true },
     settings: { value: input.settings ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -196,6 +216,19 @@ export async function getInitializeRlpInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -204,6 +237,8 @@ export async function getInitializeRlpInstructionAsync<
       getAccountMeta(accounts.permissions),
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getInitializeRlpInstructionDataEncoder().encode(
       args as InitializeRlpInstructionDataArgs,
@@ -214,7 +249,9 @@ export async function getInitializeRlpInstructionAsync<
     TAccountSigner,
     TAccountPermissions,
     TAccountSettings,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -223,11 +260,15 @@ export type InitializeRlpInput<
   TAccountPermissions extends string = string,
   TAccountSettings extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   signer: TransactionSigner<TAccountSigner>;
   permissions: Address<TAccountPermissions>;
   settings: Address<TAccountSettings>;
   systemProgram?: Address<TAccountSystemProgram>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   swapFeeBps: InitializeRlpInstructionDataArgs["swapFeeBps"];
 };
 
@@ -236,13 +277,17 @@ export function getInitializeRlpInstruction<
   TAccountPermissions extends string,
   TAccountSettings extends string,
   TAccountSystemProgram extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: InitializeRlpInput<
     TAccountSigner,
     TAccountPermissions,
     TAccountSettings,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): InitializeRlpInstruction<
@@ -250,7 +295,9 @@ export function getInitializeRlpInstruction<
   TAccountSigner,
   TAccountPermissions,
   TAccountSettings,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -261,6 +308,8 @@ export function getInitializeRlpInstruction<
     permissions: { value: input.permissions ?? null, isWritable: true },
     settings: { value: input.settings ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -283,6 +332,8 @@ export function getInitializeRlpInstruction<
       getAccountMeta(accounts.permissions),
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getInitializeRlpInstructionDataEncoder().encode(
       args as InitializeRlpInstructionDataArgs,
@@ -293,7 +344,9 @@ export function getInitializeRlpInstruction<
     TAccountSigner,
     TAccountPermissions,
     TAccountSettings,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -307,6 +360,8 @@ export type ParsedInitializeRlpInstruction<
     permissions: TAccountMetas[1];
     settings: TAccountMetas[2];
     systemProgram: TAccountMetas[3];
+    eventAuthority: TAccountMetas[4];
+    program: TAccountMetas[5];
   };
   data: InitializeRlpInstructionData;
 };
@@ -319,7 +374,7 @@ export function parseInitializeRlpInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedInitializeRlpInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -336,6 +391,8 @@ export function parseInitializeRlpInstruction<
       permissions: getNextAccount(),
       settings: getNextAccount(),
       systemProgram: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getInitializeRlpInstructionDataDecoder().decode(instruction.data),
   };

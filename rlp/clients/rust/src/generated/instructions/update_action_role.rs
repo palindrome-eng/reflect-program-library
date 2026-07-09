@@ -28,6 +28,12 @@ pub struct UpdateActionRole {
           
               
           pub admin_permissions: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl UpdateActionRole {
@@ -37,7 +43,7 @@ impl UpdateActionRole {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: UpdateActionRoleInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(4+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(6+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.admin,
             true
@@ -52,6 +58,14 @@ impl UpdateActionRole {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
             self.admin_permissions,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
@@ -114,12 +128,16 @@ impl UpdateActionRoleInstructionArgs {
                 ///   1. `[writable]` settings
                 ///   2. `[optional]` system_program (default to `11111111111111111111111111111111`)
                 ///   3. `[writable]` admin_permissions
+          ///   4. `[]` event_authority
+          ///   5. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct UpdateActionRoleBuilder {
             admin: Option<solana_pubkey::Pubkey>,
                 settings: Option<solana_pubkey::Pubkey>,
                 system_program: Option<solana_pubkey::Pubkey>,
                 admin_permissions: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         action: Option<Action>,
                 role: Option<Role>,
                 update: Option<Update>,
@@ -149,6 +167,16 @@ impl UpdateActionRoleBuilder {
             #[inline(always)]
     pub fn admin_permissions(&mut self, admin_permissions: solana_pubkey::Pubkey) -> &mut Self {
                         self.admin_permissions = Some(admin_permissions);
+                    self
+    }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -185,6 +213,8 @@ impl UpdateActionRoleBuilder {
                                         settings: self.settings.expect("settings is not set"),
                                         system_program: self.system_program.unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
                                         admin_permissions: self.admin_permissions.expect("admin_permissions is not set"),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = UpdateActionRoleInstructionArgs {
                                                               action: self.action.clone().expect("action is not set"),
@@ -210,6 +240,12 @@ impl UpdateActionRoleBuilder {
                 
                     
               pub admin_permissions: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `update_action_role` CPI instruction.
@@ -228,6 +264,12 @@ pub struct UpdateActionRoleCpi<'a, 'b> {
           
               
           pub admin_permissions: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: UpdateActionRoleInstructionArgs,
   }
@@ -244,6 +286,8 @@ impl<'a, 'b> UpdateActionRoleCpi<'a, 'b> {
               settings: accounts.settings,
               system_program: accounts.system_program,
               admin_permissions: accounts.admin_permissions,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -267,7 +311,7 @@ impl<'a, 'b> UpdateActionRoleCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(4+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(6+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.admin.key,
             true
@@ -282,6 +326,14 @@ impl<'a, 'b> UpdateActionRoleCpi<'a, 'b> {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
             *self.admin_permissions.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
             false
           ));
                       remaining_accounts.iter().for_each(|remaining_account| {
@@ -300,12 +352,14 @@ impl<'a, 'b> UpdateActionRoleCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(5 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(7 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.admin.clone());
                         account_infos.push(self.settings.clone());
                         account_infos.push(self.system_program.clone());
                         account_infos.push(self.admin_permissions.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -324,6 +378,8 @@ impl<'a, 'b> UpdateActionRoleCpi<'a, 'b> {
                 ///   1. `[writable]` settings
           ///   2. `[]` system_program
                 ///   3. `[writable]` admin_permissions
+          ///   4. `[]` event_authority
+          ///   5. `[]` program
 #[derive(Clone, Debug)]
 pub struct UpdateActionRoleCpiBuilder<'a, 'b> {
   instruction: Box<UpdateActionRoleCpiBuilderInstruction<'a, 'b>>,
@@ -337,6 +393,8 @@ impl<'a, 'b> UpdateActionRoleCpiBuilder<'a, 'b> {
               settings: None,
               system_program: None,
               admin_permissions: None,
+              event_authority: None,
+              program: None,
                                             action: None,
                                 role: None,
                                 update: None,
@@ -362,6 +420,16 @@ impl<'a, 'b> UpdateActionRoleCpiBuilder<'a, 'b> {
       #[inline(always)]
     pub fn admin_permissions(&mut self, admin_permissions: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.admin_permissions = Some(admin_permissions);
+                    self
+    }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -416,6 +484,10 @@ impl<'a, 'b> UpdateActionRoleCpiBuilder<'a, 'b> {
           system_program: self.instruction.system_program.expect("system_program is not set"),
                   
           admin_permissions: self.instruction.admin_permissions.expect("admin_permissions is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -429,6 +501,8 @@ struct UpdateActionRoleCpiBuilderInstruction<'a, 'b> {
                 settings: Option<&'b solana_account_info::AccountInfo<'a>>,
                 system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                 admin_permissions: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         action: Option<Action>,
                 role: Option<Role>,
                 update: Option<Update>,

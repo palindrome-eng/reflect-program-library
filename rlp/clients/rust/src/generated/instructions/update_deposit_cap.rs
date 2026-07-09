@@ -25,6 +25,12 @@ pub struct UpdateDepositCap {
           
               
           pub liquidity_pool: solana_pubkey::Pubkey,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl UpdateDepositCap {
@@ -34,7 +40,7 @@ impl UpdateDepositCap {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: UpdateDepositCapInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(4+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(6+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
@@ -49,6 +55,14 @@ impl UpdateDepositCap {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
             self.liquidity_pool,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false
           ));
                       accounts.extend_from_slice(remaining_accounts);
@@ -110,12 +124,16 @@ impl UpdateDepositCapInstructionArgs {
                 ///   1. `[writable]` admin
           ///   2. `[]` settings
                 ///   3. `[writable]` liquidity_pool
+          ///   4. `[]` event_authority
+          ///   5. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct UpdateDepositCapBuilder {
             signer: Option<solana_pubkey::Pubkey>,
                 admin: Option<solana_pubkey::Pubkey>,
                 settings: Option<solana_pubkey::Pubkey>,
                 liquidity_pool: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         lockup_id: Option<u64>,
                 new_cap: Option<u64>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
@@ -143,6 +161,16 @@ impl UpdateDepositCapBuilder {
             #[inline(always)]
     pub fn liquidity_pool(&mut self, liquidity_pool: solana_pubkey::Pubkey) -> &mut Self {
                         self.liquidity_pool = Some(liquidity_pool);
+                    self
+    }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -175,6 +203,8 @@ impl UpdateDepositCapBuilder {
                                         admin: self.admin.expect("admin is not set"),
                                         settings: self.settings.expect("settings is not set"),
                                         liquidity_pool: self.liquidity_pool.expect("liquidity_pool is not set"),
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = UpdateDepositCapInstructionArgs {
                                                               lockup_id: self.lockup_id.clone().expect("lockup_id is not set"),
@@ -199,6 +229,12 @@ impl UpdateDepositCapBuilder {
                 
                     
               pub liquidity_pool: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `update_deposit_cap` CPI instruction.
@@ -217,6 +253,12 @@ pub struct UpdateDepositCapCpi<'a, 'b> {
           
               
           pub liquidity_pool: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: UpdateDepositCapInstructionArgs,
   }
@@ -233,6 +275,8 @@ impl<'a, 'b> UpdateDepositCapCpi<'a, 'b> {
               admin: accounts.admin,
               settings: accounts.settings,
               liquidity_pool: accounts.liquidity_pool,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -256,7 +300,7 @@ impl<'a, 'b> UpdateDepositCapCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(4+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(6+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.signer.key,
             true
@@ -271,6 +315,14 @@ impl<'a, 'b> UpdateDepositCapCpi<'a, 'b> {
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
             *self.liquidity_pool.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
             false
           ));
                       remaining_accounts.iter().for_each(|remaining_account| {
@@ -289,12 +341,14 @@ impl<'a, 'b> UpdateDepositCapCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(5 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(7 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.signer.clone());
                         account_infos.push(self.admin.clone());
                         account_infos.push(self.settings.clone());
                         account_infos.push(self.liquidity_pool.clone());
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -313,6 +367,8 @@ impl<'a, 'b> UpdateDepositCapCpi<'a, 'b> {
                 ///   1. `[writable]` admin
           ///   2. `[]` settings
                 ///   3. `[writable]` liquidity_pool
+          ///   4. `[]` event_authority
+          ///   5. `[]` program
 #[derive(Clone, Debug)]
 pub struct UpdateDepositCapCpiBuilder<'a, 'b> {
   instruction: Box<UpdateDepositCapCpiBuilderInstruction<'a, 'b>>,
@@ -326,6 +382,8 @@ impl<'a, 'b> UpdateDepositCapCpiBuilder<'a, 'b> {
               admin: None,
               settings: None,
               liquidity_pool: None,
+              event_authority: None,
+              program: None,
                                             lockup_id: None,
                                 new_cap: None,
                     __remaining_accounts: Vec::new(),
@@ -350,6 +408,16 @@ impl<'a, 'b> UpdateDepositCapCpiBuilder<'a, 'b> {
       #[inline(always)]
     pub fn liquidity_pool(&mut self, liquidity_pool: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.liquidity_pool = Some(liquidity_pool);
+                    self
+    }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -399,6 +467,10 @@ impl<'a, 'b> UpdateDepositCapCpiBuilder<'a, 'b> {
           settings: self.instruction.settings.expect("settings is not set"),
                   
           liquidity_pool: self.instruction.liquidity_pool.expect("liquidity_pool is not set"),
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -412,6 +484,8 @@ struct UpdateDepositCapCpiBuilderInstruction<'a, 'b> {
                 admin: Option<&'b solana_account_info::AccountInfo<'a>>,
                 settings: Option<&'b solana_account_info::AccountInfo<'a>>,
                 liquidity_pool: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         lockup_id: Option<u64>,
                 new_cap: Option<u64>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.

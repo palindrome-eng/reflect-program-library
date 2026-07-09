@@ -33,6 +33,9 @@ pub struct Withdraw {
           pub cooldown_lp_token_account: solana_pubkey::Pubkey,
           
               
+          pub signer_lp_token_account: solana_pubkey::Pubkey,
+          
+              
           pub cooldown: solana_pubkey::Pubkey,
           
               
@@ -40,6 +43,12 @@ pub struct Withdraw {
           
               
           pub system_program: Option<solana_pubkey::Pubkey>,
+          
+              
+          pub event_authority: solana_pubkey::Pubkey,
+          
+              
+          pub program: solana_pubkey::Pubkey,
       }
 
 impl Withdraw {
@@ -49,7 +58,7 @@ impl Withdraw {
   #[allow(clippy::arithmetic_side_effects)]
   #[allow(clippy::vec_init_then_push)]
   pub fn instruction_with_remaining_accounts(&self, args: WithdrawInstructionArgs, remaining_accounts: &[solana_instruction::AccountMeta]) -> solana_instruction::Instruction {
-    let mut accounts = Vec::with_capacity(9+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(12+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             self.signer,
             true
@@ -82,6 +91,10 @@ impl Withdraw {
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
+            self.signer_lp_token_account,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new(
             self.cooldown,
             false
           ));
@@ -100,7 +113,15 @@ impl Withdraw {
                 false,
               ));
             }
-                                accounts.extend_from_slice(remaining_accounts);
+                                                    accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.event_authority,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
+            false
+          ));
+                      accounts.extend_from_slice(remaining_accounts);
     let mut data = WithdrawInstructionData::new().try_to_vec().unwrap();
           let mut args = args.try_to_vec().unwrap();
       data.append(&mut args);
@@ -161,9 +182,12 @@ impl WithdrawInstructionArgs {
                 ///   3. `[writable]` liquidity_pool
                 ///   4. `[writable]` lp_token_mint
                 ///   5. `[writable]` cooldown_lp_token_account
-                ///   6. `[writable]` cooldown
-                ///   7. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
-                ///   8. `[optional]` system_program (default to `11111111111111111111111111111111`)
+                ///   6. `[writable]` signer_lp_token_account
+                ///   7. `[writable]` cooldown
+                ///   8. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
+                ///   9. `[optional]` system_program (default to `11111111111111111111111111111111`)
+          ///   10. `[]` event_authority
+          ///   11. `[]` program
 #[derive(Clone, Debug, Default)]
 pub struct WithdrawBuilder {
             signer: Option<solana_pubkey::Pubkey>,
@@ -172,9 +196,12 @@ pub struct WithdrawBuilder {
                 liquidity_pool: Option<solana_pubkey::Pubkey>,
                 lp_token_mint: Option<solana_pubkey::Pubkey>,
                 cooldown_lp_token_account: Option<solana_pubkey::Pubkey>,
+                signer_lp_token_account: Option<solana_pubkey::Pubkey>,
                 cooldown: Option<solana_pubkey::Pubkey>,
                 token_program: Option<solana_pubkey::Pubkey>,
                 system_program: Option<solana_pubkey::Pubkey>,
+                event_authority: Option<solana_pubkey::Pubkey>,
+                program: Option<solana_pubkey::Pubkey>,
                         liquidity_pool_id: Option<u8>,
                 cooldown_id: Option<u64>,
         __remaining_accounts: Vec<solana_instruction::AccountMeta>,
@@ -216,6 +243,11 @@ impl WithdrawBuilder {
                     self
     }
             #[inline(always)]
+    pub fn signer_lp_token_account(&mut self, signer_lp_token_account: solana_pubkey::Pubkey) -> &mut Self {
+                        self.signer_lp_token_account = Some(signer_lp_token_account);
+                    self
+    }
+            #[inline(always)]
     pub fn cooldown(&mut self, cooldown: solana_pubkey::Pubkey) -> &mut Self {
                         self.cooldown = Some(cooldown);
                     self
@@ -230,6 +262,16 @@ impl WithdrawBuilder {
 #[inline(always)]
     pub fn system_program(&mut self, system_program: Option<solana_pubkey::Pubkey>) -> &mut Self {
                         self.system_program = system_program;
+                    self
+    }
+            #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
+                        self.event_authority = Some(event_authority);
+                    self
+    }
+            #[inline(always)]
+    pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
+                        self.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -263,9 +305,12 @@ impl WithdrawBuilder {
                                         liquidity_pool: self.liquidity_pool.expect("liquidity_pool is not set"),
                                         lp_token_mint: self.lp_token_mint.expect("lp_token_mint is not set"),
                                         cooldown_lp_token_account: self.cooldown_lp_token_account.expect("cooldown_lp_token_account is not set"),
+                                        signer_lp_token_account: self.signer_lp_token_account.expect("signer_lp_token_account is not set"),
                                         cooldown: self.cooldown.expect("cooldown is not set"),
                                         token_program: self.token_program.unwrap_or(solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")),
                                         system_program: self.system_program,
+                                        event_authority: self.event_authority.expect("event_authority is not set"),
+                                        program: self.program.expect("program is not set"),
                       };
           let args = WithdrawInstructionArgs {
                                                               liquidity_pool_id: self.liquidity_pool_id.clone().expect("liquidity_pool_id is not set"),
@@ -298,6 +343,9 @@ impl WithdrawBuilder {
               pub cooldown_lp_token_account: &'b solana_account_info::AccountInfo<'a>,
                 
                     
+              pub signer_lp_token_account: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
               pub cooldown: &'b solana_account_info::AccountInfo<'a>,
                 
                     
@@ -305,6 +353,12 @@ impl WithdrawBuilder {
                 
                     
               pub system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                
+                    
+              pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+                
+                    
+              pub program: &'b solana_account_info::AccountInfo<'a>,
             }
 
 /// `withdraw` CPI instruction.
@@ -331,6 +385,9 @@ pub struct WithdrawCpi<'a, 'b> {
           pub cooldown_lp_token_account: &'b solana_account_info::AccountInfo<'a>,
           
               
+          pub signer_lp_token_account: &'b solana_account_info::AccountInfo<'a>,
+          
+              
           pub cooldown: &'b solana_account_info::AccountInfo<'a>,
           
               
@@ -338,6 +395,12 @@ pub struct WithdrawCpi<'a, 'b> {
           
               
           pub system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+          
+              
+          pub event_authority: &'b solana_account_info::AccountInfo<'a>,
+          
+              
+          pub program: &'b solana_account_info::AccountInfo<'a>,
             /// The arguments for the instruction.
     pub __args: WithdrawInstructionArgs,
   }
@@ -356,9 +419,12 @@ impl<'a, 'b> WithdrawCpi<'a, 'b> {
               liquidity_pool: accounts.liquidity_pool,
               lp_token_mint: accounts.lp_token_mint,
               cooldown_lp_token_account: accounts.cooldown_lp_token_account,
+              signer_lp_token_account: accounts.signer_lp_token_account,
               cooldown: accounts.cooldown,
               token_program: accounts.token_program,
               system_program: accounts.system_program,
+              event_authority: accounts.event_authority,
+              program: accounts.program,
                     __args: args,
           }
   }
@@ -382,7 +448,7 @@ impl<'a, 'b> WithdrawCpi<'a, 'b> {
     signers_seeds: &[&[&[u8]]],
     remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)]
   ) -> solana_program_error::ProgramResult {
-    let mut accounts = Vec::with_capacity(9+ remaining_accounts.len());
+    let mut accounts = Vec::with_capacity(12+ remaining_accounts.len());
                             accounts.push(solana_instruction::AccountMeta::new(
             *self.signer.key,
             true
@@ -415,6 +481,10 @@ impl<'a, 'b> WithdrawCpi<'a, 'b> {
             false
           ));
                                           accounts.push(solana_instruction::AccountMeta::new(
+            *self.signer_lp_token_account.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new(
             *self.cooldown.key,
             false
           ));
@@ -433,6 +503,14 @@ impl<'a, 'b> WithdrawCpi<'a, 'b> {
               false,
             ));
           }
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.event_authority.key,
+            false
+          ));
+                                          accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false
+          ));
                       remaining_accounts.iter().for_each(|remaining_account| {
       accounts.push(solana_instruction::AccountMeta {
           pubkey: *remaining_account.0.key,
@@ -449,7 +527,7 @@ impl<'a, 'b> WithdrawCpi<'a, 'b> {
       accounts,
       data,
     };
-    let mut account_infos = Vec::with_capacity(10 + remaining_accounts.len());
+    let mut account_infos = Vec::with_capacity(13 + remaining_accounts.len());
     account_infos.push(self.__program.clone());
                   account_infos.push(self.signer.clone());
                         account_infos.push(self.settings.clone());
@@ -459,11 +537,14 @@ impl<'a, 'b> WithdrawCpi<'a, 'b> {
                         account_infos.push(self.liquidity_pool.clone());
                         account_infos.push(self.lp_token_mint.clone());
                         account_infos.push(self.cooldown_lp_token_account.clone());
+                        account_infos.push(self.signer_lp_token_account.clone());
                         account_infos.push(self.cooldown.clone());
                         account_infos.push(self.token_program.clone());
                         if let Some(system_program) = self.system_program {
           account_infos.push(system_program.clone());
         }
+                        account_infos.push(self.event_authority.clone());
+                        account_infos.push(self.program.clone());
               remaining_accounts.iter().for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
 
     if signers_seeds.is_empty() {
@@ -484,9 +565,12 @@ impl<'a, 'b> WithdrawCpi<'a, 'b> {
                 ///   3. `[writable]` liquidity_pool
                 ///   4. `[writable]` lp_token_mint
                 ///   5. `[writable]` cooldown_lp_token_account
-                ///   6. `[writable]` cooldown
-          ///   7. `[]` token_program
-                ///   8. `[optional]` system_program
+                ///   6. `[writable]` signer_lp_token_account
+                ///   7. `[writable]` cooldown
+          ///   8. `[]` token_program
+                ///   9. `[optional]` system_program
+          ///   10. `[]` event_authority
+          ///   11. `[]` program
 #[derive(Clone, Debug)]
 pub struct WithdrawCpiBuilder<'a, 'b> {
   instruction: Box<WithdrawCpiBuilderInstruction<'a, 'b>>,
@@ -502,9 +586,12 @@ impl<'a, 'b> WithdrawCpiBuilder<'a, 'b> {
               liquidity_pool: None,
               lp_token_mint: None,
               cooldown_lp_token_account: None,
+              signer_lp_token_account: None,
               cooldown: None,
               token_program: None,
               system_program: None,
+              event_authority: None,
+              program: None,
                                             liquidity_pool_id: None,
                                 cooldown_id: None,
                     __remaining_accounts: Vec::new(),
@@ -543,6 +630,11 @@ impl<'a, 'b> WithdrawCpiBuilder<'a, 'b> {
                     self
     }
       #[inline(always)]
+    pub fn signer_lp_token_account(&mut self, signer_lp_token_account: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.signer_lp_token_account = Some(signer_lp_token_account);
+                    self
+    }
+      #[inline(always)]
     pub fn cooldown(&mut self, cooldown: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
                         self.instruction.cooldown = Some(cooldown);
                     self
@@ -556,6 +648,16 @@ impl<'a, 'b> WithdrawCpiBuilder<'a, 'b> {
 #[inline(always)]
     pub fn system_program(&mut self, system_program: Option<&'b solana_account_info::AccountInfo<'a>>) -> &mut Self {
                         self.instruction.system_program = system_program;
+                    self
+    }
+      #[inline(always)]
+    pub fn event_authority(&mut self, event_authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.event_authority = Some(event_authority);
+                    self
+    }
+      #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+                        self.instruction.program = Some(program);
                     self
     }
                     #[inline(always)]
@@ -609,11 +711,17 @@ impl<'a, 'b> WithdrawCpiBuilder<'a, 'b> {
                   
           cooldown_lp_token_account: self.instruction.cooldown_lp_token_account.expect("cooldown_lp_token_account is not set"),
                   
+          signer_lp_token_account: self.instruction.signer_lp_token_account.expect("signer_lp_token_account is not set"),
+                  
           cooldown: self.instruction.cooldown.expect("cooldown is not set"),
                   
           token_program: self.instruction.token_program.expect("token_program is not set"),
                   
           system_program: self.instruction.system_program,
+                  
+          event_authority: self.instruction.event_authority.expect("event_authority is not set"),
+                  
+          program: self.instruction.program.expect("program is not set"),
                           __args: args,
             };
     instruction.invoke_signed_with_remaining_accounts(signers_seeds, &self.instruction.__remaining_accounts)
@@ -629,9 +737,12 @@ struct WithdrawCpiBuilderInstruction<'a, 'b> {
                 liquidity_pool: Option<&'b solana_account_info::AccountInfo<'a>>,
                 lp_token_mint: Option<&'b solana_account_info::AccountInfo<'a>>,
                 cooldown_lp_token_account: Option<&'b solana_account_info::AccountInfo<'a>>,
+                signer_lp_token_account: Option<&'b solana_account_info::AccountInfo<'a>>,
                 cooldown: Option<&'b solana_account_info::AccountInfo<'a>>,
                 token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
                 system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+                event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+                program: Option<&'b solana_account_info::AccountInfo<'a>>,
                         liquidity_pool_id: Option<u8>,
                 cooldown_id: Option<u64>,
         /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.

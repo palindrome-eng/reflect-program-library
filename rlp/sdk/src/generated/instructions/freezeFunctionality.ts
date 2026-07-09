@@ -64,6 +64,8 @@ export type FreezeFunctionalityInstruction<
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
   TAccountAdminPermissions extends string | AccountMeta<string> = string,
+  TAccountEventAuthority extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -82,6 +84,12 @@ export type FreezeFunctionalityInstruction<
       TAccountAdminPermissions extends string
         ? WritableAccount<TAccountAdminPermissions>
         : TAccountAdminPermissions,
+      TAccountEventAuthority extends string
+        ? ReadonlyAccount<TAccountEventAuthority>
+        : TAccountEventAuthority,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -134,11 +142,15 @@ export type FreezeFunctionalityAsyncInput<
   TAccountSettings extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountAdminPermissions extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   settings?: Address<TAccountSettings>;
   systemProgram?: Address<TAccountSystemProgram>;
   adminPermissions?: Address<TAccountAdminPermissions>;
+  eventAuthority?: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   action: FreezeFunctionalityInstructionDataArgs["action"];
   freeze: FreezeFunctionalityInstructionDataArgs["freeze"];
 };
@@ -148,13 +160,17 @@ export async function getFreezeFunctionalityInstructionAsync<
   TAccountSettings extends string,
   TAccountSystemProgram extends string,
   TAccountAdminPermissions extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: FreezeFunctionalityAsyncInput<
     TAccountAdmin,
     TAccountSettings,
     TAccountSystemProgram,
-    TAccountAdminPermissions
+    TAccountAdminPermissions,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -163,7 +179,9 @@ export async function getFreezeFunctionalityInstructionAsync<
     TAccountAdmin,
     TAccountSettings,
     TAccountSystemProgram,
-    TAccountAdminPermissions
+    TAccountAdminPermissions,
+    TAccountEventAuthority,
+    TAccountProgram
   >
 > {
   // Program address.
@@ -178,6 +196,8 @@ export async function getFreezeFunctionalityInstructionAsync<
       value: input.adminPermissions ?? null,
       isWritable: true,
     },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -215,6 +235,19 @@ export async function getFreezeFunctionalityInstructionAsync<
       ],
     });
   }
+  if (!accounts.eventAuthority.value) {
+    accounts.eventAuthority.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114,
+            105, 116, 121,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -223,6 +256,8 @@ export async function getFreezeFunctionalityInstructionAsync<
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.adminPermissions),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getFreezeFunctionalityInstructionDataEncoder().encode(
       args as FreezeFunctionalityInstructionDataArgs,
@@ -233,7 +268,9 @@ export async function getFreezeFunctionalityInstructionAsync<
     TAccountAdmin,
     TAccountSettings,
     TAccountSystemProgram,
-    TAccountAdminPermissions
+    TAccountAdminPermissions,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -242,11 +279,15 @@ export type FreezeFunctionalityInput<
   TAccountSettings extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountAdminPermissions extends string = string,
+  TAccountEventAuthority extends string = string,
+  TAccountProgram extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   settings: Address<TAccountSettings>;
   systemProgram?: Address<TAccountSystemProgram>;
   adminPermissions: Address<TAccountAdminPermissions>;
+  eventAuthority: Address<TAccountEventAuthority>;
+  program: Address<TAccountProgram>;
   action: FreezeFunctionalityInstructionDataArgs["action"];
   freeze: FreezeFunctionalityInstructionDataArgs["freeze"];
 };
@@ -256,13 +297,17 @@ export function getFreezeFunctionalityInstruction<
   TAccountSettings extends string,
   TAccountSystemProgram extends string,
   TAccountAdminPermissions extends string,
+  TAccountEventAuthority extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address = typeof RLP_PROGRAM_ADDRESS,
 >(
   input: FreezeFunctionalityInput<
     TAccountAdmin,
     TAccountSettings,
     TAccountSystemProgram,
-    TAccountAdminPermissions
+    TAccountAdminPermissions,
+    TAccountEventAuthority,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): FreezeFunctionalityInstruction<
@@ -270,7 +315,9 @@ export function getFreezeFunctionalityInstruction<
   TAccountAdmin,
   TAccountSettings,
   TAccountSystemProgram,
-  TAccountAdminPermissions
+  TAccountAdminPermissions,
+  TAccountEventAuthority,
+  TAccountProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? RLP_PROGRAM_ADDRESS;
@@ -284,6 +331,8 @@ export function getFreezeFunctionalityInstruction<
       value: input.adminPermissions ?? null,
       isWritable: true,
     },
+    eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -306,6 +355,8 @@ export function getFreezeFunctionalityInstruction<
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.adminPermissions),
+      getAccountMeta(accounts.eventAuthority),
+      getAccountMeta(accounts.program),
     ],
     data: getFreezeFunctionalityInstructionDataEncoder().encode(
       args as FreezeFunctionalityInstructionDataArgs,
@@ -316,7 +367,9 @@ export function getFreezeFunctionalityInstruction<
     TAccountAdmin,
     TAccountSettings,
     TAccountSystemProgram,
-    TAccountAdminPermissions
+    TAccountAdminPermissions,
+    TAccountEventAuthority,
+    TAccountProgram
   >);
 }
 
@@ -330,6 +383,8 @@ export type ParsedFreezeFunctionalityInstruction<
     settings: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
     adminPermissions: TAccountMetas[3];
+    eventAuthority: TAccountMetas[4];
+    program: TAccountMetas[5];
   };
   data: FreezeFunctionalityInstructionData;
 };
@@ -342,7 +397,7 @@ export function parseFreezeFunctionalityInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedFreezeFunctionalityInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -359,6 +414,8 @@ export function parseFreezeFunctionalityInstruction<
       settings: getNextAccount(),
       systemProgram: getNextAccount(),
       adminPermissions: getNextAccount(),
+      eventAuthority: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getFreezeFunctionalityInstructionDataDecoder().decode(
       instruction.data,
