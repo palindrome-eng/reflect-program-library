@@ -1,3 +1,5 @@
+import { address } from "@solana/kit";
+
 export const SETTINGS_SEED = "settings";
 export const PERMISSIONS_SEED = "permissions";
 export const LIQUIDITY_POOL_SEED = "liquidity_pool";
@@ -26,3 +28,6 @@ export const MAX_COOLDOWN_DURATION_SECONDS = 365 * 24 * 60 * 60;
  * (audit-3 / audit-33). conf × this ≤ price (i.e., conf within ~2% of price).
  */
 export const MAX_ORACLE_CONFIDENCE_RATIO = 50;
+
+/** Mainnet staging deployment of this program — real tokens/oracles, isolated state. Pass to PdaClient overrides. */
+export const STAGING_PROGRAM_ID = address("GSEYK2FtDLywAoxn2mioXCft9FWH6Zn4VmKUArGyTVj8");
