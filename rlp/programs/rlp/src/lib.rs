@@ -9,6 +9,10 @@ pub mod helpers;
 
 use crate::instructions::*;
 
+#[cfg(feature = "staging")]
+declare_id!("GSEYK2FtDLywAoxn2mioXCft9FWH6Zn4VmKUArGyTVj8");
+
+#[cfg(not(feature = "staging"))]
 declare_id!("JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av");
 
 #[program]
