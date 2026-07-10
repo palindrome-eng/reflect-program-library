@@ -19,23 +19,23 @@ import {
 import { RLP_PROGRAM_ADDRESS } from "../generated";
 
 export class PdaClient {
-  static async deriveSettings() {
+  static async deriveSettings(programAddress: Address = RLP_PROGRAM_ADDRESS) {
     return getProgramDerivedAddress({
-      programAddress: RLP_PROGRAM_ADDRESS,
+      programAddress,
       seeds: [SETTINGS_SEED],
     });
   }
 
-  static async deriveUserPermissions(address: Address) {
+  static async deriveUserPermissions(address: Address, programAddress: Address = RLP_PROGRAM_ADDRESS) {
     return getProgramDerivedAddress({
-      programAddress: RLP_PROGRAM_ADDRESS,
+      programAddress,
       seeds: [PERMISSIONS_SEED, getAddressEncoder().encode(address)],
     });
   }
 
-  static async deriveLiquidityPool(liquidityPoolId: number) {
+  static async deriveLiquidityPool(liquidityPoolId: number, programAddress: Address = RLP_PROGRAM_ADDRESS) {
     return getProgramDerivedAddress({
-      programAddress: RLP_PROGRAM_ADDRESS,
+      programAddress,
       seeds: [
         LIQUIDITY_POOL_SEED,
         getU8Encoder().encode(liquidityPoolId),
@@ -43,9 +43,9 @@ export class PdaClient {
     });
   }
 
-  static async deriveAsset(assetMint: Address) {
+  static async deriveAsset(assetMint: Address, programAddress: Address = RLP_PROGRAM_ADDRESS) {
     return getProgramDerivedAddress({
-      programAddress: RLP_PROGRAM_ADDRESS,
+      programAddress,
       seeds: [ASSET_SEED, getAddressEncoder().encode(assetMint)],
     });
   }
@@ -53,9 +53,10 @@ export class PdaClient {
   static async deriveCooldown(
     liquidityPoolId: number,
     cooldownId: number | bigint,
+    programAddress: Address = RLP_PROGRAM_ADDRESS,
   ) {
     return getProgramDerivedAddress({
-      programAddress: RLP_PROGRAM_ADDRESS,
+      programAddress,
       seeds: [
         COOLDOWN_SEED,
         getU8Encoder().encode(liquidityPoolId),
@@ -69,9 +70,9 @@ export class PdaClient {
    * builders auto-derive this when omitted, so most callers won't need it
    * directly — exposed for low-level instruction inspection.
    */
-  static async deriveEventAuthority() {
+  static async deriveEventAuthority(programAddress: Address = RLP_PROGRAM_ADDRESS) {
     return getProgramDerivedAddress({
-      programAddress: RLP_PROGRAM_ADDRESS,
+      programAddress,
       seeds: [EVENT_AUTHORITY_SEED],
     });
   }
@@ -81,9 +82,9 @@ export class PdaClient {
    * Uses the proxy program ID, not the RLP program ID. Used by NAV slash
    * setup (audit-M06).
    */
-  static async deriveProxyState(brandedMint: Address) {
+  static async deriveProxyState(brandedMint: Address, programAddress: Address = address(PROXY_PROGRAM_ADDRESS)) {
     return getProgramDerivedAddress({
-      programAddress: address(PROXY_PROGRAM_ADDRESS),
+      programAddress,
       seeds: [PROXY_STATE_SEED, getAddressEncoder().encode(brandedMint)],
     });
   }
