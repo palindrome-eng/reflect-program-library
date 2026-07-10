@@ -124,14 +124,14 @@ export type InitializeLpInstructionData = {
   cooldownDuration: bigint;
   depositCap: Option<bigint>;
   assets: ReadonlyUint8Array;
-  protectedVault: Option<Address>;
+  protectedVault: Address;
 };
 
 export type InitializeLpInstructionDataArgs = {
   cooldownDuration: number | bigint;
   depositCap: OptionOrNullable<number | bigint>;
   assets: ReadonlyUint8Array;
-  protectedVault: OptionOrNullable<Address>;
+  protectedVault: Address;
 };
 
 export function getInitializeLpInstructionDataEncoder(): Encoder<InitializeLpInstructionDataArgs> {
@@ -141,7 +141,7 @@ export function getInitializeLpInstructionDataEncoder(): Encoder<InitializeLpIns
       ["cooldownDuration", getU64Encoder()],
       ["depositCap", getOptionEncoder(getU64Encoder())],
       ["assets", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
-      ["protectedVault", getOptionEncoder(getAddressEncoder())],
+      ["protectedVault", getAddressEncoder()],
     ]),
     (value) => ({ ...value, discriminator: INITIALIZE_LP_DISCRIMINATOR }),
   );
@@ -153,7 +153,7 @@ export function getInitializeLpInstructionDataDecoder(): Decoder<InitializeLpIns
     ["cooldownDuration", getU64Decoder()],
     ["depositCap", getOptionDecoder(getU64Decoder())],
     ["assets", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ["protectedVault", getOptionDecoder(getAddressDecoder())],
+    ["protectedVault", getAddressDecoder()],
   ]);
 }
 

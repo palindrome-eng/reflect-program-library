@@ -2165,6 +2165,7 @@ fn test_initialize_lp_happy_path() {
             .program(RLP_ID)
             .cooldown_duration(60)
             .assets(vec![0])
+            .protected_vault(Pubkey::new_unique().into())
             .instruction()
     );
 
@@ -2221,6 +2222,7 @@ fn test_m04_initialize_lp_rejects_lp_mint_with_freeze_authority() {
             .program(RLP_ID)
             .cooldown_duration(60)
             .assets(vec![0])
+            .protected_vault(Pubkey::new_unique().into())
             .instruction()
     );
 
@@ -2280,6 +2282,7 @@ fn test_e03_initialize_lp_rejects_excessive_cooldown_duration() {
             .program(RLP_ID)
             .cooldown_duration(366 * 24 * 60 * 60) // > 365 days
             .assets(vec![0])
+            .protected_vault(Pubkey::new_unique().into())
             .instruction()
     );
 
@@ -2363,6 +2366,7 @@ fn setup_pool_with_one_asset(signer: Pubkey, asset_decimals: u8) -> PoolFixture 
             .program(RLP_ID)
             .cooldown_duration(60)
             .assets(vec![0])
+            .protected_vault(Pubkey::new_unique().into())
             .instruction()
     );
 
@@ -3072,6 +3076,7 @@ fn test_l01_initialize_lp_tolerates_dead_shares_vault_squat() {
             .program(RLP_ID)
             .cooldown_duration(60)
             .assets(vec![0])
+            .protected_vault(Pubkey::new_unique().into())
             .instruction()
     );
 
@@ -3510,6 +3515,7 @@ fn setup_pool_with_two_assets(signer: Pubkey) -> (PoolFixture, Pubkey, Pubkey, P
             .program(RLP_ID)
             .cooldown_duration(60)
             .assets(vec![0, 1])
+            .protected_vault(Pubkey::new_unique().into())
             .instruction()
     );
     let mut init_lp_accounts = vec![

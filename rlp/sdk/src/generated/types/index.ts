@@ -30,6 +30,7 @@ export * from "./update";
 export * from "./updateActionRoleEvent";
 export * from "./updateDepositCapEvent";
 export * from "./updateOracleEvent";
+export * from "./updateProtectedVaultEvent";
 export * from "./updateRoleHolderEvent";
 export * from "./withdrawAssetAmount";
 export * from "./withdrawEvent";

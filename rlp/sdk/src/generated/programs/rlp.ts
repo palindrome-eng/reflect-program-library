@@ -31,6 +31,7 @@ import {
   parseUpdateActionRoleInstruction,
   parseUpdateDepositCapInstruction,
   parseUpdateOracleInstruction,
+  parseUpdateProtectedVaultInstruction,
   parseUpdateRoleHolderInstruction,
   parseWithdrawInstruction,
   type ParsedAddAssetInstruction,
@@ -47,6 +48,7 @@ import {
   type ParsedUpdateActionRoleInstruction,
   type ParsedUpdateDepositCapInstruction,
   type ParsedUpdateOracleInstruction,
+  type ParsedUpdateProtectedVaultInstruction,
   type ParsedUpdateRoleHolderInstruction,
   type ParsedWithdrawInstruction,
 } from "../instructions";
@@ -141,6 +143,7 @@ export enum RlpInstruction {
   UpdateActionRole,
   UpdateDepositCap,
   UpdateOracle,
+  UpdateProtectedVault,
   UpdateRoleHolder,
   Withdraw,
 }
@@ -307,6 +310,17 @@ export function identifyRlpInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([12, 140, 253, 36, 18, 79, 106, 75]),
+      ),
+      0,
+    )
+  ) {
+    return RlpInstruction.UpdateProtectedVault;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([96, 224, 166, 55, 4, 62, 152, 53]),
       ),
       0,
@@ -373,6 +387,9 @@ export type ParsedRlpInstruction<
   | ({
       instructionType: RlpInstruction.UpdateOracle;
     } & ParsedUpdateOracleInstruction<TProgram>)
+  | ({
+      instructionType: RlpInstruction.UpdateProtectedVault;
+    } & ParsedUpdateProtectedVaultInstruction<TProgram>)
   | ({
       instructionType: RlpInstruction.UpdateRoleHolder;
     } & ParsedUpdateRoleHolderInstruction<TProgram>)
@@ -481,6 +498,13 @@ export function parseRlpInstruction<TProgram extends string>(
       return {
         instructionType: RlpInstruction.UpdateOracle,
         ...parseUpdateOracleInstruction(instruction),
+      };
+    }
+    case RlpInstruction.UpdateProtectedVault: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: RlpInstruction.UpdateProtectedVault,
+        ...parseUpdateProtectedVaultInstruction(instruction),
       };
     }
     case RlpInstruction.UpdateRoleHolder: {

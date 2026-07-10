@@ -34,6 +34,7 @@ export enum Action {
   UpdateAction,
   UpdateOracle,
   RemovePoolAsset,
+  UpdateProtectedVault,
 }
 
 export type ActionArgs = Action;

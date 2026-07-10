@@ -20,5 +20,6 @@ export * from "./swap";
 export * from "./updateActionRole";
 export * from "./updateDepositCap";
 export * from "./updateOracle";
+export * from "./updateProtectedVault";
 export * from "./updateRoleHolder";
 export * from "./withdraw";

@@ -30,6 +30,7 @@ UpdateRole,
 UpdateAction,
 UpdateOracle,
 RemovePoolAsset,
+UpdateProtectedVault,
 }
 
 

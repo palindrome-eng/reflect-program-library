@@ -10,6 +10,9 @@ pub use freeze_functionality::*;
 pub mod update_deposit_cap;
 pub use update_deposit_cap::*;
 
+pub mod update_protected_vault;
+pub use update_protected_vault::*;
+
 pub mod initialize_lp;
 pub use initialize_lp::*;
 

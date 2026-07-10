@@ -12,7 +12,7 @@ pub struct InitializeLiquidityPoolArgs {
     pub cooldown_duration: u64,
     pub deposit_cap: Option<u64>,
     pub assets: Vec<u8>,
-    pub protected_vault: Option<Pubkey>,
+    pub protected_vault: Pubkey,
 }
 
 pub fn initialize_lp(
@@ -68,7 +68,7 @@ pub fn initialize_lp(
         deposit_cap,
         asset_count: assets.len() as u8,
         assets: asset_array,
-        protected_vault,
+        protected_vault: Some(protected_vault),
     });
 
     let signer_seeds = &[

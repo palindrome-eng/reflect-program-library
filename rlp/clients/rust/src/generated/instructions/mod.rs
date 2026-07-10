@@ -19,6 +19,7 @@
   pub(crate) mod r#update_action_role;
   pub(crate) mod r#update_deposit_cap;
   pub(crate) mod r#update_oracle;
+  pub(crate) mod r#update_protected_vault;
   pub(crate) mod r#update_role_holder;
   pub(crate) mod r#withdraw;
 
@@ -36,6 +37,7 @@
   pub use self::r#update_action_role::*;
   pub use self::r#update_deposit_cap::*;
   pub use self::r#update_oracle::*;
+  pub use self::r#update_protected_vault::*;
   pub use self::r#update_role_holder::*;
   pub use self::r#withdraw::*;
 

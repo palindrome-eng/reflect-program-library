@@ -104,6 +104,14 @@ pub struct UpdateDepositCapEvent {
 }
 
 #[event]
+pub struct UpdateProtectedVaultEvent {
+    pub admin: Pubkey,
+    pub liquidity_pool: Pubkey,
+    pub old_protected_vault: Option<Pubkey>,
+    pub new_protected_vault: Pubkey,
+}
+
+#[event]
 pub struct SlashEvent {
     pub admin: Pubkey,
     pub liquidity_pool: Pubkey,

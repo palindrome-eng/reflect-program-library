@@ -70,12 +70,14 @@ function oracleAccountAddress(oracle: Oracle): Address {
 
 export class JuniorTranche {
   private connection: Rpc<SolanaRpcApi>;
+  private programAddress: Address;
   private settings!: Settings;
   private liquidityPools!: AccountWithAddress<LiquidityPool>[];
   private assets!: AccountWithAddress<Asset>[];
 
-  constructor(connection: Rpc<SolanaRpcApi>) {
+  constructor(connection: Rpc<SolanaRpcApi>, programAddress: Address = RLP_PROGRAM_ADDRESS) {
     this.connection = connection;
+    this.programAddress = programAddress;
   }
 
   async load(): Promise<void> {
@@ -94,7 +96,7 @@ export class JuniorTranche {
     const decoder = getLiquidityPoolDecoder();
 
     const programAccounts = await (this.connection as any)
-      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+      .getProgramAccounts(this.programAddress, {
         encoding: "base64",
         withContext: false,
         filters: [
@@ -139,7 +141,7 @@ export class JuniorTranche {
     const decoder = getAssetDecoder();
 
     const programAccounts = await (this.connection as any)
-      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+      .getProgramAccounts(this.programAddress, {
         encoding: "base64",
         withContext: false,
         filters: [
@@ -175,7 +177,7 @@ export class JuniorTranche {
     const decoder = getCooldownDecoder();
 
     const programAccounts = await (this.connection as any)
-      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+      .getProgramAccounts(this.programAddress, {
         encoding: "base64",
         withContext: false,
         filters: [
@@ -205,7 +207,7 @@ export class JuniorTranche {
     const decoder = getUserPermissionsDecoder();
 
     const programAccounts = await (this.connection as any)
-      .getProgramAccounts(RLP_PROGRAM_ADDRESS, {
+      .getProgramAccounts(this.programAddress, {
         encoding: "base64",
         withContext: false,
         filters: [
@@ -243,7 +245,7 @@ export class JuniorTranche {
     return getInitializeRlpInstructionAsync({
       signer,
       swapFeeBps,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -277,7 +279,7 @@ export class JuniorTranche {
       depositCap: args.depositCap,
       assets: new Uint8Array(args.assets),
       protectedVault: (args.protectedVault ?? null) as any,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -331,7 +333,7 @@ export class JuniorTranche {
       assetMint,
       poolTokenAccount,
       liquidityPoolId,
-      program: RLP_PROGRAM_ADDRESS,
+      program: this.programAddress,
     });
   }
 
@@ -346,7 +348,7 @@ export class JuniorTranche {
       assetMint,
       oracle,
       accessLevel,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -363,7 +365,7 @@ export class JuniorTranche {
       signer,
       asset: assetEntry.address,
       oracle,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -426,7 +428,7 @@ export class JuniorTranche {
       oracle: oracleAddress,
       liquidityPoolId,
       amount,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -586,7 +588,7 @@ export class JuniorTranche {
 
     const ix = await getDepositInstructionAsync({
       signer,
-      permissions: RLP_PROGRAM_ADDRESS,
+      permissions: this.programAddress,
       liquidityPool: lpEntry.address,
       lpToken: lpEntry.data.lpToken,
       assetMint: mint,
@@ -595,7 +597,7 @@ export class JuniorTranche {
       liquidityPoolIndex: liquidityPoolId,
       amount,
       minLpTokens: (minLpTokens ?? null) as any,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
 
     const remaining = await this.buildPoolValueRemainingAccounts(
@@ -630,14 +632,14 @@ export class JuniorTranche {
 
     return getRequestWithdrawalInstructionAsync({
       signer,
-      permissions: RLP_PROGRAM_ADDRESS,
+      permissions: this.programAddress,
       liquidityPool: lpEntry.address,
       lpTokenMint: lpEntry.data.lpToken,
       signerLpTokenAccount,
       cooldown: cooldownAddress,
       liquidityPoolId,
       amount,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -673,7 +675,7 @@ export class JuniorTranche {
       signerLpTokenAccount,
       liquidityPoolId,
       cooldownId,
-      program: RLP_PROGRAM_ADDRESS,
+      program: this.programAddress,
     });
 
     const remaining = await this.buildWithdrawRemainingAccounts(
@@ -749,7 +751,7 @@ export class JuniorTranche {
       tokenToSignerAccount,
       amountIn,
       minOut: (minOut ?? null) as any,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -760,7 +762,7 @@ export class JuniorTranche {
     return getCreatePermissionAccountInstructionAsync({
       caller,
       newAdmin,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -779,7 +781,7 @@ export class JuniorTranche {
       address: targetAddress,
       role,
       update,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -794,7 +796,7 @@ export class JuniorTranche {
       action,
       role,
       update,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -814,7 +816,7 @@ export class JuniorTranche {
       liquidityPool: lpEntry.address,
       lockupId: liquidityPoolId,
       newCap: newCap as any,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 
@@ -827,7 +829,7 @@ export class JuniorTranche {
       admin,
       action,
       freeze,
-          program: RLP_PROGRAM_ADDRESS,
+          program: this.programAddress,
     });
   }
 

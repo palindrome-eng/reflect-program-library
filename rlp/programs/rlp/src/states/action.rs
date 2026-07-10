@@ -26,6 +26,7 @@ pub enum Action {
     UpdateAction = 15,
     UpdateOracle = 16,
     RemovePoolAsset = 17,
+    UpdateProtectedVault = 18,
 }
 
 impl Action {
@@ -51,6 +52,7 @@ impl Action {
             15 => Ok(Action::UpdateAction),
             16 => Ok(Action::UpdateOracle),
             17 => Ok(Action::RemovePoolAsset),
+            18 => Ok(Action::UpdateProtectedVault),
             _ => Err(error!(RlpError::InvalidState)),
         }
     }
@@ -75,6 +77,7 @@ impl Action {
             Action::UpdateAction => 15u8,
             Action::UpdateOracle => 16u8,
             Action::RemovePoolAsset => 17u8,
+            Action::UpdateProtectedVault => 18u8,
         };
         
         variant.serialize(writer)?;
@@ -101,6 +104,7 @@ impl Action {
             15 => Some(Action::UpdateAction),
             16 => Some(Action::UpdateOracle),
             17 => Some(Action::RemovePoolAsset),
+            18 => Some(Action::UpdateProtectedVault),
             _ => None,
         }
     }

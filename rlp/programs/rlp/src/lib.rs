@@ -57,6 +57,13 @@ pub mod rlp {
         instructions::update_deposit_cap(ctx, args)
     }
 
+    pub fn update_protected_vault(
+        ctx: Context<UpdateProtectedVault>,
+        args: UpdateProtectedVaultArgs
+    ) -> Result<()> {
+        instructions::update_protected_vault(ctx, args)
+    }
+
     pub fn slash(
         ctx: Context<Slash>,
         args: SlashArgs

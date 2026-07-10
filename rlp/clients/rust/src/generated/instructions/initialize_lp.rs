@@ -144,7 +144,7 @@ impl Default for InitializeLpInstructionData {
                   pub cooldown_duration: u64,
                 pub deposit_cap: Option<u64>,
                 pub assets: Vec<u8>,
-                pub protected_vault: Option<Pubkey>,
+                pub protected_vault: Pubkey,
       }
 
 impl InitializeLpInstructionArgs {
@@ -267,8 +267,7 @@ impl InitializeLpBuilder {
         self.assets = Some(assets);
         self
       }
-                /// `[optional argument]`
-#[inline(always)]
+                #[inline(always)]
       pub fn protected_vault(&mut self, protected_vault: Pubkey) -> &mut Self {
         self.protected_vault = Some(protected_vault);
         self
@@ -304,7 +303,7 @@ impl InitializeLpBuilder {
                                                               cooldown_duration: self.cooldown_duration.clone().expect("cooldown_duration is not set"),
                                                                   deposit_cap: self.deposit_cap.clone(),
                                                                   assets: self.assets.clone().expect("assets is not set"),
-                                                                  protected_vault: self.protected_vault.clone(),
+                                                                  protected_vault: self.protected_vault.clone().expect("protected_vault is not set"),
                                     };
     
     accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
@@ -629,8 +628,7 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
         self.instruction.assets = Some(assets);
         self
       }
-                /// `[optional argument]`
-#[inline(always)]
+                #[inline(always)]
       pub fn protected_vault(&mut self, protected_vault: Pubkey) -> &mut Self {
         self.instruction.protected_vault = Some(protected_vault);
         self
@@ -661,7 +659,7 @@ impl<'a, 'b> InitializeLpCpiBuilder<'a, 'b> {
                                                               cooldown_duration: self.instruction.cooldown_duration.clone().expect("cooldown_duration is not set"),
                                                                   deposit_cap: self.instruction.deposit_cap.clone(),
                                                                   assets: self.instruction.assets.clone().expect("assets is not set"),
-                                                                  protected_vault: self.instruction.protected_vault.clone(),
+                                                                  protected_vault: self.instruction.protected_vault.clone().expect("protected_vault is not set"),
                                     };
         let instruction = InitializeLpCpi {
         __program: self.instruction.__program,
