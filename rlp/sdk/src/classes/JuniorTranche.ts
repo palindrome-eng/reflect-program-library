@@ -87,7 +87,7 @@ export class JuniorTranche {
   }
 
   async getSettingsData(): Promise<Settings> {
-    const [settingsAddress] = await PdaClient.deriveSettings();
+    const [settingsAddress] = await PdaClient.deriveSettings(this.programAddress);
     const account = await fetchSettings(this.connection, settingsAddress);
     return account.data;
   }
@@ -125,7 +125,7 @@ export class JuniorTranche {
 
   async getLiquidityPoolData(liquidityPoolId: number): Promise<LiquidityPool> {
     const [liquidityPoolAddress] =
-      await PdaClient.deriveLiquidityPool(liquidityPoolId);
+      await PdaClient.deriveLiquidityPool(liquidityPoolId, this.programAddress);
     const account = await fetchLiquidityPool(
       this.connection,
       liquidityPoolAddress,
@@ -245,8 +245,8 @@ export class JuniorTranche {
     return getInitializeRlpInstructionAsync({
       signer,
       swapFeeBps,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async initializeLiquidityPool(
@@ -269,6 +269,7 @@ export class JuniorTranche {
     const settings = await this.getSettingsData();
     const [liquidityPoolAddress] = await PdaClient.deriveLiquidityPool(
       settings.liquidityPools,
+      this.programAddress,
     );
 
     return getInitializeLpInstructionAsync({
@@ -279,8 +280,8 @@ export class JuniorTranche {
       depositCap: args.depositCap,
       assets: new Uint8Array(args.assets),
       protectedVault: (args.protectedVault ?? null) as any,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   /**
@@ -295,8 +296,8 @@ export class JuniorTranche {
     assetMint: Address,
   ) {
     const [liquidityPoolAddress] =
-      await PdaClient.deriveLiquidityPool(liquidityPoolId);
-    const [assetPda] = await PdaClient.deriveAsset(assetMint);
+      await PdaClient.deriveLiquidityPool(liquidityPoolId, this.programAddress);
+    const [assetPda] = await PdaClient.deriveAsset(assetMint, this.programAddress);
 
     return getInitializePoolReserveInstructionAsync({
       signer,
@@ -304,7 +305,7 @@ export class JuniorTranche {
       asset: assetPda,
       assetMint,
       liquidityPoolId,
-    });
+    }, { programAddress: this.programAddress });
   }
 
   /**
@@ -318,8 +319,8 @@ export class JuniorTranche {
     assetMint: Address,
   ) {
     const [liquidityPoolAddress] =
-      await PdaClient.deriveLiquidityPool(liquidityPoolId);
-    const [assetPda] = await PdaClient.deriveAsset(assetMint);
+      await PdaClient.deriveLiquidityPool(liquidityPoolId, this.programAddress);
+    const [assetPda] = await PdaClient.deriveAsset(assetMint, this.programAddress);
     const [poolTokenAccount] = await findAssociatedTokenPda({
       mint: assetMint,
       owner: liquidityPoolAddress,
@@ -334,7 +335,7 @@ export class JuniorTranche {
       poolTokenAccount,
       liquidityPoolId,
       program: this.programAddress,
-    });
+    }, { programAddress: this.programAddress });
   }
 
   async addAsset(
@@ -348,8 +349,8 @@ export class JuniorTranche {
       assetMint,
       oracle,
       accessLevel,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async updateOracle(
@@ -365,8 +366,8 @@ export class JuniorTranche {
       signer,
       asset: assetEntry.address,
       oracle,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   /**
@@ -396,7 +397,7 @@ export class JuniorTranche {
     amount: number | bigint,
   ) {
     const [liquidityPoolAddress] =
-      await PdaClient.deriveLiquidityPool(liquidityPoolId);
+      await PdaClient.deriveLiquidityPool(liquidityPoolId, this.programAddress);
 
     const assets = await this.getAssets();
     const assetEntry = assets.find((a) => a.data.mint === stablecoinMint);
@@ -428,8 +429,8 @@ export class JuniorTranche {
       oracle: oracleAddress,
       liquidityPoolId,
       amount,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   /**
@@ -588,7 +589,6 @@ export class JuniorTranche {
 
     const ix = await getDepositInstructionAsync({
       signer,
-      permissions: this.programAddress,
       liquidityPool: lpEntry.address,
       lpToken: lpEntry.data.lpToken,
       assetMint: mint,
@@ -597,8 +597,8 @@ export class JuniorTranche {
       liquidityPoolIndex: liquidityPoolId,
       amount,
       minLpTokens: (minLpTokens ?? null) as any,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
 
     const remaining = await this.buildPoolValueRemainingAccounts(
       lpEntry.address,
@@ -622,6 +622,7 @@ export class JuniorTranche {
     const [cooldownAddress] = await PdaClient.deriveCooldown(
       liquidityPoolId,
       lpEntry.data.cooldowns,
+      this.programAddress,
     );
 
     const [signerLpTokenAccount] = await findAssociatedTokenPda({
@@ -632,15 +633,14 @@ export class JuniorTranche {
 
     return getRequestWithdrawalInstructionAsync({
       signer,
-      permissions: this.programAddress,
       liquidityPool: lpEntry.address,
       lpTokenMint: lpEntry.data.lpToken,
       signerLpTokenAccount,
       cooldown: cooldownAddress,
       liquidityPoolId,
       amount,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async withdraw(
@@ -657,6 +657,7 @@ export class JuniorTranche {
     const [cooldownAddress] = await PdaClient.deriveCooldown(
       liquidityPoolId,
       cooldownId,
+      this.programAddress,
     );
 
     // audit-1: withdraw needs the signer's LP token account so any excess in
@@ -676,7 +677,7 @@ export class JuniorTranche {
       liquidityPoolId,
       cooldownId,
       program: this.programAddress,
-    });
+    }, { programAddress: this.programAddress });
 
     const remaining = await this.buildWithdrawRemainingAccounts(
       signer,
@@ -751,8 +752,8 @@ export class JuniorTranche {
       tokenToSignerAccount,
       amountIn,
       minOut: (minOut ?? null) as any,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async createPermissionAccount(
@@ -762,8 +763,8 @@ export class JuniorTranche {
     return getCreatePermissionAccountInstructionAsync({
       caller,
       newAdmin,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async updateRoleHolder(
@@ -773,7 +774,7 @@ export class JuniorTranche {
     update: Update,
   ) {
     const [updateAdminPermissions] =
-      await PdaClient.deriveUserPermissions(targetAddress);
+      await PdaClient.deriveUserPermissions(targetAddress, this.programAddress);
 
     return getUpdateRoleHolderInstructionAsync({
       admin,
@@ -781,8 +782,8 @@ export class JuniorTranche {
       address: targetAddress,
       role,
       update,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async updateActionRole(
@@ -796,8 +797,8 @@ export class JuniorTranche {
       action,
       role,
       update,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async updateDepositCap(
@@ -816,8 +817,8 @@ export class JuniorTranche {
       liquidityPool: lpEntry.address,
       lockupId: liquidityPoolId,
       newCap: newCap as any,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async freezeFunctionality(
@@ -829,8 +830,8 @@ export class JuniorTranche {
       admin,
       action,
       freeze,
-          program: this.programAddress,
-    });
+      program: this.programAddress,
+    }, { programAddress: this.programAddress });
   }
 
   async findAssetFromMint(mint: Address): Promise<Address> {
