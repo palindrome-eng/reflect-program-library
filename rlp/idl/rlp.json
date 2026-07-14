@@ -1,5 +1,5 @@
 {
-  "address": "moCKzPuzFkiMfpVzCDqho13VzMW5cJgdE4gg29X2AmM",
+  "address": "JrXLmS6aYJNJDVxdAfjNJE5wikT8ubf3TA9iL2JA9Av",
   "metadata": {
     "name": "rlp",
     "version": "0.1.0",
@@ -107,6 +107,38 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -189,6 +221,38 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -199,403 +263,16 @@
       ]
     },
     {
-      "name": "freeze_functionality",
+      "name": "deposit",
       "discriminator": [
-        65,
-        152,
-        119,
-        202,
-        25,
-        239,
-        206,
-        157
-      ],
-      "accounts": [
-        {
-          "name": "admin",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  116,
-                  116,
-                  105,
-                  110,
-                  103,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "admin_permissions",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  101,
-                  114,
-                  109,
-                  105,
-                  115,
-                  115,
-                  105,
-                  111,
-                  110,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "admin"
-              }
-            ]
-          }
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": {
-              "name": "FreezeProtocolActionArgs"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "initialize_lp",
-      "discriminator": [
-        110,
-        252,
-        116,
-        251,
-        81,
-        191,
-        57,
-        96
-      ],
-      "accounts": [
-        {
-          "name": "signer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "permissions",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  101,
-                  114,
-                  109,
-                  105,
-                  115,
-                  115,
-                  105,
-                  111,
-                  110,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "signer"
-              }
-            ]
-          }
-        },
-        {
-          "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  116,
-                  116,
-                  105,
-                  110,
-                  103,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "liquidity_pool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  113,
-                  117,
-                  105,
-                  100,
-                  105,
-                  116,
-                  121,
-                  95,
-                  112,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "settings.liquidity_pools",
-                "account": "Settings"
-              }
-            ]
-          }
-        },
-        {
-          "name": "lp_token_mint",
-          "writable": true
-        },
-        {
-          "name": "dead_shares_vault",
-          "docs": [
-            "Dead shares vault - permanently holds dead shares to prevent LP inflation attack",
-            "Security Fix: This vault is owned by the liquidity pool PDA and its shares are never redeemable"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "liquidity_pool"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lp_token_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": {
-              "name": "InitializeLiquidityPoolArgs"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "initialize_rlp",
-      "discriminator": [
-        122,
-        110,
-        49,
-        121,
-        142,
-        92,
+        242,
+        35,
+        198,
+        137,
         82,
-        100
-      ],
-      "accounts": [
-        {
-          "name": "signer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "permissions",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  101,
-                  114,
-                  109,
-                  105,
-                  115,
-                  115,
-                  105,
-                  111,
-                  110,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "signer"
-              }
-            ]
-          }
-        },
-        {
-          "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  116,
-                  116,
-                  105,
-                  110,
-                  103,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": {
-              "name": "InitializeRlpArgs"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "request_withdrawal",
-      "discriminator": [
-        251,
-        85,
-        121,
-        205,
-        56,
-        201,
-        12,
-        177
+        225,
+        242,
+        182
       ],
       "accounts": [
         {
@@ -605,258 +282,6 @@
         },
         {
           "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  116,
-                  116,
-                  105,
-                  110,
-                  103,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "permissions",
-          "optional": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  101,
-                  114,
-                  109,
-                  105,
-                  115,
-                  115,
-                  105,
-                  111,
-                  110,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "signer"
-              }
-            ]
-          }
-        },
-        {
-          "name": "liquidity_pool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  113,
-                  117,
-                  105,
-                  100,
-                  105,
-                  116,
-                  121,
-                  95,
-                  112,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "args.liquidity_pool_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "lp_token_mint",
-          "writable": true
-        },
-        {
-          "name": "signer_lp_token_account",
-          "writable": true
-        },
-        {
-          "name": "cooldown",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  111,
-                  108,
-                  100,
-                  111,
-                  119,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "liquidity_pool.index",
-                "account": "LiquidityPool"
-              },
-              {
-                "kind": "account",
-                "path": "liquidity_pool.cooldowns",
-                "account": "LiquidityPool"
-              }
-            ]
-          }
-        },
-        {
-          "name": "cooldown_lp_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "cooldown"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lp_token_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": {
-              "name": "RequestWithdrawalArgs"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "restake",
-      "discriminator": [
-        97,
-        161,
-        241,
-        167,
-        6,
-        32,
-        213,
-        53
-      ],
-      "accounts": [
-        {
-          "name": "signer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "settings",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1160,6 +585,38 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -1167,23 +624,305 @@
           "name": "args",
           "type": {
             "defined": {
-              "name": "RestakeArgs"
+              "name": "DepositArgs"
             }
           }
         }
       ]
     },
     {
-      "name": "slash",
+      "name": "force_remove_asset",
       "discriminator": [
-        204,
-        141,
-        18,
-        161,
-        8,
-        177,
-        92,
-        142
+        26,
+        47,
+        174,
+        160,
+        163,
+        115,
+        100,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "permissions",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "settings",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  105,
+                  110,
+                  103,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "liquidity_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  113,
+                  117,
+                  105,
+                  100,
+                  105,
+                  116,
+                  121,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "liquidity_pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset.mint",
+                "account": "Asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "pool_token_account",
+          "docs": [
+            "The pool's reserve ATA for the asset being removed. Must be frozen."
+          ]
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "_liquidity_pool_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "freeze_functionality",
+      "discriminator": [
+        65,
+        152,
+        119,
+        202,
+        25,
+        239,
+        206,
+        157
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  105,
+                  110,
+                  103,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "admin_permissions",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          }
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "FreezeProtocolActionArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_lp",
+      "discriminator": [
+        110,
+        252,
+        116,
+        251,
+        81,
+        191,
+        57,
+        96
       ],
       "accounts": [
         {
@@ -1242,6 +981,600 @@
         },
         {
           "name": "liquidity_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  113,
+                  117,
+                  105,
+                  100,
+                  105,
+                  116,
+                  121,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "settings.liquidity_pools",
+                "account": "Settings"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lp_token_mint",
+          "writable": true
+        },
+        {
+          "name": "dead_shares_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "liquidity_pool"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lp_token_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeLiquidityPoolArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_pool_reserve",
+      "discriminator": [
+        151,
+        225,
+        119,
+        195,
+        196,
+        190,
+        98,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "permissions",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "settings",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  105,
+                  110,
+                  103,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "liquidity_pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  113,
+                  117,
+                  105,
+                  100,
+                  105,
+                  116,
+                  121,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "liquidity_pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset.mint",
+                "account": "Asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "pool_asset_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "liquidity_pool"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        }
+      ],
+      "args": [
+        {
+          "name": "_liquidity_pool_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initialize_rlp",
+      "discriminator": [
+        122,
+        110,
+        49,
+        121,
+        142,
+        92,
+        82,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "permissions",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  105,
+                  110,
+                  103,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeRlpArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "request_withdrawal",
+      "discriminator": [
+        251,
+        85,
+        121,
+        205,
+        56,
+        201,
+        12,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "settings",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  105,
+                  110,
+                  103,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "permissions",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "liquidity_pool",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1271,12 +1604,287 @@
           }
         },
         {
-          "name": "mint",
+          "name": "lp_token_mint",
           "writable": true
         },
         {
-          "name": "asset",
+          "name": "signer_lp_token_account",
+          "writable": true
+        },
+        {
+          "name": "cooldown",
           "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  111,
+                  108,
+                  100,
+                  111,
+                  119,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "liquidity_pool.index",
+                "account": "LiquidityPool"
+              },
+              {
+                "kind": "account",
+                "path": "liquidity_pool.cooldowns",
+                "account": "LiquidityPool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cooldown_lp_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "cooldown"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lp_token_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "RequestWithdrawalArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "slash",
+      "discriminator": [
+        204,
+        141,
+        18,
+        161,
+        8,
+        177,
+        92,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "permissions",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "settings",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  105,
+                  110,
+                  103,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "liquidity_pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  113,
+                  117,
+                  105,
+                  100,
+                  105,
+                  116,
+                  121,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "args.liquidity_pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
           "pda": {
             "seeds": [
               {
@@ -1298,15 +1906,71 @@
           }
         },
         {
+          "name": "stablecoin_mint"
+        },
+        {
           "name": "liquidity_pool_token_account",
+          "docs": [
+            "Pool's reserve of the proxy's stablecoin_mint (typically USDC+).",
+            "Source of the transfer."
+          ],
           "writable": true
         },
         {
-          "name": "destination"
+          "name": "proxy_state",
+          "docs": [
+            "The proxy program's ProxyState account. Validated against",
+            "`liquidity_pool.protected_vault` and read for principal/commission.",
+            "length check). Not deserialized via Anchor because the proxy program",
+            "is pinocchio-based and has no Anchor discriminator."
+          ]
+        },
+        {
+          "name": "protected_vault_token_account",
+          "docs": [
+            "The proxy's stablecoin vault: ATA(proxy_state, stablecoin_mint).",
+            "Destination of the transfer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "oracle"
         },
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -1666,6 +2330,38 @@
         {
           "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -1749,6 +2445,38 @@
               }
             ]
           }
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -1859,6 +2587,38 @@
               }
             ]
           }
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -1871,6 +2631,132 @@
           }
         }
       ]
+    },
+    {
+      "name": "update_oracle",
+      "discriminator": [
+        112,
+        41,
+        209,
+        18,
+        248,
+        226,
+        252,
+        188
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "admin",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "settings",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  105,
+                  110,
+                  103,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset.mint",
+                "account": "Asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": []
     },
     {
       "name": "update_role_holder",
@@ -1941,11 +2827,68 @@
         },
         {
           "name": "update_admin_permissions",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "update_admin_permissions.authority",
+                "account": "UserPermissions"
+              }
+            ]
+          }
         },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -2152,6 +3095,10 @@
           }
         },
         {
+          "name": "signer_lp_token_account",
+          "writable": true
+        },
+        {
           "name": "cooldown",
           "writable": true,
           "pda": {
@@ -2189,6 +3136,38 @@
           "name": "system_program",
           "optional": true,
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
         }
       ],
       "args": [
@@ -2298,6 +3277,19 @@
       ]
     },
     {
+      "name": "DepositEvent",
+      "discriminator": [
+        120,
+        248,
+        61,
+        83,
+        31,
+        142,
+        107,
+        144
+      ]
+    },
+    {
       "name": "DepositRewardEvent",
       "discriminator": [
         185,
@@ -2308,6 +3300,19 @@
         57,
         202,
         240
+      ]
+    },
+    {
+      "name": "ForceRemoveAssetEvent",
+      "discriminator": [
+        232,
+        12,
+        194,
+        128,
+        6,
+        242,
+        14,
+        158
       ]
     },
     {
@@ -2363,19 +3368,6 @@
       ]
     },
     {
-      "name": "RestakeEvent",
-      "discriminator": [
-        238,
-        20,
-        234,
-        164,
-        240,
-        231,
-        189,
-        182
-      ]
-    },
-    {
       "name": "SlashEvent",
       "discriminator": [
         126,
@@ -2425,6 +3417,19 @@
         28,
         13,
         169
+      ]
+    },
+    {
+      "name": "UpdateOracleEvent",
+      "discriminator": [
+        160,
+        215,
+        18,
+        128,
+        160,
+        219,
+        87,
+        173
       ]
     },
     {
@@ -2692,13 +3697,48 @@
     },
     {
       "code": 6047,
-      "name": "SlashAmountExceedsLimit",
-      "msg": "SlashAmountExceedsLimit"
+      "name": "OracleDataTooStale",
+      "msg": "OracleDataTooStale"
     },
     {
       "code": 6048,
-      "name": "OracleDataTooStale",
-      "msg": "OracleDataTooStale"
+      "name": "PoolAssetFrozen",
+      "msg": "PoolAssetFrozen"
+    },
+    {
+      "code": 6049,
+      "name": "PoolAssetNotFrozen",
+      "msg": "PoolAssetNotFrozen"
+    },
+    {
+      "code": 6050,
+      "name": "CannotRemoveLastAsset",
+      "msg": "CannotRemoveLastAsset"
+    },
+    {
+      "code": 6051,
+      "name": "PoolHasNoProtectedVault",
+      "msg": "PoolHasNoProtectedVault"
+    },
+    {
+      "code": 6052,
+      "name": "ProtectedVaultMismatch",
+      "msg": "ProtectedVaultMismatch"
+    },
+    {
+      "code": 6053,
+      "name": "NoNavLossToCover",
+      "msg": "NoNavLossToCover"
+    },
+    {
+      "code": 6054,
+      "name": "NavCoverageExceedsLoss",
+      "msg": "NavCoverageExceedsLoss"
+    },
+    {
+      "code": 6055,
+      "name": "ProtectedVaultMintMismatch",
+      "msg": "ProtectedVaultMintMismatch"
     }
   ],
   "types": [
@@ -2712,9 +3752,6 @@
         "fields": [
           {
             "name": "access_map",
-            "docs": [
-              "Access map for this component."
-            ],
             "type": {
               "defined": {
                 "name": "AccessMap"
@@ -2723,9 +3760,6 @@
           },
           {
             "name": "killswitch",
-            "docs": [
-              "State for freezing particular functionality."
-            ],
             "type": {
               "defined": {
                 "name": "KillSwitch"
@@ -2759,9 +3793,6 @@
         "fields": [
           {
             "name": "action_permissions",
-            "docs": [
-              "Maps each regular action to its permissions."
-            ],
             "type": {
               "array": [
                 {
@@ -2775,9 +3806,6 @@
           },
           {
             "name": "mapping_count",
-            "docs": [
-              "Counter to track how many mappings are in use."
-            ],
             "type": "u8"
           }
         ]
@@ -2789,7 +3817,7 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "Restake"
+            "name": "Deposit"
           },
           {
             "name": "Withdraw"
@@ -2801,7 +3829,7 @@
             "name": "Swap"
           },
           {
-            "name": "FreezeRestake"
+            "name": "FreezeDeposit"
           },
           {
             "name": "FreezeWithdraw"
@@ -2835,6 +3863,12 @@
           },
           {
             "name": "UpdateAction"
+          },
+          {
+            "name": "UpdateOracle"
+          },
+          {
+            "name": "RemovePoolAsset"
           }
         ]
       }
@@ -2957,6 +3991,10 @@
             "type": "u8"
           },
           {
+            "name": "index",
+            "type": "u64"
+          },
+          {
             "name": "authority",
             "type": "pubkey"
           },
@@ -2966,6 +4004,10 @@
           },
           {
             "name": "unlock_ts",
+            "type": "u64"
+          },
+          {
+            "name": "locked_amount",
             "type": "u64"
           }
         ]
@@ -2988,6 +4030,58 @@
       }
     },
     {
+      "name": "DepositArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "liquidity_pool_index",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "min_lp_tokens",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "liquidity_pool_id",
+            "type": "u8"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_in",
+            "type": "u64"
+          },
+          {
+            "name": "amount_out",
+            "type": "u64"
+          },
+          {
+            "name": "usd_value",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
       "name": "DepositRewardEvent",
       "type": {
         "kind": "struct",
@@ -3003,6 +4097,30 @@
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ForceRemoveAssetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "liquidity_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_index",
+            "type": "u8"
           }
         ]
       }
@@ -3065,6 +4183,12 @@
           {
             "name": "assets",
             "type": "bytes"
+          },
+          {
+            "name": "protected_vault",
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }
@@ -3123,16 +4247,13 @@
         "fields": [
           {
             "name": "frozen",
-            "type": "u16"
+            "type": "u32"
           }
         ]
       }
     },
     {
       "name": "LevelRoles",
-      "docs": [
-        "Handles role management at any hierarchy level (protocol or strategy)."
-      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3192,6 +4313,18 @@
                 4
               ]
             }
+          },
+          {
+            "name": "protected_vault",
+            "docs": [
+              "ProxyState account this pool's junior tranche covers.",
+              "When set, `slash_for_nav_coverage` is enabled and pulls from this pool's",
+              "reserve of the proxy's stablecoin_mint into the proxy's vault, capped at",
+              "the proxy's current mark-to-market loss (principal + commission - vault_value)."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }
@@ -3203,6 +4336,24 @@
         "variants": [
           {
             "name": "Pyth",
+            "fields": [
+              {
+                "name": "account",
+                "type": "pubkey"
+              },
+              {
+                "name": "feed_id",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Doppler",
             "fields": [
               "pubkey"
             ]
@@ -3238,46 +4389,6 @@
           {
             "name": "liquidity_pool_id",
             "type": "u8"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RestakeArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "liquidity_pool_index",
-            "type": "u8"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "min_lp_tokens",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RestakeEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "from",
-            "type": "pubkey"
-          },
-          {
-            "name": "asset",
-            "type": "pubkey"
           },
           {
             "name": "amount",
@@ -3343,6 +4454,10 @@
           {
             "name": "swap_fee_bps",
             "type": "u16"
+          },
+          {
+            "name": "supremo_count",
+            "type": "u8"
           }
         ]
       }
@@ -3358,11 +4473,12 @@
           },
           {
             "name": "amount",
+            "docs": [
+              "Requested amount of the protected vault's stablecoin_mint tokens to",
+              "transfer from this pool's reserve into the proxy's vault. The",
+              "instruction caps this at the proxy's current mark-to-market loss."
+            ],
             "type": "u64"
-          },
-          {
-            "name": "asset_id",
-            "type": "u8"
           }
         ]
       }
@@ -3381,12 +4497,20 @@
             "type": "pubkey"
           },
           {
-            "name": "amount",
+            "name": "protected_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "stablecoin_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "loss_usdc",
             "type": "u64"
           },
           {
-            "name": "mint",
-            "type": "pubkey"
+            "name": "amount_tokens",
+            "type": "u64"
           }
         ]
       }
@@ -3552,6 +4676,30 @@
       }
     },
     {
+      "name": "UpdateOracleEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_oracle",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_oracle",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "UpdateRoleHolderArgs",
       "type": {
         "kind": "struct",
@@ -3614,23 +4762,14 @@
         "fields": [
           {
             "name": "bump",
-            "docs": [
-              "Bump for PDA derivation."
-            ],
             "type": "u8"
           },
           {
             "name": "authority",
-            "docs": [
-              "Account authority - the entity that can modify this permission set."
-            ],
             "type": "pubkey"
           },
           {
             "name": "protocol_roles",
-            "docs": [
-              "Protocol-level roles - permissions that apply across the entire protocol."
-            ],
             "type": {
               "defined": {
                 "name": "LevelRoles"
@@ -3657,6 +4796,28 @@
       }
     },
     {
+      "name": "WithdrawAssetAmount",
+      "docs": [
+        "Per-asset entry in `WithdrawEvent::amounts_out`. Borsh-equivalent to",
+        "the previous `(Pubkey, u64)` tuple, but the named struct is required so",
+        "Anchor's IDL emitter can describe it (the spec has no tuple type, so a",
+        "`Vec<(Pubkey, u64)>` field is silently omitted from the IDL)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "WithdrawEvent",
       "type": {
         "kind": "struct",
@@ -3666,8 +4827,22 @@
             "type": "pubkey"
           },
           {
-            "name": "amount",
+            "name": "liquidity_pool_id",
+            "type": "u8"
+          },
+          {
+            "name": "amount_in",
             "type": "u64"
+          },
+          {
+            "name": "amounts_out",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "WithdrawAssetAmount"
+                }
+              }
+            }
           }
         ]
       }
@@ -3678,11 +4853,6 @@
       "name": "ASSET_SEED",
       "type": "string",
       "value": "\"asset\""
-    },
-    {
-      "name": "BPS_DENOMINATOR",
-      "type": "u64",
-      "value": "10000"
     },
     {
       "name": "BPS_PRECISION",
@@ -3715,6 +4885,11 @@
       "value": "\"deposit\""
     },
     {
+      "name": "DOPPLER_MAX_STALENESS",
+      "type": "u64",
+      "value": "200"
+    },
+    {
       "name": "INTENT_SEED",
       "type": "string",
       "value": "\"intent\""
@@ -3730,9 +4905,14 @@
       "value": "\"liquidity_pool\""
     },
     {
-      "name": "MAX_SLASH_BPS",
+      "name": "MAX_COOLDOWN_DURATION",
       "type": "u64",
-      "value": "1000"
+      "value": "31536000"
+    },
+    {
+      "name": "MAX_ORACLE_CONFIDENCE_RATIO",
+      "type": "u64",
+      "value": "50"
     },
     {
       "name": "ORACLE_MAXIMUM_AGE",
@@ -3753,6 +4933,11 @@
       "name": "PRICE_PRECISION",
       "type": "i32",
       "value": "9"
+    },
+    {
+      "name": "PROXY_STATE_SEED",
+      "type": "string",
+      "value": "\"proxy\""
     },
     {
       "name": "REWARD_BOOST_SEED",
